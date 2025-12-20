@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    * {
+        @apply border-border-primary;
+    }
+
+    body {
+        @apply bg-bg-primary text-text-primary font-sans antialiased;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-heading;
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+        @apply w-2;
+    }
+
+    ::-webkit-scrollbar-track {
+        @apply bg-bg-secondary;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        @apply bg-border-secondary rounded;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        @apply bg-accent-green;
+    }
+}
+
+@layer components {
+
+    /* Container utility */
+    .container-custom {
+        @apply w-full max-w-container mx-auto px-6;
+    }
+
+    /* Text utilities */
+    .text-gradient-green {
+        @apply bg-gradient-to-r from-accent-green to-accent-blue bg-clip-text text-transparent;
+    }
+
+    /* Card base */
+    .card-base {
+        @apply bg-bg-card border border-border-primary rounded-lg;
+    }
+
+    /* Glow effects */
+    .glow-green {
+        @apply shadow-glow-green;
+    }
+
+    .glow-blue {
+        @apply shadow-glow-blue;
+    }
+
+    /* Focus styles */
+    .focus-visible-custom {
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-green focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary;
+    }
+}
+
+@layer utilities {
+
+    /* Text selection */
+    ::selection {
+        @apply bg-accent-green/30 text-text-primary;
+    }
+
+    /* Animation delays */
+    .animation-delay-100 {
+        animation-delay: 100ms;
+    }
+
+    .animation-delay-200 {
+        animation-delay: 200ms;
+    }
+
+    .animation-delay-300 {
+        animation-delay: 300ms;
+    }
+}
