@@ -14,6 +14,9 @@ import Services from '@pages/Services';
 import Profile from '@pages/Profile';
 import Terms from '@pages/Terms';
 import Privacy from '@pages/Privacy';
+import AdminDashboard from '@pages/admin/AdminDashboard';
+import AdminUsers from '@pages/admin/AdminUsers';
+import AdminML from '@pages/admin/AdminML';
 import ChatbotWidget from '@components/layout/ChatbotWidget';
 
 function App() {
@@ -35,6 +38,11 @@ function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />
+
+                {/* Admin Routes */}
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/ml" element={<AdminML />} />
             </Routes>
             <ChatbotWidget />
         </Router>
