@@ -17,6 +17,8 @@ import Privacy from '@pages/Privacy';
 import AdminDashboard from '@pages/admin/AdminDashboard';
 import AdminUsers from '@pages/admin/AdminUsers';
 import AdminML from '@pages/admin/AdminML';
+import AdminScans from '@pages/admin/AdminScans';
+import AdminSettings from '@pages/admin/AdminSettings';
 import ChatbotWidget from '@components/layout/ChatbotWidget';
 
 function App() {
@@ -42,7 +44,9 @@ function App() {
                 {/* Admin Routes */}
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/scans" element={<AdminScans />} />
                 <Route path="/admin/ml" element={<AdminML />} />
+                <Route path="/admin/settings" element={<AdminSettings />} />
             </Routes>
             <ChatbotWidget />
         </Router>
