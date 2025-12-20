@@ -1,4 +1,4 @@
-import type { ButtonProps } from '@types/components';
+import type { ButtonProps } from '../../types/components';
 
 export default function Button({
     variant = 'primary',

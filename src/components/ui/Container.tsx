@@ -1,4 +1,4 @@
-import type { ContainerProps } from '@types/components';
+import type { ContainerProps } from '../../types/components';
 
 export default function Container({
     children,

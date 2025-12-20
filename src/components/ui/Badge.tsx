@@ -1,4 +1,4 @@
-import type { BadgeProps } from '@types/components';
+import type { BadgeProps } from '../../types/components';
 
 export default function Badge({
     children,

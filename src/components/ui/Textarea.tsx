@@ -1,4 +1,4 @@
-import type { TextareaProps } from '@types/components';
+import type { TextareaProps } from '../../types/components';
 
 export default function Textarea({
     label,

@@ -1,4 +1,4 @@
-import type { SelectProps } from '@types/components';
+import type { SelectProps } from '../../types/components';
 
 export default function Select({
     label,
