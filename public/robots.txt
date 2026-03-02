@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://safeweb-ai.vercel.app/sitemap.xml

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
@@ -6,7 +7,9 @@ import Input from '@components/ui/Input';
 import Textarea from '@components/ui/Textarea';
 import Select from '@components/ui/Select';
 import Button from '@components/ui/Button';
+import ScrollReveal from '@components/ui/ScrollReveal';
 import { isValidEmail } from '@utils/validation';
+import { contactAPI } from '@/services/api';
 
 export default function Contact() {
     const [formData, setFormData] = useState({
@@ -69,11 +72,15 @@ export default function Contact() {
         if (!validateForm()) return;
 
         setIsSubmitting(true);
-        setTimeout(() => {
-            setIsSubmitting(false);
-            alert('Message sent successfully!');
+        try {
+            await contactAPI.send(formData);
+            alert('Message sent successfully! We will get back to you soon.');
             setFormData({ name: '', email: '', subject: 'general', message: '' });
-        }, 1500);
+        } catch {
+            alert('Failed to send message. Please try again later.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const contactInfo = [
@@ -115,14 +122,16 @@ export default function Contact() {
             <div className="py-12">
                 <Container>
                     {/* Header */}
+                    <ScrollReveal>
                     <div className="text-center mb-12">
                         <h1 className="text-4xl font-heading font-bold text-text-primary mb-4">
                             Contact Us
                         </h1>
                         <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-                            Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+                            Have questions? We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
                         </p>
                     </div>
+                    </ScrollReveal>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Contact Form */}
@@ -220,18 +229,18 @@ export default function Contact() {
                                     Need immediate assistance? Check our documentation or contact support.
                                 </p>
                                 <div className="space-y-2">
-                                    <a
-                                        href="/docs"
+                                    <Link
+                                        to="/docs"
                                         className="block px-4 py-2 rounded-lg bg-bg-secondary text-sm text-text-primary hover:bg-bg-hover transition-colors text-center"
                                     >
                                         View Documentation
-                                    </a>
-                                    <a
-                                        href="/learn"
+                                    </Link>
+                                    <Link
+                                        to="/learn"
                                         className="block px-4 py-2 rounded-lg bg-bg-secondary text-sm text-text-primary hover:bg-bg-hover transition-colors text-center"
                                     >
                                         Learning Center
-                                    </a>
+                                    </Link>
                                 </div>
                             </Card>
 

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
@@ -6,21 +7,67 @@ import Badge from '@components/ui/Badge';
 import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
 import Select from '@components/ui/Select';
+import { adminAPI } from '@services/api';
+
+interface ScanRow {
+    id: string;
+    url: string;
+    user: string;
+    status: string;
+    vulnerabilities: number;
+    severity: string;
+    started: string;
+    duration: string;
+}
 
 export default function AdminScans() {
+    const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [scans, setScans] = useState<ScanRow[]>([]);
+    const [totalScans, setTotalScans] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [stats, setStats] = useState([
+        { label: 'Total Scans Today', value: '—', change: '' },
+        { label: 'Currently Running', value: '—', change: '' },
+        { label: 'Failed Today', value: '—', change: '' },
+        { label: 'Avg Duration', value: '—', change: '' },
+    ]);
 
-    const scans = [
-        { id: 1, url: 'https://example.com', user: 'john@example.com', status: 'completed', vulnerabilities: 12, severity: 'high', started: '2024-03-20 10:30', duration: '2m 15s' },
-        { id: 2, url: 'https://testsite.io', user: 'jane@example.com', status: 'running', vulnerabilities: 0, severity: '-', started: '2024-03-20 11:45', duration: '-' },
-        { id: 3, url: 'https://myapp.com', user: 'mike@example.com', status: 'completed', vulnerabilities: 3, severity: 'low', started: '2024-03-20 09:15', duration: '1m 45s' },
-        { id: 4, url: 'https://webapp.net', user: 'sarah@example.com', status: 'failed', vulnerabilities: 0, severity: '-', started: '2024-03-20 08:00', duration: '45s' },
-        { id: 5, url: 'https://shop.com', user: 'tom@example.com', status: 'completed', vulnerabilities: 25, severity: 'critical', started: '2024-03-19 16:20', duration: '3m 30s' },
-        { id: 6, url: 'https://blog.dev', user: 'emily@example.com', status: 'queued', vulnerabilities: 0, severity: '-', started: '-', duration: '-' },
-        { id: 7, url: 'https://api.service.io', user: 'david@example.com', status: 'completed', vulnerabilities: 8, severity: 'medium', started: '2024-03-19 14:10', duration: '2m 05s' },
-        { id: 8, url: 'https://portal.app', user: 'lisa@example.com', status: 'running', vulnerabilities: 0, severity: '-', started: '2024-03-20 11:50', duration: '-' },
-    ];
+    const fetchScans = () => {
+        setIsLoading(true);
+        const params: Record<string, string> = { page: String(page) };
+        if (searchQuery) params.search = searchQuery;
+        if (filterStatus !== 'all') params.status = filterStatus;
+        adminAPI.getScans(params)
+            .then((res) => {
+                const d = res.data;
+                setScans(d.results ?? d.scans ?? d);
+                setTotalScans(d.count ?? d.total ?? 0);
+                if (d.stats) setStats(d.stats);
+            })
+            .catch(() => setScans([]))
+            .finally(() => setIsLoading(false));
+    };
+
+    useEffect(() => { fetchScans(); }, [page, filterStatus]);
+    useEffect(() => { setPage(1); }, [filterStatus]);
+    useEffect(() => {
+        const t = setTimeout(fetchScans, 400);
+        return () => clearTimeout(t);
+    }, [searchQuery]);
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Delete this scan?')) return;
+        try {
+            await adminAPI.deleteScan(id);
+            fetchScans();
+        } catch (err) {
+            console.error('Delete scan failed:', err);
+            alert('Failed to delete scan. Please try again.');
+        }
+    };
 
     const statusOptions = [
         { value: 'all', label: 'All Status' },
@@ -28,13 +75,6 @@ export default function AdminScans() {
         { value: 'completed', label: 'Completed' },
         { value: 'failed', label: 'Failed' },
         { value: 'queued', label: 'Queued' },
-    ];
-
-    const stats = [
-        { label: 'Total Scans Today', value: '143', change: '+12' },
-        { label: 'Currently Running', value: '8', change: '+2' },
-        { label: 'Failed Today', value: '5', change: '-3' },
-        { label: 'Avg Duration', value: '2m 18s', change: '-15s' },
     ];
 
     return (
@@ -50,16 +90,30 @@ export default function AdminScans() {
                             <p className="text-text-secondary">Monitor all security scans across the platform</p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => {
+                                const csv = ['ID,URL,User,Status,Vulnerabilities,Severity,Started,Duration'];
+                                scans.forEach((s) => csv.push(`${s.id},${s.url},${s.user},${s.status},${s.vulnerabilities},${s.severity},${s.started},${s.duration}`));
+                                const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+                                const a = document.createElement('a');
+                                a.href = URL.createObjectURL(blob);
+                                a.download = 'scans_report.csv';
+                                a.click();
+                            }}>
                                 Export Report
                             </Button>
-                            <Button variant="primary" size="sm">
+                            <Button variant="primary" size="sm" onClick={fetchScans}>
                                 Refresh
                             </Button>
                         </div>
                     </div>
 
                     {/* Stats */}
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="w-8 h-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
+                        </div>
+                    ) : (
+                    <>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                         {stats.map((stat, index) => (
                             <Card key={index} className="p-6">
@@ -79,7 +133,7 @@ export default function AdminScans() {
                                 type="text"
                                 placeholder="Search by URL or user email..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                                 leftIcon={
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -89,7 +143,7 @@ export default function AdminScans() {
                             <Select
                                 options={statusOptions}
                                 value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)}
                             />
                         </div>
                     </Card>
@@ -160,14 +214,14 @@ export default function AdminScans() {
                                             <td className="py-4 px-6 text-sm text-text-secondary">{scan.duration}</td>
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-2">
-                                                    <button className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-accent-green transition-colors">
+                                                    <button className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-accent-green transition-colors" onClick={() => navigate(`/scan/results/${scan.id}`)}>
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                         </svg>
                                                     </button>
                                                     {scan.status === 'running' && (
-                                                        <button className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-status-high transition-colors">
+                                                        <button className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-status-high transition-colors" onClick={() => handleDelete(scan.id)}>
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                                             </svg>
@@ -184,19 +238,17 @@ export default function AdminScans() {
                         {/* Pagination */}
                         <div className="flex items-center justify-between px-6 py-4 border-t border-border-primary">
                             <div className="text-sm text-text-secondary">
-                                Showing 1 to 8 of 1,247 scans
+                                Showing {scans.length > 0 ? (page - 1) * 10 + 1 : 0} to {Math.min(page * 10, totalScans)} of {totalScans.toLocaleString()} scans
                             </div>
                             <div className="flex items-center gap-2">
-                                <Button variant="outline" size="sm">Previous</Button>
-                                <Button variant="primary" size="sm">1</Button>
-                                <Button variant="ghost" size="sm">2</Button>
-                                <Button variant="ghost" size="sm">3</Button>
-                                <Button variant="ghost" size="sm">...</Button>
-                                <Button variant="ghost" size="sm">156</Button>
-                                <Button variant="outline" size="sm">Next</Button>
+                                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Previous</Button>
+                                <span className="text-sm text-text-secondary px-2">Page {page}</span>
+                                <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={scans.length < 10}>Next</Button>
                             </div>
                         </div>
                     </Card>
+                    </>
+                    )}
                 </Container>
             </div>
         </Layout>

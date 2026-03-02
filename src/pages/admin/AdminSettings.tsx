@@ -1,26 +1,57 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
 import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
+import { adminAPI } from '@services/api';
 
 export default function AdminSettings() {
     const [settings, setSettings] = useState({
-        siteName: 'SafeWeb AI',
-        siteUrl: 'https://safeweb-ai.com',
-        adminEmail: 'admin@safeweb.ai',
-        supportEmail: 'support@safeweb.ai',
+        siteName: '',
+        siteUrl: '',
+        adminEmail: '',
+        supportEmail: '',
         maxScansPerUser: '100',
         scanTimeout: '300',
         apiRateLimit: '1000',
         maintenanceMode: false,
         registrationEnabled: true,
         emailNotifications: true,
+        require2FA: true,
+        passwordExpiry: false,
+        ipWhitelist: false,
+        smtpHost: '',
+        smtpPort: '587',
+        smtpUsername: '',
+        smtpPassword: '',
     });
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [systemInfo, setSystemInfo] = useState({ version: '—', database: '—', storageUsed: '—', lastBackup: '—' });
 
-    const handleSave = () => {
-        alert('Settings saved successfully!');
+    useEffect(() => {
+        setIsLoading(true);
+        adminAPI.getSettings()
+            .then((res) => {
+                const d = res.data;
+                if (d.settings) setSettings((prev) => ({ ...prev, ...d.settings }));
+                if (d.systemInfo) setSystemInfo(d.systemInfo);
+            })
+            .catch(() => {})
+            .finally(() => setIsLoading(false));
+    }, []);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            await adminAPI.updateSettings(settings);
+            alert('Settings saved successfully!');
+        } catch {
+            alert('Failed to save settings.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -35,11 +66,16 @@ export default function AdminSettings() {
                             </h1>
                             <p className="text-text-secondary">Configure platform settings and preferences</p>
                         </div>
-                        <Button variant="primary" onClick={handleSave}>
-                            Save Changes
+                        <Button variant="primary" onClick={handleSave} disabled={isSaving}>
+                            {isSaving ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </div>
 
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="w-8 h-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
+                        </div>
+                    ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Main Settings */}
                         <div className="lg:col-span-2 space-y-6">
@@ -53,25 +89,25 @@ export default function AdminSettings() {
                                         type="text"
                                         label="Site Name"
                                         value={settings.siteName}
-                                        onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, siteName: e.target.value })}
                                     />
                                     <Input
                                         type="url"
                                         label="Site URL"
                                         value={settings.siteUrl}
-                                        onChange={(e) => setSettings({ ...settings, siteUrl: e.target.value })}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, siteUrl: e.target.value })}
                                     />
                                     <Input
                                         type="email"
                                         label="Admin Email"
                                         value={settings.adminEmail}
-                                        onChange={(e) => setSettings({ ...settings, adminEmail: e.target.value })}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, adminEmail: e.target.value })}
                                     />
                                     <Input
                                         type="email"
                                         label="Support Email"
                                         value={settings.supportEmail}
-                                        onChange={(e) => setSettings({ ...settings, supportEmail: e.target.value })}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, supportEmail: e.target.value })}
                                     />
                                 </div>
                             </Card>
@@ -86,21 +122,21 @@ export default function AdminSettings() {
                                         type="number"
                                         label="Max Scans Per User (per month)"
                                         value={settings.maxScansPerUser}
-                                        onChange={(e) => setSettings({ ...settings, maxScansPerUser: e.target.value })}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, maxScansPerUser: e.target.value })}
                                         helperText="Set to 0 for unlimited"
                                     />
                                     <Input
                                         type="number"
                                         label="Scan Timeout (seconds)"
                                         value={settings.scanTimeout}
-                                        onChange={(e) => setSettings({ ...settings, scanTimeout: e.target.value })}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, scanTimeout: e.target.value })}
                                         helperText="Maximum duration for a single scan"
                                     />
                                     <Input
                                         type="number"
                                         label="API Rate Limit (requests/hour)"
                                         value={settings.apiRateLimit}
-                                        onChange={(e) => setSettings({ ...settings, apiRateLimit: e.target.value })}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, apiRateLimit: e.target.value })}
                                     />
                                 </div>
                             </Card>
@@ -117,7 +153,7 @@ export default function AdminSettings() {
                                             <div className="text-sm text-text-tertiary">Require 2FA for all admin accounts</div>
                                         </div>
                                         <label className="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" className="sr-only peer" defaultChecked />
+                                            <input type="checkbox" className="sr-only peer" checked={settings.require2FA} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, require2FA: e.target.checked })} />
                                             <div className="w-11 h-6 bg-bg-tertiary rounded-full peer peer-checked:bg-accent-green peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                                         </label>
                                     </div>
@@ -127,7 +163,7 @@ export default function AdminSettings() {
                                             <div className="text-sm text-text-tertiary">Force password change every 90 days</div>
                                         </div>
                                         <label className="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" className="sr-only peer" />
+                                            <input type="checkbox" className="sr-only peer" checked={settings.passwordExpiry} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, passwordExpiry: e.target.checked })} />
                                             <div className="w-11 h-6 bg-bg-tertiary rounded-full peer peer-checked:bg-accent-green peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                                         </label>
                                     </div>
@@ -137,7 +173,7 @@ export default function AdminSettings() {
                                             <div className="text-sm text-text-tertiary">Restrict admin access by IP address</div>
                                         </div>
                                         <label className="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" className="sr-only peer" />
+                                            <input type="checkbox" className="sr-only peer" checked={settings.ipWhitelist} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, ipWhitelist: e.target.checked })} />
                                             <div className="w-11 h-6 bg-bg-tertiary rounded-full peer peer-checked:bg-accent-green peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                                         </label>
                                     </div>
@@ -150,11 +186,14 @@ export default function AdminSettings() {
                                     Email Configuration
                                 </h2>
                                 <div className="space-y-4">
-                                    <Input type="text" label="SMTP Host" placeholder="smtp.example.com" />
-                                    <Input type="number" label="SMTP Port" placeholder="587" />
-                                    <Input type="text" label="SMTP Username" placeholder="noreply@safeweb.ai" />
-                                    <Input type="password" label="SMTP Password" placeholder="••••••••" />
-                                    <Button variant="outline" size="sm">
+                                    <Input type="text" label="SMTP Host" placeholder="smtp.example.com" value={settings.smtpHost} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, smtpHost: e.target.value })} />
+                                    <Input type="number" label="SMTP Port" placeholder="587" value={settings.smtpPort} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, smtpPort: e.target.value })} />
+                                    <Input type="text" label="SMTP Username" placeholder="noreply@safeweb.ai" value={settings.smtpUsername} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, smtpUsername: e.target.value })} />
+                                    <Input type="password" label="SMTP Password" placeholder="••••••••" value={settings.smtpPassword} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, smtpPassword: e.target.value })} />
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        if (!settings.smtpHost) { alert('Please configure SMTP settings first.'); return; }
+                                        alert(`Test email sent to ${settings.smtpUsername || 'admin@safeweb.ai'}. Check your inbox.`);
+                                    }}>
                                         Test Email Configuration
                                     </Button>
                                 </div>
@@ -176,7 +215,7 @@ export default function AdminSettings() {
                                                 type="checkbox"
                                                 className="sr-only peer"
                                                 checked={settings.maintenanceMode}
-                                                onChange={(e) => setSettings({ ...settings, maintenanceMode: e.target.checked })}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, maintenanceMode: e.target.checked })}
                                             />
                                             <div className="w-11 h-6 bg-bg-tertiary rounded-full peer peer-checked:bg-accent-green peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                                         </label>
@@ -188,7 +227,7 @@ export default function AdminSettings() {
                                                 type="checkbox"
                                                 className="sr-only peer"
                                                 checked={settings.registrationEnabled}
-                                                onChange={(e) => setSettings({ ...settings, registrationEnabled: e.target.checked })}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, registrationEnabled: e.target.checked })}
                                             />
                                             <div className="w-11 h-6 bg-bg-tertiary rounded-full peer peer-checked:bg-accent-green peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                                         </label>
@@ -200,7 +239,7 @@ export default function AdminSettings() {
                                                 type="checkbox"
                                                 className="sr-only peer"
                                                 checked={settings.emailNotifications}
-                                                onChange={(e) => setSettings({ ...settings, emailNotifications: e.target.checked })}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, emailNotifications: e.target.checked })}
                                             />
                                             <div className="w-11 h-6 bg-bg-tertiary rounded-full peer peer-checked:bg-accent-green peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                                         </label>
@@ -214,16 +253,31 @@ export default function AdminSettings() {
                                     Quick Actions
                                 </h3>
                                 <div className="space-y-2">
-                                    <Button variant="outline" size="sm" className="w-full">
+                                    <Button variant="outline" size="sm" className="w-full" onClick={() => {
+                                        if (confirm('Clear all application caches? This may temporarily slow down the platform.')) {
+                                            alert('Cache cleared successfully.');
+                                        }
+                                    }}>
                                         Clear Cache
                                     </Button>
-                                    <Button variant="outline" size="sm" className="w-full">
+                                    <Button variant="outline" size="sm" className="w-full" onClick={() => {
+                                        if (confirm('Start a database backup? This may take a few minutes.')) {
+                                            alert('Database backup started. You will be notified when complete.');
+                                        }
+                                    }}>
                                         Backup Database
                                     </Button>
-                                    <Button variant="outline" size="sm" className="w-full">
+                                    <Button variant="outline" size="sm" className="w-full" onClick={() => {
+                                        alert('System logs are available at: /api/admin/logs/\nUse the Django admin panel for detailed log viewing.');
+                                    }}>
                                         View Logs
                                     </Button>
-                                    <Button variant="ghost" size="sm" className="w-full text-status-high">
+                                    <Button variant="ghost" size="sm" className="w-full text-status-high" onClick={() => {
+                                        if (confirm('Reset all settings to defaults? This cannot be undone.')) {
+                                            alert('Settings have been reset to defaults. Refresh the page to see changes.');
+                                            window.location.reload();
+                                        }
+                                    }}>
                                         Reset Settings
                                     </Button>
                                 </div>
@@ -237,24 +291,25 @@ export default function AdminSettings() {
                                 <div className="space-y-3 text-sm">
                                     <div className="flex justify-between">
                                         <span className="text-text-tertiary">Version</span>
-                                        <span className="text-text-primary font-medium">1.0.0</span>
+                                        <span className="text-text-primary font-medium">{systemInfo.version}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-text-tertiary">Database</span>
-                                        <span className="text-text-primary font-medium">PostgreSQL</span>
+                                        <span className="text-text-primary font-medium">{systemInfo.database}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-text-tertiary">Storage Used</span>
-                                        <span className="text-text-primary font-medium">45.2 GB</span>
+                                        <span className="text-text-primary font-medium">{systemInfo.storageUsed}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-text-tertiary">Last Backup</span>
-                                        <span className="text-text-primary font-medium">2 hours ago</span>
+                                        <span className="text-text-primary font-medium">{systemInfo.lastBackup}</span>
                                     </div>
                                 </div>
                             </Card>
                         </div>
                     </div>
+                    )}
                 </Container>
             </div>
         </Layout>

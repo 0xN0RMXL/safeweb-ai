@@ -1,15 +1,19 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
 import Input from '@components/ui/Input';
 import Select from '@components/ui/Select';
 import Button from '@components/ui/Button';
+import ScrollReveal from '@components/ui/ScrollReveal';
 import { isValidUrl } from '@utils/validation';
+import { scanAPI } from '@/services/api';
+import { AxiosError } from 'axios';
 
 export default function ScanWebsite() {
     const navigate = useNavigate();
+    const [scanType, setScanType] = useState<'url' | 'file'>('url');
     const [formData, setFormData] = useState({
         url: '',
         scanDepth: 'medium',
@@ -17,7 +21,9 @@ export default function ScanWebsite() {
         checkSsl: true,
         followRedirects: true,
     });
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [errors, setErrors] = useState({ url: '' });
+    const [apiError, setApiError] = useState('');
     const [isScanning, setIsScanning] = useState(false);
 
     const scanDepthOptions = [
@@ -61,13 +67,50 @@ export default function ScanWebsite() {
         if (!validateForm()) return;
 
         setIsScanning(true);
+        setApiError('');
 
-        // Simulate scan initiation
-        setTimeout(() => {
+        try {
+            const { data } = await scanAPI.scanWebsite({
+                url: formData.url,
+                scanDepth: formData.scanDepth,
+                includeSubdomains: formData.includeSubdomains,
+                checkSsl: formData.checkSsl,
+                followRedirects: formData.followRedirects,
+            });
+            navigate(`/scan/results/${data.id}`);
+        } catch (err) {
+            const axiosErr = err as AxiosError<{ detail?: string; message?: string }>;
+            setApiError(
+                axiosErr.response?.data?.detail ||
+                axiosErr.response?.data?.message ||
+                'Failed to start scan. Please try again.',
+            );
             setIsScanning(false);
-            // Navigate to results page
-            navigate('/results/mock-scan-id');
-        }, 2000);
+        }
+    };
+
+    const handleFileSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedFile) {
+            setApiError('Please select a file to scan');
+            return;
+        }
+        setIsScanning(true);
+        setApiError('');
+        try {
+            const fd = new FormData();
+            fd.append('file', selectedFile);
+            const { data } = await scanAPI.scanFile(fd);
+            navigate(`/scan/results/${data.id}`);
+        } catch (err) {
+            const axiosErr = err as AxiosError<{ detail?: string; message?: string }>;
+            setApiError(
+                axiosErr.response?.data?.detail ||
+                axiosErr.response?.data?.message ||
+                'Failed to scan file. Please try again.',
+            );
+            setIsScanning(false);
+        }
     };
 
     const vulnerabilityChecks = [
@@ -90,6 +133,7 @@ export default function ScanWebsite() {
             <div className="py-12">
                 <Container>
                     {/* Header */}
+                    <ScrollReveal>
                     <div className="mb-8">
                         <h1 className="text-3xl md:text-4xl font-heading font-bold text-text-primary mb-3">
                             Scan Website for Vulnerabilities
@@ -98,11 +142,40 @@ export default function ScanWebsite() {
                             Comprehensive security analysis powered by AI
                         </p>
                     </div>
+                    </ScrollReveal>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Scan Form */}
                         <Card className="lg:col-span-2 p-8">
+                            {/* Tab Switcher */}
+                            <div className="flex gap-1 p-1 rounded-lg bg-bg-secondary mb-6">
+                                <button
+                                    type="button"
+                                    onClick={() => { setScanType('url'); setApiError(''); }}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-colors ${scanType === 'url' ? 'bg-accent-green text-bg-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+                                    URL Scan
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setScanType('file'); setApiError(''); }}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-colors ${scanType === 'file' ? 'bg-accent-green text-bg-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    File Scan
+                                </button>
+                            </div>
+
+                            {scanType === 'url' ? (
                             <form onSubmit={handleSubmit} className="space-y-6">
+                                {/* API Error */}
+                                {apiError && (
+                                    <div className="p-3 rounded-lg bg-status-critical/10 border border-status-critical/20 text-status-critical text-sm">
+                                        {apiError}
+                                    </div>
+                                )}
+
                                 {/* URL Input */}
                                 <Input
                                     type="url"
@@ -213,6 +286,87 @@ export default function ScanWebsite() {
                                     </Button>
                                 </div>
                             </form>
+                            ) : (
+                            <form onSubmit={handleFileSubmit} className="space-y-6">
+                                {/* API Error */}
+                                {apiError && (
+                                    <div className="p-3 rounded-lg bg-status-critical/10 border border-status-critical/20 text-status-critical text-sm">
+                                        {apiError}
+                                    </div>
+                                )}
+
+                                {/* File Upload */}
+                                <div>
+                                    <label className="text-sm font-medium text-text-secondary block mb-3">Upload File</label>
+                                    <div
+                                        className="border-2 border-dashed border-border-primary rounded-lg p-8 text-center hover:border-accent-green/50 transition-colors cursor-pointer"
+                                        onClick={() => document.getElementById('file-input')?.click()}
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            const file = e.dataTransfer.files[0];
+                                            if (file) setSelectedFile(file);
+                                        }}
+                                    >
+                                        <input
+                                            id="file-input"
+                                            type="file"
+                                            className="hidden"
+                                            accept=".html,.htm,.js,.ts,.jsx,.tsx,.php,.py,.rb,.java,.cs,.go,.rs,.xml,.json,.yaml,.yml"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) setSelectedFile(file);
+                                            }}
+                                        />
+                                        {selectedFile ? (
+                                            <div>
+                                                <svg className="w-10 h-10 mx-auto text-accent-green mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <p className="text-sm font-medium text-text-primary">{selectedFile.name}</p>
+                                                <p className="text-xs text-text-tertiary mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                                                <button
+                                                    type="button"
+                                                    className="text-xs text-accent-red mt-2 hover:underline"
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <svg className="w-10 h-10 mx-auto text-text-tertiary mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                </svg>
+                                                <p className="text-sm text-text-secondary">Drag and drop a file here, or click to browse</p>
+                                                <p className="text-xs text-text-tertiary mt-1">Supports HTML, JS, TS, PHP, Python, and more</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Submit Button */}
+                                <div className="pt-4">
+                                    <Button
+                                        type="submit"
+                                        variant="primary"
+                                        size="lg"
+                                        className="w-full"
+                                        isLoading={isScanning}
+                                        disabled={!selectedFile}
+                                    >
+                                        {isScanning ? 'Scanning File...' : (
+                                            <>
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                Scan File
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            </form>
+                            )}
                         </Card>
 
                         {/* Info Sidebar */}
@@ -285,12 +439,12 @@ export default function ScanWebsite() {
                                         <p className="text-xs text-text-tertiary mb-3">
                                             Check our documentation for scanning best practices
                                         </p>
-                                        <a
-                                            href="/docs"
+                                        <Link
+                                            to="/docs"
                                             className="text-sm text-accent-green hover:text-accent-green-hover font-medium"
                                         >
                                             View Documentation →
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
                             </Card>

@@ -1,13 +1,18 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
 import Input from '@components/ui/Input';
 import Button from '@components/ui/Button';
 import { isValidEmail } from '@utils/validation';
+import { useAuth } from '@/contexts/AuthContext';
+import { AxiosError } from 'axios';
 
 export default function Login() {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { login, isAuthenticated } = useAuth();
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -16,8 +21,15 @@ export default function Login() {
         email: '',
         password: '',
     });
+    const [apiError, setApiError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
+
+    // Redirect if already authenticated
+    if (isAuthenticated) {
+        const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+        return <Navigate to={from} replace />;
+    }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -56,13 +68,22 @@ export default function Login() {
         if (!validateForm()) return;
 
         setIsLoading(true);
+        setApiError('');
 
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            await login(formData.email, formData.password, rememberMe);
+            const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+            navigate(from, { replace: true });
+        } catch (err) {
+            const axiosErr = err as AxiosError<{ detail?: string; message?: string }>;
+            setApiError(
+                axiosErr.response?.data?.detail ||
+                axiosErr.response?.data?.message ||
+                'Invalid email or password. Please try again.',
+            );
+        } finally {
             setIsLoading(false);
-            console.log('Login submitted:', formData);
-            // Handle login logic here
-        }, 1500);
+        }
     };
 
     return (
@@ -83,6 +104,13 @@ export default function Login() {
                         {/* Login Card */}
                         <Card className="p-8">
                             <form onSubmit={handleSubmit} className="space-y-6">
+                                {/* API Error */}
+                                {apiError && (
+                                    <div className="p-3 rounded-lg bg-status-critical/10 border border-status-critical/20 text-status-critical text-sm">
+                                        {apiError}
+                                    </div>
+                                )}
+
                                 {/* Email Input */}
                                 <Input
                                     type="email"
@@ -121,7 +149,7 @@ export default function Login() {
                                         <input
                                             type="checkbox"
                                             checked={rememberMe}
-                                            onChange={(e) => setRememberMe(e.target.checked)}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRememberMe(e.target.checked)}
                                             className="w-4 h-4 rounded border-border-primary bg-bg-secondary text-accent-green focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-bg-primary cursor-pointer"
                                         />
                                         <span className="text-sm text-text-secondary">Remember me</span>
@@ -159,7 +187,8 @@ export default function Login() {
                                 <div className="grid grid-cols-1 gap-3">
                                     <button
                                         type="button"
-                                        className="flex items-center justify-center gap-3 px-4 py-2.5 rounded-lg bg-bg-secondary border border-border-primary text-text-primary hover:bg-bg-hover transition-colors duration-200"
+                                        disabled
+                                        className="relative flex items-center justify-center gap-3 px-4 py-2.5 rounded-lg bg-bg-secondary border border-border-primary text-text-muted cursor-not-allowed opacity-60"
                                     >
                                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                                             <path
@@ -180,6 +209,9 @@ export default function Login() {
                                             />
                                         </svg>
                                         <span>Sign in with Google</span>
+                                        <span className="absolute right-3 text-[10px] font-semibold uppercase tracking-wider bg-accent-blue/20 text-accent-blue px-2 py-0.5 rounded-full">
+                                            Coming Soon
+                                        </span>
                                     </button>
                                 </div>
                             </form>

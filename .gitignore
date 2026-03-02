@@ -22,3 +22,24 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.venv/
+.venv/
+*.egg-info/
+*.egg
+
+# Database
+*.sqlite3
+
+# Backend logs
+backend/logs/
+
+# Media uploads
+backend/media/
+
+# Screenshots (large binary files)
+screenshots/

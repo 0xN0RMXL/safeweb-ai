@@ -4,6 +4,21 @@ export default {
         "./index.html",
         "./src/**/*.{js,ts,jsx,tsx}",
     ],
+    safelist: [
+        'glitch-text',
+        'glitch-active',
+        'btn-border-trace',
+        'typewriter-cursor',
+        'typewriter-wrapper',
+        'typewriter-track',
+        'typewriter-text',
+        'typewriter-cursor--hidden',
+        'animate-page-enter',
+        'animate-badge-pulse-green',
+        'animate-badge-pulse-yellow',
+        'animate-badge-pulse-orange',
+        'animate-badge-pulse-red',
+    ],
     theme: {
         extend: {
             colors: {
@@ -54,6 +69,11 @@ export default {
                 'glow': 'glow 2s ease-in-out infinite alternate',
                 'float': 'float 3s ease-in-out infinite',
                 'terminal-blink': 'blink 1s step-end infinite',
+                'page-enter': 'page-enter 0.5s cubic-bezier(0, 0, 0.2, 1) both',
+                'badge-pulse-green': 'badge-pulse-green 3s ease-in-out infinite',
+                'badge-pulse-yellow': 'badge-pulse-yellow 3s ease-in-out infinite',
+                'badge-pulse-orange': 'badge-pulse-orange 2.5s ease-in-out infinite',
+                'badge-pulse-red': 'badge-pulse-red 2.8s ease-in-out infinite',
             },
             keyframes: {
                 glow: {
@@ -67,6 +87,26 @@ export default {
                 blink: {
                     '0%, 100%': { opacity: '1' },
                     '50%': { opacity: '0' },
+                },
+                'page-enter': {
+                    '0%': { opacity: '0', transform: 'translateY(8px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+                'badge-pulse-green': {
+                    '0%, 100%': { boxShadow: '0 0 2px rgba(107, 207, 127, 0.2)' },
+                    '50%': { boxShadow: '0 0 8px rgba(107, 207, 127, 0.4)' },
+                },
+                'badge-pulse-yellow': {
+                    '0%, 100%': { boxShadow: '0 0 2px rgba(255, 217, 61, 0.2)' },
+                    '50%': { boxShadow: '0 0 8px rgba(255, 217, 61, 0.35)' },
+                },
+                'badge-pulse-orange': {
+                    '0%, 100%': { boxShadow: '0 0 3px rgba(255, 138, 61, 0.2)' },
+                    '50%': { boxShadow: '0 0 10px rgba(255, 138, 61, 0.4)' },
+                },
+                'badge-pulse-red': {
+                    '0%, 100%': { boxShadow: '0 0 3px rgba(255, 59, 59, 0.2)' },
+                    '50%': { boxShadow: '0 0 10px rgba(255, 59, 59, 0.4)' },
                 },
             },
             boxShadow: {

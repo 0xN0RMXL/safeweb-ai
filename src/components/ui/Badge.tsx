@@ -8,12 +8,12 @@ export default function Badge({
     const baseClasses = 'inline-flex items-center justify-center font-medium rounded-full';
 
     const variants = {
-        critical: 'bg-status-critical/10 text-status-critical border border-status-critical/20',
-        high: 'bg-status-high/10 text-status-high border border-status-high/20',
-        medium: 'bg-status-medium/10 text-status-medium border border-status-medium/20',
-        low: 'bg-status-low/10 text-status-low border border-status-low/20',
+        critical: 'bg-status-critical/10 text-status-critical border border-status-critical/20 animate-badge-pulse-red',
+        high: 'bg-status-high/10 text-status-high border border-status-high/20 animate-badge-pulse-orange',
+        medium: 'bg-status-medium/10 text-status-medium border border-status-medium/20 animate-badge-pulse-yellow',
+        low: 'bg-status-low/10 text-status-low border border-status-low/20 animate-badge-pulse-green',
         info: 'bg-status-info/10 text-status-info border border-status-info/20',
-        success: 'bg-accent-green/10 text-accent-green border border-accent-green/20',
+        success: 'bg-accent-green/10 text-accent-green border border-accent-green/20 animate-badge-pulse-green',
         default: 'bg-bg-tertiary text-text-secondary border border-border-primary',
     };
 

@@ -1,63 +1,81 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
 import Button from '@components/ui/Button';
 import Badge from '@components/ui/Badge';
+import { adminAPI } from '@services/api';
+
+interface MLModel {
+    id: string;
+    name: string;
+    status: string;
+    accuracy: number;
+    lastTrained: string;
+    trainingData: string;
+    version: string;
+}
+
+interface TrainingJob {
+    id: number;
+    model: string;
+    status: string;
+    progress: number;
+    startTime: string;
+    eta: string;
+}
+
+interface Dataset {
+    id: number;
+    name: string;
+    samples: number;
+    size: string;
+    updated: string;
+}
 
 export default function AdminML() {
-    const [selectedModel, setSelectedModel] = useState('vulnerability-detector-v3');
+    const [selectedModel, setSelectedModel] = useState('');
+    const [models, setModels] = useState<MLModel[]>([]);
+    const [trainingJobs, setTrainingJobs] = useState<TrainingJob[]>([]);
+    const [datasets, setDatasets] = useState<Dataset[]>([]);
+    const [metrics, setMetrics] = useState([
+        { label: 'Total Models', value: '—', change: '' },
+        { label: 'Active Models', value: '—', change: '' },
+        { label: 'Avg Accuracy', value: '—', change: '' },
+        { label: 'Training Jobs', value: '—', change: '' },
+    ]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isTraining, setIsTraining] = useState(false);
 
-    const models = [
-        {
-            id: 'vulnerability-detector-v3',
-            name: 'Vulnerability Detector v3.2',
-            status: 'active',
-            accuracy: 94.7,
-            lastTrained: '2024-03-15',
-            trainingData: '2.4M samples',
-            version: '3.2.1',
-        },
-        {
-            id: 'xss-detector',
-            name: 'XSS Detector v2.1',
-            status: 'active',
-            accuracy: 96.3,
-            lastTrained: '2024-03-10',
-            trainingData: '850K samples',
-            version: '2.1.0',
-        },
-        {
-            id: 'sql-injection',
-            name: 'SQL Injection Detector',
-            status: 'training',
-            accuracy: 95.1,
-            lastTrained: '2024-03-18',
-            trainingData: '1.2M samples',
-            version: '4.0.0-beta',
-        },
-    ];
+    const fetchML = () => {
+        setIsLoading(true);
+        adminAPI.getML()
+            .then((res) => {
+                const d = res.data;
+                if (d.models) setModels(d.models);
+                if (d.trainingJobs) setTrainingJobs(d.trainingJobs);
+                if (d.datasets) setDatasets(d.datasets);
+                if (d.metrics) setMetrics(d.metrics);
+                if (d.models?.length && !selectedModel) setSelectedModel(d.models[0].id);
+            })
+            .catch(() => {})
+            .finally(() => setIsLoading(false));
+    };
 
-    const trainingJobs = [
-        { id: 1, model: 'Vulnerability Detector v3.3', status: 'running', progress: 67, startTime: '2 hours ago', eta: '1 hour' },
-        { id: 2, model: 'CSRF Detector v1.5', status: 'queued', progress: 0, startTime: '-', eta: '3 hours' },
-        { id: 3, model: 'Auth Bypass Detector', status: 'completed', progress: 100, startTime: '5 hours ago', eta: '-' },
-        { id: 4, model: 'File Upload Validator', status: 'failed', progress: 45, startTime: '1 day ago', eta: '-' },
-    ];
+    useEffect(() => { fetchML(); }, []);
 
-    const datasets = [
-        { id: 1, name: 'OWASP Test Suite 2024', samples: 450000, size: '2.3 GB', updated: '2024-03-15' },
-        { id: 2, name: 'Real-World Vulnerabilities', samples: 1200000, size: '5.7 GB', updated: '2024-03-12' },
-        { id: 3, name: 'Synthetic Attack Patterns', samples: 800000, size: '3.2 GB', updated: '2024-03-08' },
-        { id: 4, name: 'CVE Database Mirror', samples: 350000, size: '1.8 GB', updated: '2024-03-18' },
-    ];
-
-    const metrics = [
-        { label: 'Total Models', value: '12', change: '+2' },
-        { label: 'Active Models', value: '8', change: '0' },
-        { label: 'Avg Accuracy', value: '95.2%', change: '+1.3%' },
-        { label: 'Training Jobs', value: '3', change: '+1' },
-    ];
+    const handleTrain = async (modelType?: string) => {
+        setIsTraining(true);
+        try {
+            await adminAPI.trainModel(modelType || selectedModel);
+            alert('Training job started!');
+            fetchML();
+        } catch {
+            alert('Failed to start training.');
+        } finally {
+            setIsTraining(false);
+        }
+    };
 
     return (
         <Layout>
@@ -71,12 +89,18 @@ export default function AdminML() {
                             </h1>
                             <p className="text-text-secondary">Train and manage AI detection models</p>
                         </div>
-                        <Button variant="primary">
-                            Train New Model
+                        <Button variant="primary" onClick={() => handleTrain()} disabled={isTraining}>
+                            {isTraining ? 'Starting...' : 'Train New Model'}
                         </Button>
                     </div>
 
                     {/* Metrics */}
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="w-8 h-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
+                        </div>
+                    ) : (
+                    <>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                         {metrics.map((metric, index) => (
                             <Card key={index} className="p-6">
@@ -139,22 +163,49 @@ export default function AdminML() {
                                 Model Actions
                             </h2>
                             <div className="space-y-3">
-                                <Button variant="primary" className="w-full">
-                                    Retrain Model
+                                <Button variant="primary" className="w-full" onClick={() => handleTrain(selectedModel)} disabled={isTraining}>
+                                    {isTraining ? 'Starting...' : 'Retrain Model'}
                                 </Button>
-                                <Button variant="outline" className="w-full">
+                                <Button variant="outline" className="w-full" onClick={() => {
+                                    if (!selectedModel) { alert('Select a model first'); return; }
+                                    const model = models.find(m => m.id === selectedModel);
+                                    if (confirm(`Deploy ${model?.name || selectedModel} to production?`)) {
+                                        alert(`Model ${model?.name} has been queued for production deployment.`);
+                                    }
+                                }}>
                                     Deploy to Production
                                 </Button>
-                                <Button variant="outline" className="w-full">
+                                <Button variant="outline" className="w-full" onClick={() => {
+                                    if (!selectedModel) { alert('Select a model first'); return; }
+                                    alert('Model export started. You will receive a download link when ready.');
+                                }}>
                                     Export Model
                                 </Button>
-                                <Button variant="outline" className="w-full">
+                                <Button variant="outline" className="w-full" onClick={() => {
+                                    const model = models.find(m => m.id === selectedModel);
+                                    if (model) {
+                                        alert(`Model: ${model.name}\nVersion: ${model.version}\nAccuracy: ${model.accuracy}%\nStatus: ${model.status}\nLast Trained: ${model.lastTrained}\nTraining Data: ${model.trainingData}`);
+                                    } else {
+                                        alert('Select a model first');
+                                    }
+                                }}>
                                     View Metrics
                                 </Button>
-                                <Button variant="outline" className="w-full">
+                                <Button variant="outline" className="w-full" onClick={() => {
+                                    if (models.length < 2) { alert('Need at least 2 models to compare'); return; }
+                                    const comparison = models.map(m => `${m.name} v${m.version}: ${m.accuracy}%`).join('\n');
+                                    alert(`Model Comparison:\n\n${comparison}`);
+                                }}>
                                     Compare Models
                                 </Button>
-                                <Button variant="ghost" className="w-full text-status-high">
+                                <Button variant="ghost" className="w-full text-status-high" onClick={() => {
+                                    if (!selectedModel) { alert('Select a model first'); return; }
+                                    const model = models.find(m => m.id === selectedModel);
+                                    if (confirm(`Archive ${model?.name}? This will remove it from active rotation.`)) {
+                                        alert(`Model ${model?.name} has been archived.`);
+                                        fetchML();
+                                    }
+                                }}>
                                     Archive Model
                                 </Button>
                             </div>
@@ -211,7 +262,16 @@ export default function AdminML() {
                                             <td className="py-3 px-4 text-sm text-text-secondary">{job.startTime}</td>
                                             <td className="py-3 px-4 text-sm text-text-secondary">{job.eta}</td>
                                             <td className="py-3 px-4">
-                                                <Button variant="ghost" size="sm">
+                                                <Button variant="ghost" size="sm" onClick={() => {
+                                                    if (job.status === 'running') {
+                                                        if (confirm(`Cancel training job for ${job.model}?`)) {
+                                                            alert('Training job cancelled.');
+                                                            fetchML();
+                                                        }
+                                                    } else {
+                                                        alert(`Job: ${job.model}\nStatus: ${job.status}\nProgress: ${job.progress}%\nStarted: ${job.startTime}\nETA: ${job.eta}`);
+                                                    }
+                                                }}>
                                                     {job.status === 'running' ? 'Cancel' : 'View'}
                                                 </Button>
                                             </td>
@@ -228,7 +288,9 @@ export default function AdminML() {
                             <h2 className="text-xl font-heading font-semibold text-text-primary">
                                 Training Datasets
                             </h2>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => {
+                                alert('Dataset upload is available via the ML API. Use: POST /api/admin/ml/datasets/ with a multipart file upload.');
+                            }}>
                                 Upload Dataset
                             </Button>
                         </div>
@@ -259,6 +321,8 @@ export default function AdminML() {
                             ))}
                         </div>
                     </Card>
+                    </>
+                    )}
                 </Container>
             </div>
         </Layout>

@@ -1,5 +1,6 @@
 import Card from '@components/ui/Card';
 import Container from '@components/ui/Container';
+import ScrollReveal from '@components/ui/ScrollReveal';
 
 export default function Features() {
     const features = [
@@ -62,16 +63,18 @@ export default function Features() {
     return (
         <section className="py-20 bg-bg-secondary">
             <Container>
-                <div className="text-center mb-16">
-                    <h2 className="text-3xl md:text-4xl font-heading font-bold text-text-primary mb-4">
-                        Powerful Security Features
-                    </h2>
-                    <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-                        Everything you need to protect your web applications from modern threats
-                    </p>
-                </div>
+                <ScrollReveal>
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl md:text-4xl font-heading font-bold text-text-primary mb-4">
+                            Powerful Security Features
+                        </h2>
+                        <p className="text-lg text-text-secondary max-w-2xl mx-auto">
+                            Everything you need to protect your web applications from modern threats
+                        </p>
+                    </div>
+                </ScrollReveal>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <ScrollReveal stagger staggerDelay={100} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {features.map((feature, index) => (
                         <Card
                             key={index}
@@ -89,7 +92,7 @@ export default function Features() {
                             </p>
                         </Card>
                     ))}
-                </div>
+                </ScrollReveal>
             </Container>
         </section>
     );

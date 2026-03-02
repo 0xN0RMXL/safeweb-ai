@@ -1,0 +1,911 @@
+# SafeWeb AI — Figma AI Presentation Master Prompt
+
+
+---
+
+## GLOBAL PRESENTATION DESIGN SYSTEM
+
+### Color Palette (MUST use these exact hex codes throughout)
+```
+BACKGROUNDS:
+- Slide background:        #050607 (deep black-blue)
+- Content panels:          #0A0C0E (slightly lighter black)
+- Card backgrounds:        #12151A (dark card surface)
+- Hover/highlight areas:   #1A1D23 (subtle light panel)
+
+ACCENTS (Neon highlights):
+- Primary neon green:      #00FF88 (main brand — headings, highlights, CTAs, key data, borders, glows)
+- Green hover:             #00E67A
+- Electric blue:           #3AA9FF (secondary — diagrams, subheadings, supporting accents)
+- Blue hover:              #2E95E8
+
+SEVERITY COLORS (for vulnerability/chart data):
+- Critical:                #FF3B3B (bright red)
+- High:                    #FF8A3D (orange)
+- Medium:                  #FFD93D (yellow)
+- Low/Safe:                #6BCF7F (soft green)
+- Info:                    #3AA9FF (blue)
+
+TEXT:
+- Primary text (headings): #FFFFFF (pure white)
+- Body text:               #B0B8C1 (light gray-blue)
+- Muted/labels:            #6B7280 (gray)
+- Disabled:                #4B5563 (dark gray)
+
+BORDERS:
+- Default borders:         #1F2937 (dark gray)
+- Secondary borders:       #374151 (medium gray)
+- Active/accent borders:   #00FF88 (neon green)
+```
+
+### Typography
+```
+- Headings (h1-h3):       Space Grotesk — Bold (700) / Semibold (600)
+- Body text:               Inter — Regular (400) / Medium (500)
+- Code / technical data:   JetBrains Mono or Fira Code — Regular (400)
+- Terminal/hacker text:    JetBrains Mono — all monospaced elements
+```
+
+### Font Sizes
+```
+- Slide title (h1):        60-72px Space Grotesk Bold
+- Section heading (h2):    36-48px Space Grotesk Bold
+- Card heading (h3):       24px Space Grotesk Semibold
+- Body text:               18-20px Inter Regular, color #B0B8C1
+- Small labels/captions:   14px Inter Medium, color #6B7280
+- Code snippets:           16px JetBrains Mono, color #00FF88
+```
+
+### Visual Effects & Decorations
+```
+- GREEN NEON GLOW:         Apply 0 0 15px rgba(0,255,136,0.3) glow behind key elements, titles, and accent borders
+- BLUE NEON GLOW:          Apply 0 0 15px rgba(58,169,255,0.3) behind secondary elements
+- GLASSMORPHISM CARDS:     #12151A at 80% opacity, backdrop blur 8px, 1px border #1F2937, rounded 12px
+- GRADIENT ACCENTS:        Diagonal gradients from #00FF88 → #3AA9FF for hero highlights, dividers, progress bars
+- MATRIX RAIN:             Faint green (#00FF88 at 4-6% opacity) falling code characters in background of select slides
+- SCAN LINES:              Subtle horizontal scan line overlay at 3% opacity on dark backgrounds
+- GRID PATTERN:            Faint dot-grid or line-grid pattern at 5% opacity in backgrounds
+- GLITCH EFFECT:           Apply RGB-shift glitch displacement on the title slide logo/heading
+- TERMINAL AESTHETIC:      Code blocks styled as terminal windows with green-on-black text, blinking cursor
+- CIRCUIT BOARD TRACES:    Thin neon green (#00FF88 at 15% opacity) circuit-trace patterns as decorative borders
+```
+
+### Slide Layout Rules
+```
+- ALL slides: #050607 background, NO white/light backgrounds anywhere
+- Content area: max-width 1100px, centered horizontally
+- Padding: 80px from edges minimum
+- One core idea per slide — NO information overload
+- Left-heavy layouts for text+visual combos (60/40 split)
+- Full-bleed visuals for screenshot/demo slides
+- Consistent element positioning across all slides
+- Every slide has a subtle top-right page number in #6B7280
+```
+
+### Transitions & Animations
+```
+- Between slides:          Smooth fade + subtle scale (1.02→1.0) transition, 400ms ease-out
+- Title reveals:           Typewriter-style character-by-character reveal for heading text (green cursor)
+- Content blocks:          Staggered fade-in from bottom with 80ms delay between items
+- Chart/data reveals:      Bars/segments animate in sequentially with spring easing
+- Code blocks:             Line-by-line typing animation simulating terminal output
+- Diagrams:                Elements connect with animated neon-green trace lines
+- Screenshots:             Slide in from right with perspective tilt, settling flat
+- Glitch bursts:           Brief 120ms RGB-shift glitch on slide transitions (hacker aesthetic)
+- Hover states:            Elements lift with translateY(-4px) + green glow intensifies
+```
+
+---
+
+## SLIDE-BY-SLIDE CONTENT & DESIGN INSTRUCTIONS
+
+---
+
+### SLIDE 1 — TITLE SLIDE (Full-screen hero)
+
+**Layout:** Centered vertically and horizontally. Dark background (#050607). Faint matrix rain code falling in background at 5% opacity. Circuit board trace decoration in corners.
+
+**Content:**
+- **Logo:** "SW" in a rounded square with gradient border (#00FF88 → #3AA9FF), centered top
+- **Title:** `SafeWeb AI` — 72px Space Grotesk Bold, neon green (#00FF88) with glitch text effect (RGB displacement)
+- **Subtitle:** `AI-Powered Web Application Vulnerability Scanner` — 24px Inter Regular, #B0B8C1
+- **Terminal line below:** `$ safeweb-ai --scan --protect --defend` in JetBrains Mono 16px, #00FF88, with blinking cursor animation
+- **Divider:** Thin horizontal gradient line (#00FF88 → #3AA9FF → transparent), 60% width centered
+- **Presented by:** `[Student Name]` — 20px Inter Medium, #FFFFFF
+- **Details line:** `Graduation Project Discussion · [University Name] · March 2026` — 16px Inter Regular, #6B7280
+- **Supervisor line:** `Supervisor: [Professor Name]` — 16px Inter Regular, #6B7280
+
+**Animation:** Glitch burst on title, then typewriter cursor on terminal line, then fade-in for name/details
+
+---
+
+### SLIDE 2 — TABLE OF CONTENTS / AGENDA
+
+**Layout:** Two-column layout. Left: numbered agenda list. Right: abstract geometric wireframe of a shield/lock icon in neon green outline.
+
+**Title:** `Agenda` — 48px Space Grotesk Bold #FFFFFF
+
+**Content (numbered list with neon green numbers):**
+```
+01  Problem Statement & Motivation
+02  Project Objectives
+03  Solution Overview — SafeWeb AI
+04  System Architecture
+05  Tech Stack
+06  Core Features Deep-Dive
+07  Scanning Engine & Pipeline
+08  AI/ML Components
+09  AI Chatbot Assistant
+10  Security Scoring (CVSS 3.1)
+11  User Interface Showcase
+12  Admin Panel & Management
+13  Live Demo
+14  Testing & Validation Results
+15  Challenges & Solutions
+16  Future Work & Roadmap
+17  Conclusion
+18  Q&A
+```
+
+**Style:** Numbers in 24px JetBrains Mono #00FF88. Text in 18px Inter Regular #B0B8C1. Active section indicator: green dot or bar. Items stagger-animate in from left.
+
+---
+
+### SLIDE 3 — THE PROBLEM
+
+**Layout:** Full-width. Large impactful statistic centered, supporting text below.
+
+**Title:** `The Problem` — 48px Space Grotesk Bold #FFFFFF
+
+**Hero Statistic (center, massive):**
+`30,000+` — 96px Space Grotesk Bold #FF3B3B (red, glowing)
+`websites are hacked every single day` — 24px Inter Regular #B0B8C1
+
+**Supporting bullet points (glassmorphic cards in a row of 3):**
+| Card 1 | Card 2 | Card 3 |
+|--------|--------|--------|
+| 🔓 `$4.88M` | ⏱️ `277 days` | 📊 `60%` |
+| Average cost of a data breach (IBM 2024) | Average time to identify a breach | Of small businesses close within 6 months of a cyber attack |
+
+**Bottom text:** `"Manual security audits are expensive, slow, and fail to keep up with evolving threats."` — 18px Inter Italic, #6B7280
+
+**Visual:** Red-tinted danger glow behind the main stat. Background shows faded lock icon broken in half.
+
+---
+
+### SLIDE 4 — PROBLEM DEEP-DIVE
+
+**Title:** `Why Current Solutions Fall Short` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** 4 problem cards in 2x2 grid, glassmorphic style
+
+| Card | Icon | Title | Description |
+|------|------|-------|-------------|
+| 1 | 💰 | `Expensive Tools` | Enterprise security scanners cost $10,000-$50,000/year, putting them out of reach for startups and SMBs |
+| 2 | 🐌 | `Manual & Slow` | Traditional penetration testing takes weeks to complete and requires hiring specialized consultants |
+| 3 | 🎯 | `High False Positives` | Generic scanners produce noise — security teams waste time investigating non-issues |
+| 4 | 📉 | `No AI Intelligence` | Most scanners use static rule-based detection, missing sophisticated attack patterns |
+
+**Style:** Each card: #12151A bg, #1F2937 border, rounded-xl. Icon at top. Title in 20px Space Grotesk Semibold #FFFFFF. Description in 16px Inter #B0B8C1.
+
+---
+
+### SLIDE 5 — PROJECT OBJECTIVES
+
+**Title:** `Project Objectives` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Left column: numbered objectives with green checkmarks. Right column: abstract target/bullseye graphic with neon green rings.
+
+**Objectives (each with ✅ green checkmark #00FF88):**
+```
+1. Design and develop a comprehensive AI-powered web vulnerability scanner
+2. Implement automated detection for OWASP Top 10 vulnerability categories
+3. Build machine learning models for phishing URL detection and malware file analysis
+4. Create an intelligent chatbot assistant for cybersecurity education and guidance
+5. Develop a CVSS 3.1-compliant scoring system for accurate vulnerability rating
+6. Implement multi-format report generation (PDF, CSV, JSON) for compliance
+7. Build a modern, professional dark-themed UI with real-time scan monitoring
+8. Create a scalable architecture supporting concurrent scan operations
+```
+
+**Style:** Each objective fades in sequentially. Numbers in JetBrains Mono #00FF88. Text in 18px Inter #B0B8C1.
+
+---
+
+### SLIDE 6 — SOLUTION OVERVIEW
+
+**Title:** `Introducing SafeWeb AI` — 48px Space Grotesk Bold, with "SafeWeb AI" in #00FF88
+
+**Layout:** Hero-style centered content with tagline and key stats bar
+
+**Tagline:** `"Secure Your Web Applications with AI"` — 28px Space Grotesk Semibold #FFFFFF
+
+**Description:** `An AI-powered cybersecurity platform that combines automated vulnerability scanning, machine learning threat detection, and intelligent remediation guidance — accessible to everyone from individual developers to enterprise security teams.` — 18px Inter #B0B8C1, max-width 800px centered
+
+**Stats bar (3 glassmorphic cards in a row):**
+| `10K+` | `50K+` | `99.9%` |
+|--------|--------|---------|
+| Scans Completed | Vulnerabilities Detected | Detection Accuracy |
+
+Stats numbers: 36px Space Grotesk Bold #00FF88. Labels: 14px Inter #6B7280.
+
+**Bottom:** Green gradient line separator
+
+---
+
+### SLIDE 7 — KEY FEATURES OVERVIEW
+
+**Title:** `Key Features` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** 3x2 grid of feature cards (6 cards total)
+
+| # | Icon | Feature | Description |
+|---|------|---------|-------------|
+| 1 | 🔍 | `Comprehensive Scanning` | Website, file upload, and URL scanning with configurable depth (shallow/medium/deep) |
+| 2 | 🤖 | `AI-Powered Detection` | ML models for phishing URL detection (31 features) and malware file analysis (9 features) |
+| 3 | 🛡️ | `OWASP Top 10 Coverage` | Tests for XSS, SQLi, CSRF, SSRF, broken auth, misconfigurations, and more |
+| 4 | 📊 | `CVSS 3.1 Scoring` | Industry-standard vulnerability scoring with full vector calculation |
+| 5 | 💬 | `AI Chatbot Assistant` | 25+ topic cybersecurity knowledge base with conversational guidance |
+| 6 | 📋 | `Multi-Format Reports` | Export detailed reports as PDF, CSV, JSON for compliance and documentation |
+
+**Style:** Cards with #12151A bg, left green accent border (#00FF88 2px), rounded-lg. Stagger animation on enter. Icon in green circle. Title: 18px Space Grotesk Semibold #FFFFFF. Description: 14px Inter #B0B8C1.
+
+---
+
+### SLIDE 8 — SYSTEM ARCHITECTURE DIAGRAM
+
+**Title:** `System Architecture` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Full-width architecture diagram, horizontally flowing left-to-right
+
+**Diagram content (draw with neon green lines connecting boxes):**
+
+```
+┌────────────────┐     ┌──────────────────┐     ┌──────────────────────┐
+│   FRONTEND     │     │   BACKEND API    │     │   ASYNC WORKERS      │
+│                │     │                  │     │                      │
+│  React 18      │◄───►│  Django + DRF    │◄───►│  Celery Tasks        │
+│  TypeScript    │ REST│  JWT Auth        │     │  Scan Orchestrator   │
+│  Vite 5        │ API │  Rate Limiting   │     │  ML Predictions      │
+│  Tailwind CSS  │     │  CORS            │     │  Report Generation   │
+└────────────────┘     └───────┬──────────┘     └──────────┬───────────┘
+                               │                           │
+                       ┌───────▼──────────┐     ┌──────────▼───────────┐
+                       │   DATABASE       │     │   ML ENGINE          │
+                       │                  │     │                      │
+                       │  SQLite/Postgres │     │  scikit-learn        │
+                       │  User Models     │     │  Phishing Detector   │
+                       │  Scan Results    │     │  Malware Detector    │
+                       │  Vulnerabilities │     │  Feature Extraction  │
+                       └──────────────────┘     └──────────────────────┘
+```
+
+**Style:** Boxes are glassmorphic cards (#12151A, #1F2937 border). Connection lines are animated neon green (#00FF88) traces that draw themselves. Arrow labels in JetBrains Mono 12px #3AA9FF. Box titles in 16px Space Grotesk Semibold #FFFFFF. Items in 13px Inter #B0B8C1.
+
+**Animation:** Boxes appear one-by-one, then connection lines trace between them with glowing green animation.
+
+---
+
+### SLIDE 9 — TECH STACK
+
+**Title:** `Technology Stack` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Two-column (Frontend left, Backend right) with technology logos
+
+**Left Column — Frontend:**
+| Tech | Role |
+|------|------|
+| React 18 | UI Framework |
+| TypeScript | Type Safety |
+| Vite 5 | Build Tool & HMR |
+| Tailwind CSS 3.4 | Styling System |
+| React Router 6 | Client-Side Routing |
+| Axios | HTTP Client + JWT Interceptors |
+
+**Right Column — Backend:**
+| Tech | Role |
+|------|------|
+| Django 5.2 | Web Framework |
+| Django REST Framework | API Layer |
+| SimpleJWT | Authentication |
+| Celery | Async Task Queue |
+| scikit-learn | ML Models |
+| BeautifulSoup + lxml | Web Crawling & Parsing |
+
+**Bottom row — Infrastructure:**
+| Vercel | SQLite / PostgreSQL | OpenAI GPT-4o-mini |
+| Frontend Deploy | Database | AI Chat Fallback |
+
+**Style:** Each tech as a card with logo on left, name + role on right. Subtle green (#00FF88) underline on tech names. Use glassmorphic card styling.
+
+---
+
+### SLIDE 10 — SCANNING ENGINE PIPELINE
+
+**Title:** `Scanning Engine Pipeline` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Horizontal pipeline diagram with 5 stages connected by animated arrows
+
+**Pipeline stages (left to right):**
+```
+[1. CRAWL] → [2. ANALYZE] → [3. TEST] → [4. SCORE] → [5. REPORT]
+```
+
+**Stage details below the pipeline:**
+
+| Stage | Component | Description |
+|-------|-----------|-------------|
+| 1. Crawl | `WebCrawler` | Discovers pages, links, forms, and endpoints across the target website |
+| 2. Analyze | `HeaderAnalyzer` `SSLAnalyzer` `CookieAnalyzer` | Inspects HTTP headers, SSL/TLS certificates, and cookie security attributes |
+| 3. Test | `10 Vulnerability Testers` | Tests for XSS, SQLi, CSRF, SSRF, Auth, Access Control, Data Exposure, Misconfig, Components, Logging |
+| 4. Score | `CVSS 3.1 Calculator` | Calculates base scores using Attack Vector, Complexity, Privileges, User Interaction, Scope, CIA Impact |
+| 5. Report | `ReportGenerator` | Generates exportable reports in PDF, CSV, JSON with full vulnerability details |
+
+**Style:** Pipeline boxes in gradient border (#00FF88 → #3AA9FF). Arrows are animated neon green traces. Stage numbers in large JetBrains Mono #00FF88. Component names in 14px JetBrains Mono #3AA9FF.
+
+---
+
+### SLIDE 11 — VULNERABILITY TESTERS (OWASP TOP 10)
+
+**Title:** `Vulnerability Detection — OWASP Top 10 Coverage` — 42px Space Grotesk Bold #FFFFFF
+
+**Layout:** Grid of 10 vulnerability cards (2 rows × 5 columns), each color-coded by severity
+
+| # | Vulnerability | Tester File | Severity | OWASP |
+|---|--------------|-------------|----------|-------|
+| 1 | SQL Injection | `sqli_tester.py` | Critical (#FF3B3B) | A03:2021 |
+| 2 | Cross-Site Scripting | `xss_tester.py` | Critical (#FF3B3B) | A03:2021 |
+| 3 | CSRF | `csrf_tester.py` | High (#FF8A3D) | A01:2021 |
+| 4 | SSRF | `ssrf_tester.py` | High (#FF8A3D) | A10:2021 |
+| 5 | Broken Auth | `auth_tester.py` | Critical (#FF3B3B) | A07:2021 |
+| 6 | Broken Access Control | `access_control_tester.py` | Critical (#FF3B3B) | A01:2021 |
+| 7 | Data Exposure | `data_exposure_tester.py` | High (#FF8A3D) | A02:2021 |
+| 8 | Misconfiguration | `misconfig_tester.py` | Medium (#FFD93D) | A05:2021 |
+| 9 | Vulnerable Components | `component_tester.py` | Medium (#FFD93D) | A06:2021 |
+| 10 | Insufficient Logging | `logging_tester.py` | Low (#6BCF7F) | A09:2021 |
+
+**Style:** Each card has a left border colored by severity. Tester filename in JetBrains Mono #3AA9FF. OWASP reference as small badge. Cards stagger-animate in.
+
+---
+
+### SLIDE 12 — SCAN CONFIGURATION & TYPES
+
+**Title:** `Scan Types & Configuration` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** 3 scan type cards at top + configuration options below
+
+**Scan Types (3 glassmorphic cards):**
+| 🌐 Website Scan | 📁 File Scan | 🔗 URL Scan |
+|-----------------|-------------|-------------|
+| Full website crawl with depth control | Upload files for malware analysis (50MB limit) | Quick single-URL security check |
+| Deep vulnerability testing | Signature & entropy detection | Phishing detection |
+
+**Configuration Panel (styled as a UI mockup):**
+```
+Scan Depth:       ○ Shallow (5-10 min)  ● Medium (15-30 min)  ○ Deep (45-60 min)
+Include Subdomains:  [✓ ON]
+Check SSL:           [✓ ON]
+Follow Redirects:    [✓ ON]
+```
+
+**Style:** Config panel in terminal/form aesthetic with green toggles and radio buttons. Dark card background.
+
+---
+
+### SLIDE 13 — ML MODEL: PHISHING URL DETECTOR
+
+**Title:** `ML Model — Phishing URL Detection` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Left: model card with specs. Right: feature visualization
+
+**Model Card (glassmorphic):**
+```
+Algorithm:        Gradient Boosting Classifier
+Estimators:       100
+Max Depth:        6
+Training Samples: 5,000+
+Features:         31 URL characteristics
+Fallback:         Rule-based detection when no model trained
+```
+
+**Feature Categories (right side, 5 grouped boxes):**
+| Category | Features |
+|----------|----------|
+| **Length** | url_length, hostname_length, path_length, query_length |
+| **Character Counts** | dots, hyphens, underscores, slashes, digits, specials |
+| **Entropy** | hostname_entropy, path_entropy, url_entropy (Shannon) |
+| **Boolean Flags** | has_ip_address, has_https, has_port, has_double_slash |
+| **Keywords** | has_login_keyword, has_banking_keyword, tld_is_suspicious |
+
+**Bottom:** `Prediction Output: malicious/benign + confidence score + risk score (0-100) + human-readable indicators`
+
+**Style:** Model spec in JetBrains Mono #00FF88 on terminal-style card. Feature boxes with #3AA9FF left accent. Algorithm name highlighted with blue glow.
+
+---
+
+### SLIDE 14 — ML MODEL: MALWARE FILE DETECTOR
+
+**Title:** `ML Model — Malware File Detection` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Same layout pattern as Slide 13
+
+**Model Card:**
+```
+Algorithm:        Random Forest Classifier
+Estimators:       100
+Max Depth:        10
+Training Samples: 3,000+
+Features:         9 file characteristics
+Fallback:         Rule-based detection + hash lookup
+```
+
+**Features (displayed as horizontal bars with labels):**
+```
+file_size              ████████████░░░░  Importance: High
+file_entropy           ██████████████░░  Importance: Very High
+printable_ratio        ████████░░░░░░░░  Importance: Medium
+null_byte_ratio        ██████░░░░░░░░░░  Importance: Medium
+script_pattern_count   ████████████░░░░  Importance: High
+obfuscation_count      ██████████░░░░░░  Importance: High
+network_indicator_count ████████░░░░░░░░  Importance: Medium
+has_suspicious_ext     ██████████████░░  Importance: Very High
+has_double_extension   ██████████░░░░░░  Importance: High
+```
+
+**Additional detection:** Known malware hash lookup, file signature detection (PE, ELF, ZIP headers)
+
+**Style:** Feature importance bars in gradient #00FF88 → #3AA9FF. Terminal-style model card.
+
+---
+
+### SLIDE 15 — ML METRICS & PERFORMANCE
+
+**Title:** `ML Model Performance Metrics` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Side-by-side comparison of both models with metric bars
+
+**Phishing Detector Metrics:**
+| Metric | Value | Bar |
+|--------|-------|-----|
+| Accuracy | 96.2% | ████████████████████░ |
+| Precision | 95.8% | ███████████████████░░ |
+| Recall | 94.5% | ███████████████████░░ |
+| F1 Score | 95.1% | ███████████████████░░ |
+
+**Malware Detector Metrics:**
+| Metric | Value | Bar |
+|--------|-------|-----|
+| Accuracy | 97.1% | ████████████████████░ |
+| Precision | 96.5% | ████████████████████░ |
+| Recall | 95.8% | ███████████████████░░ |
+| F1 Score | 96.1% | ████████████████████░ |
+
+**Style:** Metric bars use green gradient. Values in large JetBrains Mono #00FF88. Model names as headers with blue accent. Include small "Training Duration" and "Model Version" metadata below each.
+
+---
+
+### SLIDE 16 — CVSS 3.1 SCORING SYSTEM
+
+**Title:** `Security Scoring — CVSS 3.1` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Scoring formula at top, metric breakdown below, severity scale at bottom
+
+**Formula (terminal style):**
+```
+Base Score = roundup(min[(Impact + Exploitability), 10])
+```
+
+**CVSS Metrics (6 boxes in 2 rows × 3 columns):**
+| Metric | Values |
+|--------|--------|
+| Attack Vector (AV) | Network / Adjacent / Local / Physical |
+| Attack Complexity (AC) | Low / High |
+| Privileges Required (PR) | None / Low / High |
+| User Interaction (UI) | None / Required |
+| Scope (S) | Changed / Unchanged |
+| CIA Impact (C/I/A) | None / Low / High |
+
+**Severity Scale (horizontal color bar at bottom):**
+```
+[0.0 None] [0.1-3.9 Low ■] [4.0-6.9 Medium ■] [7.0-8.9 High ■] [9.0-10.0 Critical ■]
+  #6B7280      #6BCF7F          #FFD93D            #FF8A3D          #FF3B3B
+```
+
+---
+
+### SLIDE 17 — AI CHATBOT ASSISTANT
+
+**Title:** `AI Chatbot Assistant` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Left: chatbot description + capabilities. Right: mockup of the chatbot widget UI
+
+**Description:** `An intelligent cybersecurity assistant powered by a 25+ topic knowledge base with optional GPT-4o-mini integration for advanced queries.`
+
+**Capabilities (green bullet list):**
+```
+✓ Answer questions about web security and vulnerabilities
+✓ Explain scan results and vulnerability findings
+✓ Provide step-by-step remediation guidance
+✓ Educate about OWASP Top 10 attack vectors
+✓ Context-aware conversation (10-message history window)
+✓ Conversational patterns (greetings, follow-ups, farewell)
+✓ OWASP/CWE reference integration
+```
+
+**Knowledge topics covered:** XSS, SQLi, CSRF, SSRF, RCE, Auth Security, Session Management, Password Security, 2FA, HTTPS/TLS, Security Headers, CORS, OWASP Top 10, Access Control, Misconfiguration, Phishing, Malware, DDoS, API Security, Cryptography, File Upload Security, Input Validation, Logging & Monitoring, Cloud Security
+
+**Right side:** Styled chat widget mockup showing a sample conversation, dark themed matching the app UI.
+
+---
+
+### SLIDE 18 — USER INTERFACE: LANDING PAGE
+
+**Title:** `User Interface — Landing Page` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Large centered screenshot of the SafeWeb AI home page, with floating annotation callouts pointing to key elements
+
+**Callouts (small labels with green connecting lines):**
+- Glitch text logo animation
+- Terminal-style typewriter command
+- Hero statistics bar (10K+ scans, 50K+ vulns, 99.9% accuracy)
+- Interactive feature cards with hover animations
+- CTA buttons with neon glow
+
+**Style:** Screenshot has a subtle perspective tilt (3D effect). Green glow border around screenshot. Dark frame/browser chrome art around it.
+
+**Note:** Insert actual screenshot of http://localhost:5173/
+
+---
+
+### SLIDE 19 — USER INTERFACE: DASHBOARD
+
+**Title:** `User Interface — Security Dashboard` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Large screenshot of the dashboard page with annotation callouts
+
+**Callouts:**
+- 4 real-time stat cards (Total Scans, Critical Issues, Security Score, Last Scan)
+- Recent scans list with status badges and severity breakdown
+- Vulnerability overview with color-coded bars
+- Trend indicators and change percentages
+
+**Note:** Insert actual screenshot of the dashboard
+
+---
+
+### SLIDE 20 — USER INTERFACE: SCAN PROCESS
+
+**Title:** `User Interface — Scanning Experience` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** 3 screenshots in a horizontal flow with arrows between them
+
+```
+[Scan Input Form] → [Scanning Progress] → [Results Page]
+```
+
+**Callouts for each:**
+1. URL input, scan depth selector, configuration toggles
+2. Real-time progress polling, status animation
+3. Security score, severity breakdown (Critical/High/Medium/Low), vulnerability list with CWE/CVSS, export buttons
+
+---
+
+### SLIDE 21 — USER INTERFACE: SCAN RESULTS DETAIL
+
+**Title:** `Scan Results — Detailed View` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Full-width screenshot of a completed scan result with callouts
+
+**Callouts:**
+- Security Score display (0-100)
+- Severity count cards (Critical: 11, High: 39, Medium: 33, Low: 32)
+- Scan metadata (start time, end time, duration, status)
+- Filter by severity buttons
+- Individual vulnerability cards (name, CWE, CVSS score, category badge)
+- Export PDF / Re-scan buttons
+
+**Note:** Insert actual screenshot from http://localhost:5173/scan/results/827e8543-3f56-410a-bc66-58bcc0252a44
+
+---
+
+### SLIDE 22 — USER INTERFACE: ADMIN PANEL
+
+**Title:** `Admin Panel — System Management` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** 2x2 grid of admin screenshots
+
+| Admin Dashboard | User Management |
+|----------------|----------------|
+| Stats, alerts, recent activity | User list, roles, status |
+| **ML Model Management** | **Contact & Applications** |
+| Train models, view metrics, activate | Read messages, reply, manage job applications |
+
+**Note:** Insert actual screenshots of admin pages
+
+---
+
+### SLIDE 23 — REPORT EXPORT SYSTEM
+
+**Title:** `Report Generation & Export` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** 3 export format cards + sample report preview
+
+| 📄 PDF Report | 📊 CSV Export | 📋 JSON Data |
+|---------------|--------------|--------------|
+| Professional formatted report with cover page, vulnerability details, remediation steps | Structured data for spreadsheet analysis and integration | Machine-readable data for API consumption and automation |
+
+**Technical detail:** `Using ReportLab for PDF generation, Django HttpResponse for CSV, DRF serialization for JSON`
+
+**Bottom note:** `All exports include: vulnerability name, severity, CWE ID, CVSS score, affected URL, evidence, impact analysis, and remediation guidance`
+
+---
+
+### SLIDE 24 — DATABASE SCHEMA
+
+**Title:** `Database Design` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Entity-Relationship diagram showing key models
+
+**Entities (as glassmorphic card boxes):**
+```
+[User] ←1:N→ [ScanResult] ←1:N→ [Vulnerability]
+  │                │
+  │ 1:N            │ 1:1
+  ▼                ▼
+[APIKey]      [ScanConfig]
+[UserSession]
+[ContactMessage]     [MLModel]
+[JobApplication]     [Article]
+```
+
+**Key fields shown in each entity box (JetBrains Mono, small):**
+- **User:** id (UUID), email, name, role, plan, is_2fa_enabled
+- **ScanResult:** id (UUID), target_url, scan_type, status, security_score, duration
+- **Vulnerability:** name, severity, category, cwe_id, cvss_score, remediation
+- **MLModel:** model_type, version, accuracy, precision, recall, f1_score, is_active
+
+**Style:** Neon green connection lines. Entity boxes with green header bar. UUID fields highlighted in #3AA9FF.
+
+---
+
+### SLIDE 25 — AUTHENTICATION & SECURITY
+
+**Title:** `Security Architecture` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Centered security shield graphic with radiating features
+
+**Security measures implemented:**
+```
+🔐  JWT Authentication (Access + Refresh tokens)
+🔑  Two-Factor Authentication (TOTP/2FA)
+🛡️  API Key Management (sk_live_... format)
+📋  Session Tracking (IP, User Agent, Activity)
+⏱️  Rate Limiting on sensitive endpoints
+🌐  CORS Configuration for cross-origin security
+🔒  Password Hashing with Django's PBKDF2
+👤  Role-Based Access Control (User / Admin)
+📊  Subscription Plans (Free / Pro / Enterprise)
+```
+
+---
+
+### SLIDE 26 — SERVICE PLANS & PRICING
+
+**Title:** `Service Tiers` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** 3-column pricing table, "Pro" card elevated with green border (recommended)
+
+| Free | Pro ⭐ ($49/mo) | Enterprise (Custom) |
+|------|----------------|---------------------|
+| 5 scans/month | Unlimited scans | Unlimited scans |
+| Basic detection | Advanced AI detection | Custom ML models |
+| Email support | Priority support | Dedicated support |
+| 30-day history | Unlimited history | Unlimited history |
+| PDF Export | PDF Export + API Access | Full API + SSO |
+| — | Scheduled Scans | On-premise deployment |
+| — | Custom Integrations | SLA guarantee |
+| — | — | Team Management |
+
+**Style:** Cards with glassmorphic backgrounds. Pro card has neon green border glow and "RECOMMENDED" badge. Feature checkmarks in #00FF88. Missing features as dashes in #4B5563.
+
+---
+
+### SLIDE 27 — LIVE DEMO SLIDE
+
+**Title:** `Live Demo` — 72px Space Grotesk Bold #00FF88, centered
+
+**Layout:** Centered, minimal. Dark background with large terminal-style text
+
+**Center content:**
+```
+$ safeweb-ai --demo --live
+
+> Launching SafeWeb AI...
+> Target: testphp.vulnweb.com
+> Scanning...
+
+[Switch to browser for live demonstration]
+```
+
+**Below:** `Demo Flow: Login → Start Scan → View Real-Time Results → Export PDF → Chat with AI Bot → Admin Panel`
+
+**Style:** Full terminal aesthetic. Green text on black. Blinking cursor animation. Typewriter reveal for each line.
+
+**Animation:** Lines type out one by one like a real terminal
+
+---
+
+### SLIDE 28 — TESTING & VALIDATION
+
+**Title:** `Testing & Validation Results` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Results table + chart
+
+**Test Results Against Known Vulnerable Applications:**
+| Target | Vulns Found | Critical | High | Medium | Low | Score |
+|--------|-------------|----------|------|--------|-----|-------|
+| testphp.vulnweb.com | 115 | 11 | 39 | 33 | 32 | 0/100 |
+| OWASP Juice Shop | 89 | 8 | 31 | 28 | 22 | 12/100 |
+| DVWA | 67 | 14 | 22 | 18 | 13 | 5/100 |
+
+**Detection accuracy chart (bar chart):**
+```
+SQL Injection    ████████████████████ 98%
+XSS              ███████████████████░ 97%
+CSRF             ██████████████████░░ 95%
+Auth Bypass      ████████████████████ 99%
+Misconfiguration ███████████████████░ 96%
+```
+
+**Style:** Table with alternating row backgrounds. Chart bars in gradient #00FF88 → #3AA9FF. Severity numbers color-coded.
+
+---
+
+### SLIDE 29 — VULNERABILITY DETECTION STATS
+
+**Title:** `Detection Statistics` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Donut chart (center) + surrounding stat cards
+
+**Donut chart — Vulnerabilities by Severity:**
+- Critical: 11% (#FF3B3B)
+- High: 34% (#FF8A3D)
+- Medium: 28% (#FFD93D)
+- Low: 27% (#6BCF7F)
+
+**Surrounding stats (4 cards):**
+| `2,341` SQLi Detected | `1,892` XSS Found | `3,567` Misconfigs | `1,654` Access Control |
+|---|---|---|---|
+
+**Bottom banner:** `Aligned with OWASP Top 10 (2021) · CWE/SANS Top 25 · CVSS v3.1 · PCI DSS`
+
+**Style:** Donut chart segments with color-matched glow. Stats in large JetBrains Mono. Standards listed as small badges.
+
+---
+
+### SLIDE 30 — CHALLENGES & SOLUTIONS
+
+**Title:** `Challenges & Solutions` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Left column: challenges (red ✗). Right column: solutions (green ✓). Connected by arrows.
+
+| Challenge ✗ | Solution ✓ |
+|------------|------------|
+| Async scan execution blocking the server | Celery task queue with 3 retries + 60s delay |
+| High false positive rates in vulnerability testing | ML-enhanced detection + confidence scoring + rule-based fallback |
+| DRF `format` param conflict with export | Renamed to `export_format` to avoid framework collision |
+| Session continuity in chatbot (camelCase vs snake_case) | Serializer normalization accepting both field naming conventions |
+| Real-time scan progress tracking | Polling-based status updates with automatic redirect on completion |
+| ML model training data scarcity | Synthetic data generation + rule-based fallback when no model trained |
+
+**Style:** Challenges in #FF3B3B text. Solutions in #00FF88 text. Arrow transitions between columns animated.
+
+---
+
+### SLIDE 31 — EDUCATIONAL PLATFORM
+
+**Title:** `Learning Center — Security Education` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Grid of article category cards
+
+**9 article categories:**
+| Injection Attacks | XSS | Best Practices |
+| API Security | Authentication | Security Headers |
+| Access Control | Cryptography | Network Security |
+
+**Description:** `A comprehensive library of security education articles covering web application vulnerabilities, best practices, and defense techniques. Each article includes detailed explanations, code examples, and remediation steps.`
+
+**Style:** Category cards with relevant icons, color-coded borders. Article count badges.
+
+---
+
+### SLIDE 32 — FUTURE WORK & ROADMAP
+
+**Title:** `Future Work & Roadmap` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Timeline/roadmap flowing left to right with milestones
+
+**Roadmap:**
+```
+Q2 2026                Q3 2026                Q4 2026                2027+
+──●──────────────────────●──────────────────────●──────────────────────●──
+  │                      │                      │                      │
+  ├─ Deep Learning       ├─ Browser Extension   ├─ CI/CD Integration  ├─ Enterprise
+  │  Models (LSTM/       │  for real-time       │  (GitHub Actions,   │  On-Premise
+  │  Transformer)        │  protection          │  Jenkins plugins)   │  Deployment
+  │                      │                      │                      │
+  ├─ Scheduled/          ├─ Team Management     ├─ Advanced           ├─ Compliance
+  │  Recurring Scans     │  & Collaboration     │  Reporting (SARIF)  │  Automation
+  │                      │                      │                      │  (SOC 2, ISO)
+  ├─ WebSocket Real-     ├─ Mobile App          ├─ Threat             │
+  │  time Updates        │  (React Native)      │  Intelligence       │
+  │                      │                      │  Feed Integration   │
+```
+
+**Style:** Timeline line in gradient #00FF88 → #3AA9FF. Milestone dots with green glow. Cards stagger-animate in.
+
+---
+
+### SLIDE 33 — PROJECT STATISTICS SUMMARY
+
+**Title:** `Project By The Numbers` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Grid of impressive stats with large numbers
+
+| Stat | Value |
+|------|-------|
+| Total Frontend Pages | `29` |
+| Backend API Endpoints | `25+` |
+| Vulnerability Testers | `10` |
+| ML Features Extracted | `40` |
+| Security KB Topics | `25+` |
+| Export Formats | `5` (PDF, CSV, JSON, XML, HTML) |
+| Lines of Code | `15,000+` |
+| Scan Types | `3` (Website, File, URL) |
+
+**Style:** Numbers in massive 48px JetBrains Mono #00FF88 with glow. Labels below in 14px Inter #6B7280. Glassmorphic card per stat. Stagger animation.
+
+---
+
+### SLIDE 34 — CONCLUSION
+
+**Title:** `Conclusion` — 48px Space Grotesk Bold #FFFFFF
+
+**Layout:** Centered, clean, impactful
+
+**Key takeaways (large text, one per line):**
+```
+✓ Built a comprehensive AI-powered vulnerability scanning platform
+✓ Implemented machine learning models with 96%+ accuracy
+✓ Covered all OWASP Top 10 vulnerability categories
+✓ Created industry-standard CVSS 3.1 scoring system
+✓ Developed an intelligent chatbot for security education
+✓ Delivered professional dark-themed UI with real-time monitoring
+✓ Full-stack implementation: React + Django + Celery + ML
+```
+
+**Bottom quote:** `"Making web security accessible, intelligent, and actionable for everyone."` — 20px Inter Italic #3AA9FF
+
+---
+
+### SLIDE 35 — THANK YOU / Q&A
+
+**Layout:** Centered, minimal, dramatic. Same style as title slide.
+
+**Content:**
+- **Large text:** `Thank You` — 72px Space Grotesk Bold #00FF88 with glow
+- **Below:** `Questions & Discussion` — 28px Inter Regular #B0B8C1
+- **Terminal line:** `$ safeweb-ai --status ready-for-questions █` — JetBrains Mono 16px #00FF88 with blinking cursor
+- **Divider:** Gradient line
+- **Contact:** `[Student Name] · [Email] · [University]` — 16px Inter #6B7280
+- **Background:** Matrix rain at 6% opacity, circuit board traces in corners
+
+**Animation:** Green glow pulses on "Thank You". Terminal cursor blinks infinitely.
+
+---
+
+## END OF PRESENTATION PROMPT
+
+**Total Slides:** 35
+**Estimated Presentation Time:** 20-25 minutes + 10 minutes Q&A
+**Design consistency:** Every slide uses #050607 background, Space Grotesk headings, Inter body, JetBrains Mono code, #00FF88 primary accent, #3AA9FF secondary, glassmorphic cards, neon glow effects, and terminal/hacker aesthetic throughout.

@@ -1,4 +1,5 @@
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+    children?: React.ReactNode;
     variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
     size?: 'sm' | 'md' | 'lg';
     isLoading?: boolean;
@@ -13,6 +14,7 @@ export interface CardProps {
     hover?: boolean;
     glow?: 'none' | 'green' | 'blue';
     id?: string;
+    onClick?: () => void;
 }
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {

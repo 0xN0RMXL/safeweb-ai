@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
@@ -6,22 +6,64 @@ import Badge from '@components/ui/Badge';
 import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
 import Select from '@components/ui/Select';
+import { adminAPI } from '@services/api';
+
+interface UserRow {
+    id: string;
+    name: string;
+    email: string;
+    plan: string;
+    status: string;
+    scans: number;
+    joined: string;
+    lastActive: string;
+}
 
 export default function AdminUsers() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterPlan, setFilterPlan] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [users, setUsers] = useState<UserRow[]>([]);
+    const [totalUsers, setTotalUsers] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+    const [showAddUser, setShowAddUser] = useState(false);
 
-    const users = [
-        { id: 1, name: 'John Doe', email: 'john@example.com', plan: 'Pro', status: 'active', scans: 156, joined: '2024-01-15', lastActive: '2 hours ago' },
-        { id: 2, name: 'Jane Smith', email: 'jane@example.com', plan: 'Free', status: 'active', scans: 23, joined: '2024-02-20', lastActive: '1 day ago' },
-        { id: 3, name: 'Mike Johnson', email: 'mike@example.com', plan: 'Enterprise', status: 'active', scans: 892, joined: '2023-11-08', lastActive: '30 min ago' },
-        { id: 4, name: 'Sarah Wilson', email: 'sarah@example.com', plan: 'Pro', status: 'suspended', scans: 67, joined: '2024-03-12', lastActive: '5 days ago' },
-        { id: 5, name: 'Tom Brown', email: 'tom@example.com', plan: 'Free', status: 'active', scans: 12, joined: '2024-03-18', lastActive: '3 hours ago' },
-        { id: 6, name: 'Emily Davis', email: 'emily@example.com', plan: 'Pro', status: 'active', scans: 234, joined: '2023-12-05', lastActive: '1 hour ago' },
-        { id: 7, name: 'David Lee', email: 'david@example.com', plan: 'Enterprise', status: 'active', scans: 1247, joined: '2023-09-22', lastActive: '15 min ago' },
-        { id: 8, name: 'Lisa Anderson', email: 'lisa@example.com', plan: 'Free', status: 'inactive', scans: 5, joined: '2024-03-01', lastActive: '2 weeks ago' },
-    ];
+    const fetchUsers = () => {
+        setIsLoading(true);
+        const params: Record<string, string> = { page: String(page) };
+        if (searchQuery) params.search = searchQuery;
+        if (filterPlan !== 'all') params.plan = filterPlan;
+        if (filterStatus !== 'all') params.status = filterStatus;
+        adminAPI.getUsers(params)
+            .then((res) => {
+                setUsers(res.data.results ?? res.data.users ?? []);
+                setTotalUsers(res.data.count ?? res.data.total ?? 0);
+            })
+            .catch(() => setUsers([]))
+            .finally(() => setIsLoading(false));
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchUsers(); }, [page, filterPlan, filterStatus]);
+    useEffect(() => { setPage(1); }, [filterPlan, filterStatus]);
+    useEffect(() => {
+        const t = setTimeout(fetchUsers, 400);
+        return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery]);
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Delete this user?')) return;
+        try {
+            await adminAPI.deleteUser(id);
+            fetchUsers();
+        } catch (err) {
+            console.error('Delete user failed:', err);
+            alert('Failed to delete user. Please try again.');
+        }
+    };
 
     const planOptions = [
         { value: 'all', label: 'All Plans' },
@@ -49,28 +91,34 @@ export default function AdminUsers() {
                             </h1>
                             <p className="text-text-secondary">Manage all platform users</p>
                         </div>
-                        <Button variant="primary">
+                        <Button variant="primary" onClick={() => setShowAddUser(true)}>
                             Add New User
                         </Button>
                     </div>
 
                     {/* Stats Cards */}
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="w-8 h-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
+                        </div>
+                    ) : (
+                    <>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                         <Card className="p-6">
                             <div className="text-sm text-text-tertiary mb-2">Total Users</div>
-                            <div className="text-3xl font-bold text-text-primary">2,847</div>
+                            <div className="text-3xl font-bold text-text-primary">{totalUsers.toLocaleString()}</div>
                         </Card>
                         <Card className="p-6">
                             <div className="text-sm text-text-tertiary mb-2">Active Users</div>
-                            <div className="text-3xl font-bold text-accent-green">2,453</div>
+                            <div className="text-3xl font-bold text-accent-green">{users.filter(u => u.status === 'active').length}</div>
                         </Card>
                         <Card className="p-6">
                             <div className="text-sm text-text-tertiary mb-2">Pro Users</div>
-                            <div className="text-3xl font-bold text-accent-blue">847</div>
+                            <div className="text-3xl font-bold text-accent-blue">{users.filter(u => u.plan === 'Pro' || u.plan === 'pro').length}</div>
                         </Card>
                         <Card className="p-6">
                             <div className="text-sm text-text-tertiary mb-2">Enterprise</div>
-                            <div className="text-3xl font-bold text-text-primary">156</div>
+                            <div className="text-3xl font-bold text-text-primary">{users.filter(u => u.plan === 'Enterprise' || u.plan === 'enterprise').length}</div>
                         </Card>
                     </div>
 
@@ -81,7 +129,7 @@ export default function AdminUsers() {
                                 type="text"
                                 placeholder="Search by name or email..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                                 leftIcon={
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -91,12 +139,12 @@ export default function AdminUsers() {
                             <Select
                                 options={planOptions}
                                 value={filterPlan}
-                                onChange={(e) => setFilterPlan(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterPlan(e.target.value)}
                             />
                             <Select
                                 options={statusOptions}
                                 value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)}
                             />
                         </div>
                     </Card>
@@ -140,12 +188,12 @@ export default function AdminUsers() {
                                             <td className="py-4 px-6 text-sm text-text-secondary">{user.lastActive}</td>
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-2">
-                                                    <button className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-accent-green transition-colors">
+                                                    <button className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-accent-green transition-colors" onClick={() => setEditingUser(user)}>
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                                         </svg>
                                                     </button>
-                                                    <button className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-status-high transition-colors">
+                                                    <button className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-status-high transition-colors" onClick={() => handleDelete(user.id)}>
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                         </svg>
@@ -161,21 +209,97 @@ export default function AdminUsers() {
                         {/* Pagination */}
                         <div className="flex items-center justify-between px-6 py-4 border-t border-border-primary">
                             <div className="text-sm text-text-secondary">
-                                Showing 1 to 8 of 2,847 users
+                                Showing {users.length > 0 ? (page - 1) * 10 + 1 : 0} to {Math.min(page * 10, totalUsers)} of {totalUsers.toLocaleString()} users
                             </div>
                             <div className="flex items-center gap-2">
-                                <Button variant="outline" size="sm">Previous</Button>
-                                <Button variant="ghost" size="sm">1</Button>
-                                <Button variant="primary" size="sm">2</Button>
-                                <Button variant="ghost" size="sm">3</Button>
-                                <Button variant="ghost" size="sm">...</Button>
-                                <Button variant="ghost" size="sm">356</Button>
-                                <Button variant="outline" size="sm">Next</Button>
+                                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Previous</Button>
+                                <span className="text-sm text-text-secondary px-2">Page {page}</span>
+                                <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={users.length < 10}>Next</Button>
                             </div>
                         </div>
                     </Card>
+                    </>
+                    )}
                 </Container>
             </div>
+
+            {/* Edit User Modal */}
+            {editingUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={(e) => { if (e.target === e.currentTarget) setEditingUser(null); }}>
+                    <div className="bg-bg-primary border border-border-primary rounded-xl shadow-xl w-full max-w-md p-6">
+                        <h2 className="text-xl font-heading font-semibold text-text-primary mb-4">Edit User</h2>
+                        <EditUserForm
+                            user={editingUser}
+                            onSave={async (data) => {
+                                try {
+                                    await adminAPI.updateUser(editingUser.id, data);
+                                    setEditingUser(null);
+                                    fetchUsers();
+                                } catch { alert('Failed to update user'); }
+                            }}
+                            onCancel={() => setEditingUser(null)}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Add User Modal */}
+            {showAddUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={(e) => { if (e.target === e.currentTarget) setShowAddUser(false); }}>
+                    <div className="bg-bg-primary border border-border-primary rounded-xl shadow-xl w-full max-w-md p-6">
+                        <h2 className="text-xl font-heading font-semibold text-text-primary mb-4">Add New User</h2>
+                        <AddUserForm
+                            onSave={() => { setShowAddUser(false); fetchUsers(); }}
+                            onCancel={() => setShowAddUser(false)}
+                        />
+                    </div>
+                </div>
+            )}
         </Layout>
+    );
+}
+
+function EditUserForm({ user, onSave, onCancel }: { user: UserRow; onSave: (data: Record<string, unknown>) => Promise<void>; onCancel: () => void }) {
+    const [form, setForm] = useState({ name: user.name, email: user.email, plan: user.plan.toLowerCase(), status: user.status });
+    const [saving, setSaving] = useState(false);
+    return (
+        <div className="space-y-4">
+            <Input type="text" label="Name" value={form.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, name: e.target.value })} />
+            <Input type="email" label="Email" value={form.email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, email: e.target.value })} />
+            <Select label="Plan" options={[{ value: 'free', label: 'Free' }, { value: 'pro', label: 'Pro' }, { value: 'enterprise', label: 'Enterprise' }]} value={form.plan} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({ ...form, plan: e.target.value })} />
+            <Select label="Status" options={[{ value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended' }, { value: 'inactive', label: 'Inactive' }]} value={form.status} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({ ...form, status: e.target.value })} />
+            <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
+                <Button variant="primary" size="sm" isLoading={saving} onClick={async () => { setSaving(true); await onSave(form); setSaving(false); }}>Save</Button>
+            </div>
+        </div>
+    );
+}
+
+function AddUserForm({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
+    const [form, setForm] = useState({ name: '', email: '', password: '', plan: 'free', role: 'user' });
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+    return (
+        <div className="space-y-4">
+            <Input type="text" label="Name" value={form.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, name: e.target.value })} />
+            <Input type="email" label="Email" value={form.email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, email: e.target.value })} />
+            <Input type="password" label="Password" value={form.password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, password: e.target.value })} />
+            <Select label="Plan" options={[{ value: 'free', label: 'Free' }, { value: 'pro', label: 'Pro' }, { value: 'enterprise', label: 'Enterprise' }]} value={form.plan} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({ ...form, plan: e.target.value })} />
+            <Select label="Role" options={[{ value: 'user', label: 'User' }, { value: 'admin', label: 'Admin' }]} value={form.role} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({ ...form, role: e.target.value })} />
+            {error && <p className="text-sm text-accent-red">{error}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
+                <Button variant="primary" size="sm" isLoading={saving} onClick={async () => {
+                    if (!form.name || !form.email || !form.password) { setError('All fields are required'); return; }
+                    setSaving(true);
+                    try {
+                        await adminAPI.createUser(form);
+                        onSave();
+                    } catch { setError('Failed to create user'); }
+                    setSaving(false);
+                }}>Create User</Button>
+            </div>
+        </div>
     );
 }

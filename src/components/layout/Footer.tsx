@@ -11,16 +11,16 @@ export default function Footer() {
                 { name: 'Features', path: '/services' },
                 { name: 'Pricing', path: '/services#pricing' },
                 { name: 'Documentation', path: '/docs' },
-                { name: 'API', path: '/docs/api' },
+                { name: 'API', path: '/docs#api-reference' },
             ],
         },
         {
             title: 'Resources',
             links: [
                 { name: 'Learn', path: '/learn' },
-                { name: 'Blog', path: '/learn/blog' },
-                { name: 'Tutorials', path: '/learn/tutorials' },
-                { name: 'Security Best Practices', path: '/learn/best-practices' },
+                { name: 'Blog', path: '/learn?category=blog' },
+                { name: 'Tutorials', path: '/learn?category=tutorials' },
+                { name: 'Security Best Practices', path: '/learn?category=best_practices' },
             ],
         },
         {

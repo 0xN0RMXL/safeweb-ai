@@ -1,19 +1,42 @@
-import { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Card from '@components/ui/Card';
 import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
+import { chatAPI } from '@/services/api';
+
+interface ChatMsg {
+    id: number;
+    text: string;
+    sender: 'user' | 'bot';
+    time: string;
+}
+
+interface SessionItem {
+    id: string;
+    title: string;
+    messageCount: number;
+    updatedAt: string;
+}
+
+const WELCOME_MSG: ChatMsg = {
+    id: 1,
+    text: 'Hello! I\'m your SafeWeb AI assistant. How can I help you today?',
+    sender: 'bot',
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+};
 
 export default function ChatbotWidget() {
     const [isOpen, setIsOpen] = useState(false);
     const [message, setMessage] = useState('');
-    const [messages, setMessages] = useState([
-        {
-            id: 1,
-            text: 'Hello! I\'m your SafeWeb AI assistant. How can I help you today?',
-            sender: 'bot',
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-    ]);
+    const [isTyping, setIsTyping] = useState(false);
+    const [sessionId, setSessionId] = useState<string | undefined>();
+    const [messages, setMessages] = useState<ChatMsg[]>([WELCOME_MSG]);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Session management state
+    const [showSessions, setShowSessions] = useState(false);
+    const [sessions, setSessions] = useState<SessionItem[]>([]);
+    const [sessionsLoading, setSessionsLoading] = useState(false);
 
     const quickActions = [
         'Start a new scan',
@@ -22,49 +45,128 @@ export default function ChatbotWidget() {
         'Read documentation',
     ];
 
-    const handleSend = () => {
-        if (!message.trim()) return;
+    // Auto-scroll to bottom
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
-        const newMessage = {
+    // Fetch sessions list
+    const fetchSessions = useCallback(async () => {
+        setSessionsLoading(true);
+        try {
+            const { data } = await chatAPI.getSessions();
+            const list = Array.isArray(data) ? data : data.results ?? [];
+            setSessions(list.map((s: Record<string, unknown>) => ({
+                id: String(s.id),
+                title: String(s.title || 'New Chat'),
+                messageCount: Number(s.messageCount ?? s.message_count ?? 0),
+                updatedAt: String(s.updatedAt ?? s.updated_at ?? ''),
+            })));
+        } catch {
+            setSessions([]);
+        } finally {
+            setSessionsLoading(false);
+        }
+    }, []);
+
+    // Load session messages
+    const loadSession = async (id: string) => {
+        try {
+            const { data } = await chatAPI.getSession(id);
+            const msgs: ChatMsg[] = (data.messages ?? []).map(
+                (m: Record<string, unknown>, i: number) => ({
+                    id: i + 1,
+                    text: String(m.content),
+                    sender: m.role === 'user' ? 'user' : 'bot',
+                    time: m.createdAt
+                        ? new Date(String(m.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : m.created_at
+                            ? new Date(String(m.created_at)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            : '',
+                })
+            );
+            setSessionId(id);
+            setMessages(msgs.length > 0 ? msgs : [WELCOME_MSG]);
+            setShowSessions(false);
+        } catch {
+            alert('Failed to load session.');
+        }
+    };
+
+    // Delete a session
+    const deleteSession = async (id: string) => {
+        if (!confirm('Delete this chat session?')) return;
+        try {
+            await chatAPI.deleteSession(id);
+            setSessions((prev) => prev.filter((s) => s.id !== id));
+            // If we deleted the active session, reset
+            if (sessionId === id) {
+                setSessionId(undefined);
+                setMessages([WELCOME_MSG]);
+            }
+        } catch {
+            alert('Failed to delete session.');
+        }
+    };
+
+    // Start a brand-new chat
+    const startNewChat = () => {
+        setSessionId(undefined);
+        setMessages([WELCOME_MSG]);
+        setShowSessions(false);
+    };
+
+    const sendMessage = async (text: string) => {
+        const userMsg = {
             id: messages.length + 1,
-            text: message,
+            text,
             sender: 'user',
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
+        setMessages((prev) => [...prev, userMsg]);
+        setIsTyping(true);
 
-        setMessages([...messages, newMessage]);
+        try {
+            const { data } = await chatAPI.send({
+                message: text,
+                sessionId,
+            });
+
+            if (data.sessionId) setSessionId(data.sessionId);
+
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: prev.length + 1,
+                    text: data.response || data.message || 'I apologize, I could not process that.',
+                    sender: 'bot',
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                },
+            ]);
+        } catch {
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: prev.length + 1,
+                    text: 'I\'m having trouble connecting. Please try again later.',
+                    sender: 'bot',
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                },
+            ]);
+        } finally {
+            setIsTyping(false);
+        }
+    };
+
+    const handleSend = () => {
+        if (!message.trim()) return;
+        const text = message;
         setMessage('');
-
-        // Simulate bot response
-        setTimeout(() => {
-            const botResponse = {
-                id: messages.length + 2,
-                text: 'I understand you need help. This is a demo chatbot. In production, I would provide intelligent responses based on your query.',
-                sender: 'bot',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            };
-            setMessages((prev) => [...prev, botResponse]);
-        }, 1000);
+        sendMessage(text);
     };
 
     const handleQuickAction = (action: string) => {
-        const newMessage = {
-            id: messages.length + 1,
-            text: action,
-            sender: 'user',
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-        setMessages([...messages, newMessage]);
-
-        setTimeout(() => {
-            const botResponse = {
-                id: messages.length + 2,
-                text: `I can help you with "${action}". This is a demo interface - in production, this would trigger the relevant action.`,
-                sender: 'bot',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            };
-            setMessages((prev) => [...prev, botResponse]);
-        }, 1000);
+        sendMessage(action);
     };
 
     return (
@@ -100,23 +202,93 @@ export default function ChatbotWidget() {
                                         </div>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => setIsOpen(false)}
-                                    className="text-bg-primary hover:text-bg-secondary transition-colors"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                </button>
+                                <div className="flex items-center gap-1">
+                                    {/* New Chat button */}
+                                    <button
+                                        onClick={startNewChat}
+                                        className="p-1.5 text-bg-primary hover:text-bg-secondary transition-colors rounded"
+                                        title="New Chat"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                    </button>
+                                    {/* Session History button */}
+                                    <button
+                                        onClick={() => { setShowSessions(!showSessions); if (!showSessions) fetchSessions(); }}
+                                        className="p-1.5 text-bg-primary hover:text-bg-secondary transition-colors rounded"
+                                        title="Chat History"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </button>
+                                    {/* Close button */}
+                                    <button
+                                        onClick={() => setIsOpen(false)}
+                                        className="p-1.5 text-bg-primary hover:text-bg-secondary transition-colors rounded"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
+                        {/* Session History Panel */}
+                        {showSessions && (
+                            <div className="h-96 overflow-y-auto bg-bg-secondary border-b border-border-primary">
+                                <div className="px-4 py-3 border-b border-border-primary flex items-center justify-between">
+                                    <span className="text-sm font-medium text-text-primary">Chat History</span>
+                                    <button
+                                        onClick={() => setShowSessions(false)}
+                                        className="text-xs text-accent-green hover:underline"
+                                    >
+                                        Back to chat
+                                    </button>
+                                </div>
+                                {sessionsLoading ? (
+                                    <div className="flex items-center justify-center py-12">
+                                        <div className="w-6 h-6 border-2 border-accent-green border-t-transparent rounded-full animate-spin"></div>
+                                    </div>
+                                ) : sessions.length === 0 ? (
+                                    <div className="text-center py-12 text-text-tertiary text-sm">
+                                        No past sessions found.
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-border-primary">
+                                        {sessions.map((s) => (
+                                            <div
+                                                key={s.id}
+                                                className={`px-4 py-3 hover:bg-bg-hover transition-colors cursor-pointer flex items-center gap-3 ${s.id === sessionId ? 'bg-accent-green/10 border-l-2 border-accent-green' : ''}`}
+                                            >
+                                                <div className="flex-1 min-w-0" onClick={() => loadSession(s.id)}>
+                                                    <div className="text-sm font-medium text-text-primary truncate">{s.title}</div>
+                                                    <div className="text-xs text-text-tertiary mt-0.5">
+                                                        {s.messageCount} messages
+                                                        {s.updatedAt && ` · ${new Date(s.updatedAt).toLocaleDateString()}`}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
+                                                    className="p-1 text-text-tertiary hover:text-red-400 transition-colors shrink-0"
+                                                    title="Delete session"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* Messages */}
+                        {!showSessions && (
+                        <>
                         <div className="h-96 overflow-y-auto p-4 space-y-4 bg-bg-secondary">
                             {messages.map((msg) => (
                                 <div
@@ -139,6 +311,18 @@ export default function ChatbotWidget() {
                                     </div>
                                 </div>
                             ))}
+                            {isTyping && (
+                                <div className="flex justify-start">
+                                    <div className="bg-bg-primary border border-border-primary rounded-lg px-4 py-2">
+                                        <div className="flex gap-1">
+                                            <span className="w-2 h-2 bg-text-tertiary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                                            <span className="w-2 h-2 bg-text-tertiary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                                            <span className="w-2 h-2 bg-text-tertiary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
                         </div>
 
                         {/* Quick Actions */}
@@ -166,8 +350,8 @@ export default function ChatbotWidget() {
                                     type="text"
                                     placeholder="Type your message..."
                                     value={message}
-                                    onChange={(e) => setMessage(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMessage(e.target.value)}
+                                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleSend()}
                                     className="flex-1"
                                 />
                                 <Button
@@ -191,6 +375,8 @@ export default function ChatbotWidget() {
                                 Powered by SafeWeb AI
                             </div>
                         </div>
+                        </>
+                        )}
                     </Card>
                 </div>
             )}

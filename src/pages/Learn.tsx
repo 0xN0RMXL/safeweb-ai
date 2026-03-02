@@ -1,90 +1,63 @@
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
 import Badge from '@components/ui/Badge';
 import Input from '@components/ui/Input';
+import ScrollReveal from '@components/ui/ScrollReveal';
 import { formatDate } from '@utils/date';
+import { learnAPI } from '@/services/api';
 
 export default function Learn() {
-    const articles = [
-        {
-            id: '1',
-            title: 'Understanding SQL Injection: Detection and Prevention',
-            excerpt: 'Learn how SQL injection attacks work, how to detect them, and implement secure coding practices to prevent them in your applications.',
-            category: 'Injection Attacks',
-            author: 'Security Team',
-            date: new Date('2025-12-18'),
-            readTime: 8,
-            image: null,
-        },
-        {
-            id: '2',
-            title: 'Cross-Site Scripting (XSS) Attack Patterns',
-            excerpt: 'Comprehensive guide to XSS vulnerabilities including reflected, stored, and DOM-based XSS with real-world examples.',
-            category: 'XSS',
-            author: 'Security Team',
-            date: new Date('2025-12-15'),
-            readTime: 10,
-            image: null,
-        },
-        {
-            id: '3',
-            title: 'OWASP Top 10 2025: Complete Guide',
-            excerpt: 'Deep dive into the latest OWASP Top 10 vulnerabilities with practical examples and mitigation strategies.',
-            category: 'Best Practices',
-            author: 'Security Team',
-            date: new Date('2025-12-12'),
-            readTime: 15,
-            image: null,
-        },
-        {
-            id: '4',
-            title: 'Securing REST APIs: A Comprehensive Checklist',
-            excerpt: 'Essential security measures for API development including authentication, rate limiting, and input validation.',
-            category: 'API Security',
-            author: 'Security Team',
-            date: new Date('2025-12-10'),
-            readTime: 12,
-            image: null,
-        },
-        {
-            id: '5',
-            title: 'Implementing Content Security Policy (CSP)',
-            excerpt: 'Step-by-step guide to implementing CSP headers to prevent XSS attacks and data injection.',
-            category: 'Security Headers',
-            author: 'Security Team',
-            date: new Date('2025-12-08'),
-            readTime: 9,
-            image: null,
-        },
-        {
-            id: '6',
-            title: 'Authentication Best Practices in 2025',
-            excerpt: 'Modern authentication strategies including MFA, OAuth 2.0, and passwordless authentication.',
-            category: 'Authentication',
-            author: 'Security Team',
-            date: new Date('2025-12-05'),
-            readTime: 11,
-            image: null,
-        },
-    ];
+    const [searchParams] = useSearchParams();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
+    const [isLoading, setIsLoading] = useState(true);
+    const [articles, setArticles] = useState<{
+        id: string; title: string; slug: string; excerpt: string;
+        category: string; categoryDisplay: string; author: string;
+        date: Date; readTime: number; image: string | null;
+    }[]>([]);
 
-    const categories = [
+    const [categories, setCategories] = useState<string[]>([
         'All Articles',
-        'Injection Attacks',
-        'XSS',
-        'Best Practices',
-        'API Security',
-        'Authentication',
-        'Security Headers',
-    ];
+    ]);
+
+    useEffect(() => {
+        const params: Record<string, string> = {};
+        if (searchQuery) params.search = searchQuery;
+        if (selectedCategory) params.category = selectedCategory;
+
+        learnAPI.getArticles(params)
+            .then(({ data }) => {
+                const items = data.articles || data.results || data || [];
+                setArticles(items.map((a: Record<string, unknown>) => ({
+                    id: a.id,
+                    title: a.title,
+                    slug: a.slug,
+                    excerpt: a.excerpt,
+                    category: a.category || '',
+                    categoryDisplay: a.categoryDisplay || a.category || '',
+                    author: a.author,
+                    date: new Date(a.createdAt as string || a.date as string),
+                    readTime: a.readTime || 5,
+                    image: a.image || null,
+                })));
+                if (data.categories) {
+                    setCategories(['All Articles', ...data.categories.map((c: { label: string }) => c.label || c)]);
+                }
+            })
+            .catch(() => {})
+            .finally(() => setIsLoading(false));
+    }, [searchQuery, selectedCategory]);
 
     return (
         <Layout>
             <div className="py-12">
                 <Container>
                     {/* Header */}
+                    <ScrollReveal>
                     <div className="text-center mb-12">
                         <h1 className="text-4xl font-heading font-bold text-text-primary mb-4">
                             Security Learning Center
@@ -93,12 +66,15 @@ export default function Learn() {
                             Expand your security knowledge with in-depth articles, tutorials, and best practices
                         </p>
                     </div>
+                    </ScrollReveal>
 
                     {/* Search */}
                     <div className="max-w-2xl mx-auto mb-12">
                         <Input
                             type="text"
                             placeholder="Search articles..."
+                            value={searchQuery}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                             leftIcon={
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -112,20 +88,46 @@ export default function Learn() {
                         {categories.map((category) => (
                             <button
                                 key={category}
-                                className="px-4 py-2 rounded-lg bg-bg-card border border-border-primary text-sm text-text-secondary hover:text-accent-green hover:border-accent-green transition-all duration-200"
+                                onClick={() => setSelectedCategory(category === 'All Articles' ? '' : category)}
+                                className={`px-4 py-2 rounded-lg border text-sm transition-all duration-200 ${
+                                    (category === 'All Articles' && !selectedCategory) || category === selectedCategory
+                                        ? 'bg-accent-green/10 border-accent-green text-accent-green'
+                                        : 'bg-bg-card border-border-primary text-text-secondary hover:text-accent-green hover:border-accent-green'
+                                }`}
                             >
                                 {category}
                             </button>
                         ))}
                     </div>
 
+                    {/* Articles Grid */}
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="w-8 h-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
+                            <span className="ml-3 text-text-secondary">Loading articles...</span>
+                        </div>
+                    ) : articles.length === 0 ? (
+                        <Card className="p-12 text-center">
+                            <svg className="w-16 h-16 mx-auto text-text-tertiary mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            <h3 className="text-xl font-heading font-semibold text-text-primary mb-2">
+                                {searchQuery ? 'No articles match your search' : 'No articles available yet'}
+                            </h3>
+                            <p className="text-text-secondary">
+                                {searchQuery ? 'Try adjusting your search terms or browse all articles.' : 'Check back soon for new security articles and tutorials.'}
+                            </p>
+                        </Card>
+                    ) : (
+                    <>
                     {/* Featured Article */}
+                    {articles.length > 0 && (
                     <Card className="p-8 mb-12 hover:shadow-card-hover transition-all duration-300">
                         <div className="flex items-start gap-3 mb-3">
                             <Badge variant="info" size="sm">Featured</Badge>
                             <Badge variant="default" size="sm">{articles[0].category}</Badge>
                         </div>
-                        <Link to={`/learn/${articles[0].id}`}>
+                        <Link to={`/learn/${articles[0].slug || articles[0].id}`}>
                             <h2 className="text-3xl font-heading font-bold text-text-primary mb-4 hover:text-accent-green transition-colors">
                                 {articles[0].title}
                             </h2>
@@ -141,15 +143,16 @@ export default function Learn() {
                             <span>{articles[0].readTime} min read</span>
                         </div>
                     </Card>
+                    )}
 
                     {/* Articles Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {articles.slice(1).map((article) => (
+                        {(articles.length > 1 ? articles.slice(1) : []).map((article) => (
                             <Card key={article.id} hover className="p-6 flex flex-col">
                                 <div className="mb-3">
                                     <Badge variant="default" size="sm">{article.category}</Badge>
                                 </div>
-                                <Link to={`/learn/${article.id}`}>
+                                <Link to={`/learn/${article.slug || article.id}`}>
                                     <h3 className="text-xl font-heading font-semibold text-text-primary mb-3 hover:text-accent-green transition-colors">
                                         {article.title}
                                     </h3>
@@ -164,6 +167,8 @@ export default function Learn() {
                             </Card>
                         ))}
                     </div>
+                    </>
+                    )}
 
                     {/* CTA */}
                     <Card className="mt-12 p-8 bg-gradient-to-br from-accent-green/5 to-accent-blue/5 border-accent-green/20 text-center">

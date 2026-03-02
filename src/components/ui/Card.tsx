@@ -1,4 +1,5 @@
 import type { CardProps } from '../../types/components';
+import { CARD, EASING, prefersReducedMotion } from '@utils/animationConfig';
 
 export default function Card({
     children,
@@ -7,8 +8,16 @@ export default function Card({
     hover = false,
     glow = 'none',
     id,
+    onClick,
 }: CardProps) {
-    const baseClasses = 'rounded-lg transition-all duration-300';
+    const reduced = prefersReducedMotion();
+
+    const baseClasses = [
+        'rounded-lg',
+        reduced
+            ? 'transition-none'
+            : `transition-all duration-[${CARD.transitionMs}ms]`,
+    ].join(' ');
 
     const variants = {
         default: 'bg-bg-card border border-border-primary',
@@ -16,9 +25,11 @@ export default function Card({
         bordered: 'bg-transparent border-2 border-border-secondary',
     };
 
-    const hoverClasses = hover
-        ? 'hover:shadow-card-hover hover:-translate-y-1 cursor-pointer'
-        : '';
+    const hoverClasses = hover && !reduced
+        ? 'hover:-translate-y-1.5 hover:shadow-[0_0_15px_rgba(0,255,136,0.15)] hover:border-accent-green/30 cursor-pointer'
+        : hover
+            ? 'cursor-pointer'
+            : '';
 
     const glowClasses = {
         none: '',
@@ -30,6 +41,11 @@ export default function Card({
         <div
             id={id}
             className={`${baseClasses} ${variants[variant]} ${hoverClasses} ${glowClasses[glow]} ${className}`}
+            style={{ transitionTimingFunction: EASING.default }}
+            onClick={onClick}
+            role={onClick ? 'button' : undefined}
+            tabIndex={onClick ? 0 : undefined}
+            onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
         >
             {children}
         </div>

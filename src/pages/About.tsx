@@ -1,6 +1,8 @@
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
+import ScrollReveal from '@components/ui/ScrollReveal';
+import { Link } from 'react-router-dom';
 
 export default function About() {
     const team = [
@@ -55,6 +57,7 @@ export default function About() {
             <div className="py-12">
                 <Container>
                     {/* Hero */}
+                    <ScrollReveal>
                     <div className="text-center mb-16">
                         <h1 className="text-4xl md:text-5xl font-heading font-bold text-text-primary mb-4">
                             About SafeWeb AI
@@ -63,12 +66,15 @@ export default function About() {
                             Protecting web applications with advanced AI-powered vulnerability scanning
                         </p>
                     </div>
+                    </ScrollReveal>
 
                     {/* Mission */}
                     <Card className="p-12 mb-16 text-center bg-gradient-to-br from-accent-green/5 to-accent-blue/5 border-accent-green/20">
+                        <ScrollReveal>
                         <h2 className="text-3xl font-heading font-bold text-text-primary mb-6">
                             Our Mission
                         </h2>
+                        </ScrollReveal>
                         <p className="text-lg text-text-secondary max-w-3xl mx-auto leading-relaxed">
                             SafeWeb AI was created as a university graduation project with the goal of making
                             professional web security accessible to everyone. We combine cutting-edge artificial
@@ -80,9 +86,12 @@ export default function About() {
 
                     {/* Values */}
                     <div className="mb-16">
+                        <ScrollReveal>
                         <h2 className="text-3xl font-heading font-bold text-text-primary text-center mb-12">
                             Our Core Values
                         </h2>
+                        </ScrollReveal>
+                        <ScrollReveal stagger>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {values.map((value, index) => (
                                 <Card key={index} hover className="p-6 text-center">
@@ -98,13 +107,16 @@ export default function About() {
                                 </Card>
                             ))}
                         </div>
+                        </ScrollReveal>
                     </div>
 
                     {/* Team */}
                     <div className="mb-16">
+                        <ScrollReveal>
                         <h2 className="text-3xl font-heading font-bold text-text-primary text-center mb-12">
                             Our Team
                         </h2>
+                        </ScrollReveal>
                         <div className="max-w-2xl mx-auto">
                             {team.map((member, index) => (
                                 <Card key={index} className="p-8 text-center">
@@ -123,9 +135,11 @@ export default function About() {
 
                     {/* Technology */}
                     <Card className="p-12 mb-16">
+                        <ScrollReveal>
                         <h2 className="text-3xl font-heading font-bold text-text-primary text-center mb-6">
                             Technology & Standards
                         </h2>
+                        </ScrollReveal>
                         <p className="text-lg text-text-secondary text-center max-w-3xl mx-auto mb-8 leading-relaxed">
                             Our platform is built on industry-leading security frameworks and continuously
                             updated to detect the latest vulnerabilities.
@@ -145,25 +159,27 @@ export default function About() {
 
                     {/* CTA */}
                     <div className="text-center">
+                        <ScrollReveal>
                         <h2 className="text-3xl font-heading font-bold text-text-primary mb-6">
                             Ready to Get Started?
                         </h2>
+                        </ScrollReveal>
                         <p className="text-lg text-text-secondary mb-8 max-w-2xl mx-auto">
-                            Join thousands of developers and security professionals using SafeWeb AI
+                            Join developers and security professionals using SafeWeb AI
                         </p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <a
-                                href="/register"
+                            <Link
+                                to="/register"
                                 className="px-8 py-3 rounded-lg bg-accent-green text-bg-primary font-medium hover:bg-accent-green-hover transition-colors"
                             >
                                 Start Free Trial
-                            </a>
-                            <a
-                                href="/contact"
+                            </Link>
+                            <Link
+                                to="/contact"
                                 className="px-8 py-3 rounded-lg bg-bg-secondary text-text-primary border border-border-primary font-medium hover:bg-bg-hover transition-colors"
                             >
                                 Contact Us
-                            </a>
+                            </Link>
                         </div>
                     </div>
                 </Container>

@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import Button from '@components/ui/Button';
 import Container from '@components/ui/Container';
+import GlitchText from '@components/ui/GlitchText';
+import ScrollReveal from '@components/ui/ScrollReveal';
 
 export default function CTA() {
     return (
@@ -16,8 +18,9 @@ export default function CTA() {
                     </div>
 
                     <div className="relative z-10 max-w-3xl mx-auto text-center">
+                        <ScrollReveal>
                         <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-text-primary mb-6">
-                            Ready to Secure Your Web Applications?
+                            <GlitchText as="span" interval={6000}>Ready to Secure Your Web Applications?</GlitchText>
                         </h2>
                         <p className="text-lg md:text-xl text-text-secondary mb-10">
                             Start scanning for free. No credit card required. Get instant security insights
@@ -60,6 +63,7 @@ export default function CTA() {
                                 <span>Cancel anytime</span>
                             </div>
                         </div>
+                        </ScrollReveal>
                     </div>
 
                     {/* Decorative Elements */}

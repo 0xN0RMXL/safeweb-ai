@@ -1,80 +1,50 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
 import Badge from '@components/ui/Badge';
 import Button from '@components/ui/Button';
+import { adminAPI } from '@services/api';
+
+interface DashboardData {
+    stats: { label: string; value: string; change: string; trend: string }[];
+    recentUsers: { id: string; name: string; email: string; plan: string; status: string; joined: string }[];
+    systemAlerts: { id: number; type: string; message: string; time: string }[];
+    scanStats: { status: string; count: number; percentage: number }[];
+}
+
+const statIcons = [
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" /></svg>,
+];
 
 export default function AdminDashboard() {
+    const navigate = useNavigate();
     const [timeRange, setTimeRange] = useState('7d');
+    const [data, setData] = useState<DashboardData | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const stats = [
-        {
-            label: 'Total Users',
-            value: '2,847',
-            change: '+12.5%',
-            trend: 'up',
-            icon: (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-            ),
-        },
-        {
-            label: 'Active Scans',
-            value: '143',
-            change: '+8.2%',
-            trend: 'up',
-            icon: (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            ),
-        },
-        {
-            label: 'Vulnerabilities Found',
-            value: '8,421',
-            change: '-3.1%',
-            trend: 'down',
-            icon: (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-            ),
-        },
-        {
-            label: 'System Uptime',
-            value: '99.98%',
-            change: '+0.02%',
-            trend: 'up',
-            icon: (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
-                </svg>
-            ),
-        },
-    ];
+    useEffect(() => {
+        setIsLoading(true);
+        adminAPI.getDashboard({ timeRange })
+            .then((res) => setData(res.data))
+            .catch(() => setData(null))
+            .finally(() => setIsLoading(false));
+    }, [timeRange]);
 
-    const recentUsers = [
-        { id: 1, name: 'John Doe', email: 'john@example.com', plan: 'Pro', status: 'active', joined: '2 hours ago' },
-        { id: 2, name: 'Jane Smith', email: 'jane@example.com', plan: 'Free', status: 'active', joined: '5 hours ago' },
-        { id: 3, name: 'Mike Johnson', email: 'mike@example.com', plan: 'Enterprise', status: 'active', joined: '1 day ago' },
-        { id: 4, name: 'Sarah Wilson', email: 'sarah@example.com', plan: 'Pro', status: 'suspended', joined: '2 days ago' },
-        { id: 5, name: 'Tom Brown', email: 'tom@example.com', plan: 'Free', status: 'active', joined: '3 days ago' },
-    ];
+    const stats = (data?.stats ?? [
+        { label: 'Total Users', value: '—', change: '', trend: 'up' },
+        { label: 'Active Scans', value: '—', change: '', trend: 'up' },
+        { label: 'Vulnerabilities Found', value: '—', change: '', trend: 'down' },
+        { label: 'System Uptime', value: '—', change: '', trend: 'up' },
+    ]).map((s, i) => ({ ...s, icon: statIcons[i] }));
 
-    const systemAlerts = [
-        { id: 1, type: 'warning', message: 'High API usage detected', time: '10 min ago' },
-        { id: 2, type: 'info', message: 'Database backup completed', time: '1 hour ago' },
-        { id: 3, type: 'critical', message: 'Failed login attempts spike', time: '2 hours ago' },
-    ];
-
-    const scanStats = [
-        { status: 'Completed', count: 1247, percentage: 68 },
-        { status: 'In Progress', count: 143, percentage: 8 },
-        { status: 'Failed', count: 89, percentage: 5 },
-        { status: 'Queued', count: 352, percentage: 19 },
-    ];
+    const recentUsers = data?.recentUsers ?? [];
+    const systemAlerts = data?.systemAlerts ?? [];
+    const scanStats = data?.scanStats ?? [];
 
     return (
         <Layout>
@@ -91,7 +61,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-3">
                             <select
                                 value={timeRange}
-                                onChange={(e) => setTimeRange(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTimeRange(e.target.value)}
                                 className="px-4 py-2 rounded-lg bg-bg-secondary border border-border-primary text-text-primary"
                             >
                                 <option value="24h">Last 24 Hours</option>
@@ -99,12 +69,18 @@ export default function AdminDashboard() {
                                 <option value="30d">Last 30 Days</option>
                                 <option value="90d">Last 90 Days</option>
                             </select>
-                            <Button variant="primary" size="sm">
+                            <Button variant="primary" size="sm" onClick={() => navigate('/admin/scans')}>
                                 Export Report
                             </Button>
                         </div>
                     </div>
 
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="w-8 h-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
+                        </div>
+                    ) : (
+                    <>
                     {/* Stats Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         {stats.map((stat, index) => (
@@ -175,10 +151,31 @@ export default function AdminDashboard() {
                                     </div>
                                 ))}
                             </div>
-                            <Button variant="outline" size="sm" className="w-full mt-4">
+                            <Button variant="outline" size="sm" className="w-full mt-4" onClick={() => navigate('/admin/settings')}>
                                 View All Alerts
                             </Button>
                         </Card>
+                    </div>
+
+                    {/* Quick Admin Links */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        {[
+                            { label: 'Manage Users', path: '/admin/users', icon: '👥' },
+                            { label: 'Scan Management', path: '/admin/scans', icon: '🔍' },
+                            { label: 'Contact Messages', path: '/admin/contacts', icon: '✉️' },
+                            { label: 'Job Applications', path: '/admin/applications', icon: '📋' },
+                        ].map((link) => (
+                            <Card
+                                key={link.path}
+                                className="p-4 cursor-pointer hover:border-accent-green/50 transition-colors"
+                                onClick={() => navigate(link.path)}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="text-2xl">{link.icon}</span>
+                                    <span className="font-medium text-text-primary">{link.label}</span>
+                                </div>
+                            </Card>
+                        ))}
                     </div>
 
                     {/* Recent Users */}
@@ -187,7 +184,7 @@ export default function AdminDashboard() {
                             <h2 className="text-xl font-heading font-semibold text-text-primary">
                                 Recent Users
                             </h2>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => navigate('/admin/users')}>
                                 View All Users
                             </Button>
                         </div>
@@ -222,7 +219,7 @@ export default function AdminDashboard() {
                                             </td>
                                             <td className="py-3 px-4 text-sm text-text-secondary">{user.joined}</td>
                                             <td className="py-3 px-4">
-                                                <Button variant="ghost" size="sm">
+                                                <Button variant="ghost" size="sm" onClick={() => navigate('/admin/users')}>
                                                     Manage
                                                 </Button>
                                             </td>
@@ -232,6 +229,8 @@ export default function AdminDashboard() {
                             </table>
                         </div>
                     </Card>
+                    </>
+                    )}
                 </Container>
             </div>
         </Layout>

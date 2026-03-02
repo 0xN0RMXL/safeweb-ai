@@ -13,6 +13,16 @@ export default defineConfig({
             '@utils': path.resolve(__dirname, './src/utils'),
             '@types': path.resolve(__dirname, './src/types'),
             '@assets': path.resolve(__dirname, './src/assets'),
+            '@services': path.resolve(__dirname, './src/services'),
+            '@contexts': path.resolve(__dirname, './src/contexts'),
+        },
+    },
+    server: {
+        proxy: {
+            '/api': {
+                target: 'http://127.0.0.1:8000',
+                changeOrigin: true,
+            },
         },
     },
 });

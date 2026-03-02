@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
@@ -8,97 +8,81 @@ import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
 import Select from '@components/ui/Select';
 import { formatDateTime, getRelativeTime } from '@utils/date';
+import { scanAPI } from '@/services/api';
 
 export default function ScanHistory() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [filterType, setFilterType] = useState('all');
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Mock data
-    const scans = [
-        {
-            id: '1',
-            target: 'https://example.com',
-            type: 'Website',
-            status: 'completed',
-            date: new Date('2025-12-20T10:30:00'),
-            duration: 15,
-            score: 82,
-            vulnerabilities: { critical: 1, high: 2, medium: 5, low: 8 },
-        },
-        {
-            id: '2',
-            target: 'https://api.example.com/v1',
-            type: 'API',
-            status: 'completed',
-            date: new Date('2025-12-19T15:45:00'),
-            duration: 12,
-            score: 91,
-            vulnerabilities: { critical: 0, high: 1, medium: 3, low: 4 },
-        },
-        {
-            id: '3',
-            target: 'https://staging.example.com',
-            type: 'Website',
-            status: 'completed',
-            date: new Date('2025-12-18T09:15:00'),
-            duration: 18,
-            score: 76,
-            vulnerabilities: { critical: 2, high: 4, medium: 7, low: 12 },
-        },
-        {
-            id: '4',
-            target: 'document.pdf',
-            type: 'File',
-            status: 'completed',
-            date: new Date('2025-12-17T14:20:00'),
-            duration: 5,
-            score: 95,
-            vulnerabilities: { critical: 0, high: 0, medium: 1, low: 2 },
-        },
-        {
-            id: '5',
-            target: 'https://admin.example.com',
-            type: 'Website',
-            status: 'failed',
-            date: new Date('2025-12-16T11:30:00'),
-            duration: 0,
-            score: 0,
-            vulnerabilities: { critical: 0, high: 0, medium: 0, low: 0 },
-        },
-        {
-            id: '6',
-            target: 'https://blog.example.com',
-            type: 'Website',
-            status: 'completed',
-            date: new Date('2025-12-15T16:45:00'),
-            duration: 14,
-            score: 88,
-            vulnerabilities: { critical: 0, high: 2, medium: 4, low: 6 },
-        },
-    ];
+    const [scans, setScans] = useState<{
+        id: string; target: string; type: string; status: string;
+        date: Date; duration: number; score: number;
+        vulnerabilities: { critical: number; high: number; medium: number; low: number };
+    }[]>([]);
 
-    const filteredScans = scans.filter((scan) => {
-        const matchesSearch = scan.target.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = filterStatus === 'all' || scan.status === filterStatus;
-        const matchesType = filterType === 'all' || scan.type.toLowerCase() === filterType;
-        return matchesSearch && matchesStatus && matchesType;
-    });
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const params: Record<string, string> = {};
+            if (searchQuery) params.search = searchQuery;
+            if (filterStatus !== 'all') params.status = filterStatus;
+            if (filterType !== 'all') params.type = filterType;
 
+            scanAPI.getList(params)
+                .then(({ data }) => {
+                    const results = data.results || data.scans || data || [];
+                    setScans(results.map((s: Record<string, unknown>) => ({
+                        id: s.id,
+                        target: s.target,
+                        type: s.scanType || s.type || 'Website',
+                        status: s.status,
+                        date: new Date(s.createdAt as string || s.date as string),
+                        duration: s.duration || 0,
+                        score: s.score || 0,
+                        vulnerabilities: s.vulnerabilitySummary || s.vulnerabilities || { critical: 0, high: 0, medium: 0, low: 0 },
+                    })));
+                })
+                .catch(() => {})
+                .finally(() => setIsLoading(false));
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [searchQuery, filterStatus, filterType]);
+
+    const handleDelete = async (scanId: string) => {
+        if (!confirm('Are you sure you want to delete this scan?')) return;
+        try {
+            await scanAPI.deleteScan(scanId);
+            setScans((prev) => prev.filter((s) => s.id !== scanId));
+        } catch (err) {
+            console.error('Delete failed:', err);
+            alert('Failed to delete scan. Please try again.');
+        }
+    };
+
+    const filteredScans = scans;
+
+    const completedScans = scans.filter((s) => s.status === 'completed');
     const stats = {
         total: scans.length,
-        completed: scans.filter((s) => s.status === 'completed').length,
+        completed: completedScans.length,
         failed: scans.filter((s) => s.status === 'failed').length,
-        avgScore: Math.round(
-            scans.filter((s) => s.status === 'completed').reduce((acc, s) => acc + s.score, 0) /
-            scans.filter((s) => s.status === 'completed').length
-        ),
+        avgScore: completedScans.length > 0
+            ? Math.round(completedScans.reduce((acc, s) => acc + s.score, 0) / completedScans.length)
+            : 0,
     };
 
     return (
         <Layout>
             <div className="py-12">
                 <Container>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="w-8 h-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
+                            <span className="ml-3 text-text-secondary">Loading scan history...</span>
+                        </div>
+                    ) : (
+                    <>
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
                         <div>
@@ -146,7 +130,7 @@ export default function ScanHistory() {
                                 type="text"
                                 placeholder="Search by URL or filename..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                                 leftIcon={
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -160,7 +144,7 @@ export default function ScanHistory() {
                                     { value: 'failed', label: 'Failed' },
                                 ]}
                                 value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)}
                             />
                             <Select
                                 options={[
@@ -170,7 +154,7 @@ export default function ScanHistory() {
                                     { value: 'file', label: 'File' },
                                 ]}
                                 value={filterType}
-                                onChange={(e) => setFilterType(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterType(e.target.value)}
                             />
                         </div>
                     </Card>
@@ -248,13 +232,16 @@ export default function ScanHistory() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
                                                     {scan.status === 'completed' && (
-                                                        <Link to={`/results/${scan.id}`}>
+                                                        <Link to={`/scan/results/${scan.id}`}>
                                                             <Button variant="outline" size="sm">
                                                                 View Report
                                                             </Button>
                                                         </Link>
                                                     )}
-                                                    <button className="p-2 text-text-tertiary hover:text-text-primary transition-colors">
+                                                    <button
+                                                        onClick={() => handleDelete(scan.id)}
+                                                        className="p-2 text-text-tertiary hover:text-status-critical transition-colors"
+                                                    >
                                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                         </svg>
@@ -276,6 +263,8 @@ export default function ScanHistory() {
                             </div>
                         )}
                     </Card>
+                    </>
+                    )}
                 </Container>
             </div>
         </Layout>

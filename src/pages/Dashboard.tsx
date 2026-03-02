@@ -1,102 +1,96 @@
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
 import Button from '@components/ui/Button';
 import Badge from '@components/ui/Badge';
+import ScrollReveal from '@components/ui/ScrollReveal';
 import { formatDateTime } from '@utils/date';
+import { dashboardAPI } from '@/services/api';
 
 export default function Dashboard() {
-  // Mock data
-  const stats = [
-    {
-      label: 'Total Scans',
-      value: '24',
-      change: '+12%',
-      trend: 'up' as const,
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Critical Issues',
-      value: '3',
-      change: '-25%',
-      trend: 'down' as const,
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Security Score',
-      value: '87',
-      change: '+5 pts',
-      trend: 'up' as const,
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Last Scan',
-      value: '2h ago',
-      change: 'Completed',
-      trend: 'neutral' as const,
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-    },
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Icons for stat cards
+  const statIcons = [
+    <svg key="scans" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>,
+    <svg key="critical" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
+    <svg key="score" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
+    <svg key="time" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
   ];
 
-  const recentScans = [
-    {
-      id: '1',
-      target: 'https://example.com',
-      type: 'Website',
-      status: 'completed' as const,
-      date: new Date('2025-12-20T10:30:00'),
-      vulnerabilities: { critical: 1, high: 2, medium: 5, low: 8 },
-      score: 82,
-    },
-    {
-      id: '2',
-      target: 'https://api.example.com',
-      type: 'API',
-      status: 'completed' as const,
-      date: new Date('2025-12-19T15:45:00'),
-      vulnerabilities: { critical: 0, high: 1, medium: 3, low: 4 },
-      score: 91,
-    },
-    {
-      id: '3',
-      target: 'upload.pdf',
-      type: 'File',
-      status: 'scanning' as const,
-      date: new Date('2025-12-20T12:15:00'),
-      vulnerabilities: { critical: 0, high: 0, medium: 0, low: 0 },
-      score: 0,
-    },
-  ];
+  const [stats, setStats] = useState<{
+    label: string; value: string; change: string; trend: 'up' | 'down' | 'neutral'; icon: React.ReactNode;
+  }[]>([
+    { label: 'Total Scans', value: '0', change: '', trend: 'neutral', icon: statIcons[0] },
+    { label: 'Critical Issues', value: '0', change: '', trend: 'neutral', icon: statIcons[1] },
+    { label: 'Security Score', value: '0', change: '', trend: 'neutral', icon: statIcons[2] },
+    { label: 'Last Scan', value: 'N/A', change: '', trend: 'neutral', icon: statIcons[3] },
+  ]);
 
-  const vulnerabilityOverview = [
-    { severity: 'critical' as const, count: 3, label: 'Critical' },
-    { severity: 'high' as const, count: 7, label: 'High' },
-    { severity: 'medium' as const, count: 15, label: 'Medium' },
-    { severity: 'low' as const, count: 28, label: 'Low' },
-  ];
+  const [recentScans, setRecentScans] = useState<{
+    id: string; target: string; type: string; status: string;
+    date: Date; vulnerabilities: { critical: number; high: number; medium: number; low: number };
+    score: number;
+  }[]>([]);
+
+  const [vulnerabilityOverview, setVulnerabilityOverview] = useState([
+    { severity: 'critical' as const, count: 0, label: 'Critical' },
+    { severity: 'high' as const, count: 0, label: 'High' },
+    { severity: 'medium' as const, count: 0, label: 'Medium' },
+    { severity: 'low' as const, count: 0, label: 'Low' },
+  ]);
+
+  useEffect(() => {
+    dashboardAPI.get()
+      .then(({ data }) => {
+        // Map stats from API
+        if (data.stats) {
+          setStats([
+            { label: 'Total Scans', value: String(data.stats.totalScans ?? 0), change: data.stats.scansChange || '', trend: (data.stats.scansChange && data.stats.scansChange.startsWith('-')) ? 'down' as const : 'up' as const, icon: statIcons[0] },
+            { label: 'Critical Issues', value: String(data.stats.criticalIssues ?? 0), change: data.stats.criticalChange || '', trend: (data.stats.criticalChange && !data.stats.criticalChange.startsWith('-')) ? 'up' as const : 'down' as const, icon: statIcons[1] },
+            { label: 'Security Score', value: String(data.stats.securityScore ?? data.stats.avgScore ?? 0), change: data.stats.scoreChange || '', trend: (data.stats.scoreChange && data.stats.scoreChange.startsWith('-')) ? 'down' as const : 'up' as const, icon: statIcons[2] },
+            { label: 'Last Scan', value: data.stats.lastScan || 'N/A', change: '', trend: 'neutral' as const, icon: statIcons[3] },
+          ]);
+        }
+
+        // Map recent scans
+        if (data.recentScans) {
+          setRecentScans(data.recentScans.map((s: Record<string, unknown>) => ({
+            id: s.id,
+            target: s.target,
+            type: s.scanType || s.type || 'Website',
+            status: s.status,
+            date: new Date(s.createdAt as string || s.date as string),
+            vulnerabilities: s.vulnerabilitySummary || s.vulnerabilities || { critical: 0, high: 0, medium: 0, low: 0 },
+            score: s.score || 0,
+          })));
+        }
+
+        // Map vulnerability overview
+        if (data.vulnerabilityOverview) {
+          setVulnerabilityOverview([
+            { severity: 'critical', count: data.vulnerabilityOverview.critical ?? 0, label: 'Critical' },
+            { severity: 'high', count: data.vulnerabilityOverview.high ?? 0, label: 'High' },
+            { severity: 'medium', count: data.vulnerabilityOverview.medium ?? 0, label: 'Medium' },
+            { severity: 'low', count: data.vulnerabilityOverview.low ?? 0, label: 'Low' },
+          ]);
+        }
+      })
+      .catch((err) => {
+        console.error('Dashboard load error:', err);
+        setStats(prev => [{ ...prev[0], change: 'Error loading' }, ...prev.slice(1)]);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   return (
     <Layout>
       <div className="py-12">
         <Container>
           {/* Header */}
+          <ScrollReveal>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
             <div>
               <h1 className="text-3xl font-heading font-bold text-text-primary mb-2">
@@ -115,8 +109,17 @@ export default function Dashboard() {
               </Button>
             </Link>
           </div>
+          </ScrollReveal>
 
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-8 h-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
+              <span className="ml-3 text-text-secondary">Loading dashboard...</span>
+            </div>
+          ) : (
+          <>
           {/* Stats Grid */}
+          <ScrollReveal stagger staggerDelay={80}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {stats.map((stat, index) => (
               <Card key={index} className="p-6">
@@ -143,6 +146,7 @@ export default function Dashboard() {
               </Card>
             ))}
           </div>
+          </ScrollReveal>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Recent Scans */}
@@ -160,6 +164,18 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-4">
+                {recentScans.length === 0 && (
+                  <div className="text-center py-12">
+                    <svg className="w-16 h-16 mx-auto text-text-tertiary mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">No scans yet</h3>
+                    <p className="text-sm text-text-tertiary mb-4">Start your first security scan to see results here</p>
+                    <Link to="/scan">
+                      <Button variant="primary" size="sm">Start First Scan</Button>
+                    </Link>
+                  </div>
+                )}
                 {recentScans.map((scan) => (
                   <div
                     key={scan.id}
@@ -265,7 +281,7 @@ export default function Dashboard() {
                             ? 'bg-status-medium'
                             : 'bg-status-low'
                         }`}
-                        style={{ width: `${(item.count / 60) * 100}%` }}
+                        style={{ width: `${Math.min((item.count / (Math.max(...vulnerabilityOverview.map(v => v.count), 1))) * 100, 100)}%` }}
                       ></div>
                     </div>
                   </div>
@@ -332,6 +348,8 @@ export default function Dashboard() {
               </Link>
             </Card>
           </div>
+          </>
+          )}
         </Container>
       </div>
     </Layout>

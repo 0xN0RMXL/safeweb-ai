@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
 import Button from '@components/ui/Button';
 import Container from '@components/ui/Container';
+import GlitchText from '@components/ui/GlitchText';
+import TypewriterText from '@components/ui/TypewriterText';
+import ScrollReveal from '@components/ui/ScrollReveal';
 
 export default function Hero() {
     return (
@@ -17,10 +20,20 @@ export default function Hero() {
 
                     {/* Main Heading */}
                     <h1 className="text-5xl md:text-6xl lg:text-7xl font-heading font-bold text-text-primary mb-6 leading-tight">
-                        Secure Your Web
+                        <GlitchText as="span" interval={8000}>Secure Your Web</GlitchText>
                         <br />
                         <span className="text-gradient-green">Applications</span> with AI
                     </h1>
+
+                    {/* Typewriter Tagline */}
+                    <div className="h-8 mb-4 flex items-center justify-center">
+                        <TypewriterText
+                            text="$ safeweb-ai --scan --protect --defend"
+                            speed={40}
+                            startDelay={800}
+                            className="text-sm md:text-base text-accent-green/80"
+                        />
+                    </div>
 
                     {/* Description */}
                     <p className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -46,20 +59,22 @@ export default function Hero() {
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto pt-8 border-t border-border-primary">
-                        <div>
-                            <div className="text-3xl md:text-4xl font-bold text-accent-green mb-2">10K+</div>
-                            <div className="text-sm text-text-tertiary">Scans Completed</div>
+                    <ScrollReveal delay={400}>
+                        <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto pt-8 border-t border-border-primary">
+                            <div>
+                                <div className="text-3xl md:text-4xl font-bold text-accent-green mb-2">10K+</div>
+                                <div className="text-sm text-text-tertiary">Scans Completed</div>
+                            </div>
+                            <div>
+                                <div className="text-3xl md:text-4xl font-bold text-accent-blue mb-2">50K+</div>
+                                <div className="text-sm text-text-tertiary">Vulnerabilities Found</div>
+                            </div>
+                            <div>
+                                <div className="text-3xl md:text-4xl font-bold text-accent-green mb-2">99.9%</div>
+                                <div className="text-sm text-text-tertiary">Detection Accuracy</div>
+                            </div>
                         </div>
-                        <div>
-                            <div className="text-3xl md:text-4xl font-bold text-accent-blue mb-2">50K+</div>
-                            <div className="text-sm text-text-tertiary">Vulnerabilities Found</div>
-                        </div>
-                        <div>
-                            <div className="text-3xl md:text-4xl font-bold text-accent-green mb-2">99.9%</div>
-                            <div className="text-sm text-text-tertiary">Detection Accuracy</div>
-                        </div>
-                    </div>
+                    </ScrollReveal>
                 </div>
             </Container>
 

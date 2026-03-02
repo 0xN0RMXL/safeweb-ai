@@ -1,5 +1,7 @@
 # SafeWeb AI - Web Application Vulnerability Scanner
 
+![CI](https://github.com/YOUR_USERNAME/safeweb-ai/workflows/CI/badge.svg)
+
 A professional cybersecurity SaaS platform for scanning websites, files, and URLs for vulnerabilities and malware threats. Built with React, TypeScript, and Tailwind CSS.
 
 ## 🚀 Features
@@ -33,11 +35,12 @@ npm run build
 
 # Preview production build
 npm run preview
+npm run dev
 ```
 
 ## 🏗️ Project Structure
 
-```
+```text
 src/
 ├── components/
 │   ├── ui/              # Reusable UI components
@@ -52,12 +55,14 @@ src/
 ## 🎨 Design System
 
 ### Colors
+
 - **Background**: `#050607` - `#0A0C0E`
 - **Primary Accent**: `#00FF88` (Neon Green)
 - **Secondary Accent**: `#3AA9FF` (Cyber Blue)
 - **Critical**: `#FF3B3B` (Red)
 
 ### Typography
+
 - **Headings**: Space Grotesk / Inter
 - **Body**: Inter
 - **Code**: JetBrains Mono

@@ -10,7 +10,7 @@ export default function Privacy() {
                         <h1 className="text-4xl font-heading font-bold text-text-primary mb-4">
                             Privacy Policy
                         </h1>
-                        <p className="text-text-tertiary mb-8">Last updated: January 15, 2024</p>
+                        <p className="text-text-tertiary mb-8">Last updated: February 1, 2026</p>
 
                         <div className="prose prose-invert max-w-none space-y-8">
                             <section>

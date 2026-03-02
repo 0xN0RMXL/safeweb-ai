@@ -1,4 +1,5 @@
 import Container from '@components/ui/Container';
+import ScrollReveal from '@components/ui/ScrollReveal';
 
 export default function HowItWorks() {
     const steps = [
@@ -47,16 +48,18 @@ export default function HowItWorks() {
     return (
         <section className="py-20">
             <Container>
-                <div className="text-center mb-16">
-                    <h2 className="text-3xl md:text-4xl font-heading font-bold text-text-primary mb-4">
-                        How It Works
-                    </h2>
-                    <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-                        Simple, fast, and effective vulnerability scanning in four steps
-                    </p>
-                </div>
+                <ScrollReveal>
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl md:text-4xl font-heading font-bold text-text-primary mb-4">
+                            How It Works
+                        </h2>
+                        <p className="text-lg text-text-secondary max-w-2xl mx-auto">
+                            Simple, fast, and effective vulnerability scanning in four steps
+                        </p>
+                    </div>
+                </ScrollReveal>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <ScrollReveal stagger staggerDelay={120} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     {steps.map((step, index) => (
                         <div key={index} className="relative">
                             {/* Connector Line */}
@@ -89,7 +92,7 @@ export default function HowItWorks() {
                             </div>
                         </div>
                     ))}
-                </div>
+                </ScrollReveal>
             </Container>
         </section>
     );

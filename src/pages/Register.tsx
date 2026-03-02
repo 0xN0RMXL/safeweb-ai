@@ -1,13 +1,18 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
 import Input from '@components/ui/Input';
 import Button from '@components/ui/Button';
 import { isValidEmail, validatePassword } from '@utils/validation';
+import PasswordStrengthMeter from '@components/ui/PasswordStrengthMeter';
+import { useAuth } from '@/contexts/AuthContext';
+import { AxiosError } from 'axios';
 
 export default function Register() {
+    const navigate = useNavigate();
+    const { register, isAuthenticated } = useAuth();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -20,8 +25,13 @@ export default function Register() {
         password: '',
         confirmPassword: '',
     });
+    const [apiError, setApiError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [acceptTerms, setAcceptTerms] = useState(false);
+
+    if (isAuthenticated) {
+        return <Navigate to="/dashboard" replace />;
+    }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -84,13 +94,24 @@ export default function Register() {
         if (!validateForm()) return;
 
         setIsLoading(true);
+        setApiError('');
 
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            await register(formData);
+            navigate('/dashboard', { replace: true });
+        } catch (err) {
+            const axiosErr = err as AxiosError<{ detail?: string; message?: string; email?: string[] }>;
+            const data = axiosErr.response?.data;
+            if (data?.email) {
+                setErrors((prev) => ({ ...prev, email: data.email![0] }));
+            } else {
+                setApiError(
+                    data?.detail || data?.message || 'Registration failed. Please try again.',
+                );
+            }
+        } finally {
             setIsLoading(false);
-            console.log('Registration submitted:', formData);
-            // Handle registration logic here
-        }, 1500);
+        }
     };
 
     return (
@@ -111,11 +132,19 @@ export default function Register() {
                         {/* Register Card */}
                         <Card className="p-8">
                             <form onSubmit={handleSubmit} className="space-y-5">
+                                {/* API Error */}
+                                {apiError && (
+                                    <div className="p-3 rounded-lg bg-status-critical/10 border border-status-critical/20 text-status-critical text-sm">
+                                        {apiError}
+                                    </div>
+                                )}
+
                                 {/* OAuth Buttons */}
                                 <div className="grid grid-cols-1 gap-3 mb-6">
                                     <button
                                         type="button"
-                                        className="flex items-center justify-center gap-3 px-4 py-2.5 rounded-lg bg-bg-secondary border border-border-primary text-text-primary hover:bg-bg-hover transition-colors duration-200"
+                                        disabled
+                                        className="relative flex items-center justify-center gap-3 px-4 py-2.5 rounded-lg bg-bg-secondary border border-border-primary text-text-muted cursor-not-allowed opacity-60"
                                     >
                                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                                             <path
@@ -136,6 +165,9 @@ export default function Register() {
                                             />
                                         </svg>
                                         <span>Continue with Google</span>
+                                        <span className="absolute right-3 text-[10px] font-semibold uppercase tracking-wider bg-accent-blue/20 text-accent-blue px-2 py-0.5 rounded-full">
+                                            Coming Soon
+                                        </span>
                                     </button>
                                 </div>
 
@@ -182,21 +214,23 @@ export default function Register() {
                                 />
 
                                 {/* Password Input */}
-                                <Input
-                                    type="password"
-                                    name="password"
-                                    label="Password"
-                                    placeholder="Create a strong password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    error={errors.password}
-                                    helperText="Min. 8 characters with uppercase, lowercase, number & special character"
-                                    leftIcon={
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                        </svg>
-                                    }
-                                />
+                                <div>
+                                    <Input
+                                        type="password"
+                                        name="password"
+                                        label="Password"
+                                        placeholder="Create a strong password"
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        error={errors.password}
+                                        leftIcon={
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                            </svg>
+                                        }
+                                    />
+                                    <PasswordStrengthMeter password={formData.password} />
+                                </div>
 
                                 {/* Confirm Password Input */}
                                 <Input
@@ -219,7 +253,7 @@ export default function Register() {
                                     <input
                                         type="checkbox"
                                         checked={acceptTerms}
-                                        onChange={(e) => setAcceptTerms(e.target.checked)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAcceptTerms(e.target.checked)}
                                         className="w-4 h-4 mt-1 rounded border-border-primary bg-bg-secondary text-accent-green focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-bg-primary cursor-pointer flex-shrink-0"
                                     />
                                     <span className="text-sm text-text-secondary leading-relaxed">

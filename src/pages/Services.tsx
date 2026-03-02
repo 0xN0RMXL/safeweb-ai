@@ -3,6 +3,7 @@ import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
 import Button from '@components/ui/Button';
+import ScrollReveal from '@components/ui/ScrollReveal';
 
 export default function Services() {
     const plans = [
@@ -117,6 +118,7 @@ export default function Services() {
             <div className="py-12">
                 <Container>
                     {/* Header */}
+                    <ScrollReveal>
                     <div className="text-center mb-16">
                         <h1 className="text-4xl md:text-5xl font-heading font-bold text-text-primary mb-4">
                             Pricing & Services
@@ -125,9 +127,11 @@ export default function Services() {
                             Choose the perfect plan for your security needs
                         </p>
                     </div>
+                    </ScrollReveal>
 
                     {/* Pricing Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
+                    <ScrollReveal stagger staggerDelay={100}>
+                    <div id="pricing" className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
                         {plans.map((plan, index) => (
                             <Card
                                 key={index}
@@ -191,6 +195,7 @@ export default function Services() {
                             </Card>
                         ))}
                     </div>
+                    </ScrollReveal>
 
                     {/* Features */}
                     <div className="mb-20">
