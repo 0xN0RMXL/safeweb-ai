@@ -5,6 +5,32 @@ All notable changes to SafeWeb AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-03
+
+### Added
+
+- Admin Contacts page for managing contact form submissions
+- Admin Applications page for managing job applications
+- Careers URL routing and job application migration
+- Reveal.js graduation presentation (35 slides with dark cybersecurity theme)
+- Presentation Figma prompt document
+- Password strength meter component
+
+### Fixed
+
+- Chatbot: resolved camelCase/snake_case serializer mismatch causing repeated responses
+- Chatbot: added response variation and conversation history awareness
+- Export report: renamed DRF reserved `format` parameter to `export_format` (PDF/CSV/JSON now working)
+- Rescan: fixed page reload for proper re-scan execution
+- Export: proper blob handling for CSV and PDF downloads
+
+### Changed
+
+- Updated .gitignore to exclude Python __pycache__, .sqlite3, .venv, and screenshots
+- Removed tracked __pycache__ and db.sqlite3 from repository
+- Added Quick Admin Links section to Admin Dashboard
+- Card component now supports onClick prop
+
 ## [1.0.0] - 2026-02-14
 
 ### Added
