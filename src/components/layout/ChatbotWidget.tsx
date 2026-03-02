@@ -117,7 +117,7 @@ export default function ChatbotWidget() {
     };
 
     const sendMessage = async (text: string) => {
-        const userMsg = {
+        const userMsg: ChatMsg = {
             id: messages.length + 1,
             text,
             sender: 'user',
@@ -139,7 +139,7 @@ export default function ChatbotWidget() {
                 {
                     id: prev.length + 1,
                     text: data.response || data.message || 'I apologize, I could not process that.',
-                    sender: 'bot',
+                    sender: 'bot' as const,
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 },
             ]);
@@ -149,7 +149,7 @@ export default function ChatbotWidget() {
                 {
                     id: prev.length + 1,
                     text: 'I\'m having trouble connecting. Please try again later.',
-                    sender: 'bot',
+                    sender: 'bot' as const,
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 },
             ]);
