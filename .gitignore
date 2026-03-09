@@ -43,3 +43,12 @@ backend/media/
 
 # Screenshots (large binary files)
 screenshots/
+
+# Nuclei community templates (cloned at runtime, ~500 MB)
+backend/apps/scanning/engine/nuclei/templates_repo/
+
+# SecLists repo cloned at runtime — not tracked in git (~2 GB)
+backend/apps/scanning/engine/payloads/data/seclists/
+
+# Locked payload file (Windows permission issue)
+backend/apps/scanning/engine/payloads/data/waf_bypass/imperva.txt
