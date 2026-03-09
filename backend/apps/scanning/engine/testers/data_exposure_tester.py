@@ -37,7 +37,7 @@ class DataExposureTester(BaseTester):
 
     TESTER_NAME = 'Data Exposure'
 
-    def test(self, page, depth: str = 'medium') -> list:
+    def test(self, page, depth: str = 'medium', recon_data: dict = None) -> list:
         vulnerabilities = []
 
         # Check for HTTPS

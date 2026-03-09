@@ -188,10 +188,26 @@ X_FRAME_OPTIONS = 'DENY'
 # AI API
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
+# Phase 23: OSINT API Keys
+SHODAN_API_KEY = os.getenv('SHODAN_API_KEY', '')
+CENSYS_API_ID = os.getenv('CENSYS_API_ID', '')
+CENSYS_API_SECRET = os.getenv('CENSYS_API_SECRET', '')
+VT_API_KEY = os.getenv('VT_API_KEY', '')
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '')
+
 # Scan Configuration
 MAX_CONCURRENT_SCANS = int(os.getenv('MAX_CONCURRENT_SCANS', 10))
 SCAN_TIMEOUT_SECONDS = int(os.getenv('SCAN_TIMEOUT_SECONDS', 3600))
 MAX_CRAWL_PAGES = int(os.getenv('MAX_CRAWL_PAGES', 200))
+
+# Phase 14: Scanner Performance Tuning
+SCANNER_PERFORMANCE = {
+    'MAX_CONCURRENT_REQUESTS': int(os.getenv('SCANNER_MAX_CONCURRENT', 50)),
+    'MAX_CRAWL_CONCURRENCY': int(os.getenv('SCANNER_CRAWL_CONCURRENCY', 5)),
+    'RESPONSE_SIZE_LIMIT_BYTES': int(os.getenv('SCANNER_RESPONSE_SIZE_LIMIT', 5 * 1024 * 1024)),
+    'DNS_CACHE_TTL': int(os.getenv('SCANNER_DNS_CACHE_TTL', 300)),
+    'MEMORY_GUARD_MB': int(os.getenv('SCANNER_MEMORY_GUARD_MB', 500)),
+}
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Override in production

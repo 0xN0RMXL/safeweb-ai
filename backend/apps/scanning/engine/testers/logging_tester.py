@@ -14,7 +14,7 @@ class LoggingTester(BaseTester):
 
     TESTER_NAME = 'Logging'
 
-    def test(self, page, depth: str = 'medium') -> list:
+    def test(self, page, depth: str = 'medium', recon_data: dict = None) -> list:
         vulnerabilities = []
 
         # Check for verbose error handling

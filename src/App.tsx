@@ -31,6 +31,11 @@ import AdminSettings from '@pages/admin/AdminSettings';
 import AdminContacts from '@pages/admin/AdminContacts';
 import AdminApplications from '@pages/admin/AdminApplications';
 import NotFound from '@pages/NotFound';
+import ScheduledScans from '@pages/ScheduledScans';
+import ScopeManagement from '@pages/ScopeManagement';
+import AssetInventory from '@pages/AssetInventory';
+import WebhookSettings from '@pages/WebhookSettings';
+import ScanComparison from '@pages/ScanComparison';
 import ChatbotWidget from '@components/layout/ChatbotWidget';
 
 function App() {
@@ -60,6 +65,11 @@ function App() {
                     <Route path="/compliance" element={<Compliance />} />
                     <Route path="/careers" element={<Careers />} />
                     <Route path="/partners" element={<Partners />} />
+                    <Route path="/scheduled-scans" element={<ProtectedRoute><ScheduledScans /></ProtectedRoute>} />
+                    <Route path="/scopes" element={<ProtectedRoute><ScopeManagement /></ProtectedRoute>} />
+                    <Route path="/assets" element={<ProtectedRoute><AssetInventory /></ProtectedRoute>} />
+                    <Route path="/settings/webhooks" element={<ProtectedRoute><WebhookSettings /></ProtectedRoute>} />
+                    <Route path="/scan/compare/:id1/:id2" element={<ProtectedRoute><ScanComparison /></ProtectedRoute>} />
 
                     {/* Admin Routes */}
                     <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />

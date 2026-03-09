@@ -1,3 +1,4 @@
+import json
 import logging
 from django.utils import timezone
 from django.db.models import Count, Avg, Q
@@ -6,10 +7,16 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 
-from .models import Scan, Vulnerability
+from .models import Scan, Vulnerability, Webhook, WebhookDelivery, NucleiTemplate, ScopeDefinition, MultiTargetScan, DiscoveredAsset, ScheduledScan, AssetMonitorRecord, AuthConfig
 from .serializers import (
     ScanCreateSerializer, ScanURLCreateSerializer,
     ScanDetailSerializer, ScanListSerializer,
+    ScanFullCreateSerializer, WebhookSerializer,
+    WebhookDeliverySerializer, NucleiTemplateSerializer,
+    VulnerabilitySerializer,
+    ScopeDefinitionSerializer, MultiTargetScanSerializer,
+    DiscoveredAssetSerializer, ScopeImportSerializer, ScopeValidateSerializer,
+    ScheduledScanSerializer, AssetMonitorRecordSerializer, AuthConfigSerializer,
 )
 from .tasks import execute_scan_task
 from apps.accounts.utils import time_ago
@@ -411,3 +418,1067 @@ class DashboardView(views.APIView):
             'recentScans': recent,
             'vulnerabilityOverview': vuln_overview,
         })
+
+
+# ─────────────────────────── Phase 44: API-First Architecture ───────────────
+
+
+class ScanCreateFullView(views.APIView):
+    """
+    POST /api/scans/
+    Create a scan with full configuration: profile, auth config, scope,
+    and scan mode.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ScanFullCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        scan = Scan.objects.create(
+            user=request.user,
+            scan_type='website',
+            target=data['url'],
+            depth=data['scan_depth'],
+            include_subdomains=data['include_subdomains'],
+            check_ssl=data['check_ssl'],
+            follow_redirects=data['follow_redirects'],
+            mode=data.get('scan_mode', 'standard'),
+            status='pending',
+            recon_data={
+                'profile': data.get('profile', ''),
+                'scope': data.get('scope', []),
+            },
+        )
+
+        # Store auth config if provided
+        auth_cfg = data.get('auth_config')
+        if auth_cfg:
+            from .models import AuthConfig
+            AuthConfig.objects.create(
+                scan=scan,
+                auth_type=auth_cfg.get('auth_type', 'custom'),
+                role=auth_cfg.get('role', 'attacker'),
+                config_data=auth_cfg,
+            )
+
+        execute_scan_task.delay(str(scan.id))
+        logger.info(f'Full-config scan created: {scan.id} by {request.user}')
+
+        return Response({
+            'id': str(scan.id),
+            'target': scan.target,
+            'type': 'website',
+            'status': 'pending',
+            'mode': scan.mode,
+            'profile': data.get('profile', ''),
+            'startTime': timezone.now().isoformat(),
+        }, status=status.HTTP_201_CREATED)
+
+
+class ScanFindingsListView(generics.ListAPIView):
+    """
+    GET /api/scans/<id>/findings/
+    Paginated findings list with severity/category/verified filters.
+    """
+    serializer_class = VulnerabilitySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):  # type: ignore[override]
+        scan_id = self.kwargs['id']
+        try:
+            scan = Scan.objects.get(id=scan_id, user=self.request.user)
+        except Scan.DoesNotExist:
+            return Vulnerability.objects.none()
+
+        qs = scan.vulnerabilities.all()
+
+        severity = self.request.query_params.get('severity')
+        if severity:
+            qs = qs.filter(severity__in=severity.split(','))
+
+        category = self.request.query_params.get('category')
+        if category:
+            qs = qs.filter(category__icontains=category)
+
+        verified = self.request.query_params.get('verified')
+        if verified is not None:
+            qs = qs.filter(verified=(verified.lower() == 'true'))
+
+        search = self.request.query_params.get('search')
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search) | Q(description__icontains=search)
+            )
+
+        return qs
+
+
+class RescanFindingView(views.APIView):
+    """
+    POST /api/scans/<id>/rescan-finding/
+    Re-test a specific finding by id.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        try:
+            scan = Scan.objects.get(id=id, user=request.user)
+        except Scan.DoesNotExist:
+            return Response({'detail': 'Scan not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        finding_id = request.data.get('finding_id')
+        if not finding_id:
+            return Response({'detail': 'finding_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            finding = scan.vulnerabilities.get(id=finding_id)
+        except Vulnerability.DoesNotExist:
+            return Response({'detail': 'Finding not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Create a targeted rescan for this single finding
+        new_scan = Scan.objects.create(
+            user=request.user,
+            scan_type=scan.scan_type,
+            target=finding.affected_url or scan.target,
+            depth=scan.depth,
+            include_subdomains=False,
+            check_ssl=scan.check_ssl,
+            follow_redirects=scan.follow_redirects,
+            mode='standard',
+            status='pending',
+            recon_data={'rescan_finding': str(finding.id), 'parent_scan': str(scan.id)},
+            parent_scan=scan,
+        )
+        execute_scan_task.delay(str(new_scan.id))
+
+        return Response({
+            'id': str(new_scan.id),
+            'finding_id': str(finding.id),
+            'finding_name': finding.name,
+            'status': 'pending',
+            'message': f'Re-scan initiated for finding "{finding.name}".',
+        }, status=status.HTTP_201_CREATED)
+
+
+class ScanCompareView(views.APIView):
+    """
+    GET /api/scans/compare/<id1>/<id2>/
+    Diff two scans and return new / fixed / regressed findings.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id1, id2):
+        try:
+            scan_a = Scan.objects.get(id=id1, user=request.user)
+            scan_b = Scan.objects.get(id=id2, user=request.user)
+        except Scan.DoesNotExist:
+            return Response({'detail': 'One or both scans not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        from .engine.scan_comparison import ScanComparison
+
+        findings_a = list(scan_a.vulnerabilities.values(
+            'name', 'category', 'severity', 'cvss', 'affected_url',
+        ))
+        findings_b = list(scan_b.vulnerabilities.values(
+            'name', 'category', 'severity', 'cvss', 'affected_url',
+        ))
+
+        result = ScanComparison(findings_a, findings_b).compare()
+        d = result.to_dict()
+        d['scan_a'] = str(scan_a.id)
+        d['scan_b'] = str(scan_b.id)
+        d['improved'] = result.improved
+        return Response(d)
+
+
+class ScanExportFormatView(views.APIView):
+    """
+    POST /api/scans/<id>/export/<format>/
+    Export scan to pdf | json | sarif | csv | html.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id, fmt):
+        try:
+            scan = Scan.objects.get(id=id, user=request.user)
+        except Scan.DoesNotExist:
+            return Response({'detail': 'Scan not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        fmt = fmt.lower()
+        handlers = {
+            'json': self._export_json,
+            'csv': self._export_csv,
+            'pdf': self._export_pdf,
+            'sarif': self._export_sarif,
+            'html': self._export_html,
+        }
+        handler = handlers.get(fmt)
+        if not handler:
+            return Response(
+                {'detail': f'Unsupported format: {fmt!r}. Use: json, csv, pdf, sarif, html'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return handler(scan)
+
+    def _export_json(self, scan):
+        from django.http import JsonResponse
+        serializer = ScanDetailSerializer(scan)
+        resp = JsonResponse(serializer.data, json_dumps_params={'indent': 2})
+        resp['Content-Disposition'] = f'attachment; filename="safeweb-{scan.id}.json"'
+        return resp
+
+    def _export_csv(self, scan):
+        import csv
+        from django.http import HttpResponse
+        resp = HttpResponse(content_type='text/csv')
+        resp['Content-Disposition'] = f'attachment; filename="safeweb-{scan.id}.csv"'
+        writer = csv.writer(resp)
+        writer.writerow(['Name', 'Severity', 'Category', 'CWE', 'CVSS', 'URL', 'Description'])
+        for v in scan.vulnerabilities.all():
+            writer.writerow([v.name, v.severity, v.category, v.cwe, v.cvss, v.affected_url, v.description])
+        return resp
+
+    def _export_pdf(self, scan):
+        from django.http import HttpResponse
+        try:
+            from apps.scanning.engine.report_generator import generate_pdf_report
+            pdf_buffer = generate_pdf_report(scan)
+        except ImportError:
+            return Response(
+                {'detail': 'PDF export unavailable: reportlab not installed.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as exc:
+            return Response(
+                {'detail': f'PDF generation failed: {exc}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        resp = HttpResponse(pdf_buffer, content_type='application/pdf')
+        resp['Content-Disposition'] = f'attachment; filename="safeweb-{scan.id}.pdf"'
+        return resp
+
+    def _export_sarif(self, scan):
+        """Export as SARIF 2.1.0 (Static Analysis Results Interchange Format)."""
+        from django.http import JsonResponse
+
+        rules = []
+        results = []
+        rule_ids_seen = set()
+
+        for vuln in scan.vulnerabilities.all():
+            rule_id = f'{vuln.category}-{vuln.cwe}' if vuln.cwe else vuln.category
+            if rule_id not in rule_ids_seen:
+                rules.append({
+                    'id': rule_id,
+                    'name': vuln.name,
+                    'shortDescription': {'text': vuln.name},
+                    'fullDescription': {'text': vuln.description},
+                    'helpUri': f'https://cwe.mitre.org/data/definitions/{vuln.cwe.replace("CWE-", "")}.html' if vuln.cwe else '',
+                    'properties': {'severity': vuln.severity, 'cvss': vuln.cvss},
+                })
+                rule_ids_seen.add(rule_id)
+
+            _SARIF_LEVELS = {
+                'critical': 'error', 'high': 'error',
+                'medium': 'warning', 'low': 'note', 'info': 'note',
+            }
+            results.append({
+                'ruleId': rule_id,
+                'level': _SARIF_LEVELS.get(vuln.severity, 'warning'),
+                'message': {'text': vuln.description},
+                'locations': [{
+                    'physicalLocation': {
+                        'artifactLocation': {'uri': vuln.affected_url or scan.target},
+                    },
+                }],
+                'properties': {'severity': vuln.severity, 'cvss': vuln.cvss, 'cwe': vuln.cwe},
+            })
+
+        sarif = {
+            '$schema': 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json',
+            'version': '2.1.0',
+            'runs': [{
+                'tool': {
+                    'driver': {
+                        'name': 'SafeWeb AI',
+                        'version': '1.0',
+                        'informationUri': 'https://safeweb.ai',
+                        'rules': rules,
+                    },
+                },
+                'results': results,
+            }],
+        }
+        resp = JsonResponse(sarif, json_dumps_params={'indent': 2})
+        resp['Content-Disposition'] = f'attachment; filename="safeweb-{scan.id}.sarif"'
+        return resp
+
+    def _export_html(self, scan):
+        from django.http import HttpResponse
+        vulns = scan.vulnerabilities.all()
+        rows = ''.join(
+            f'<tr><td>{v.name}</td><td>{v.severity}</td><td>{v.category}</td>'
+            f'<td>{v.cvss}</td><td>{v.affected_url or "-"}</td></tr>'
+            for v in vulns
+        )
+        html = (
+            f'<!DOCTYPE html><html><head><meta charset="utf-8">'
+            f'<title>SafeWeb Scan Report</title></head><body>'
+            f'<h1>Scan Report: {scan.target}</h1>'
+            f'<p>Status: {scan.status} | Score: {scan.score}</p>'
+            f'<table border="1"><tr><th>Name</th><th>Severity</th>'
+            f'<th>Category</th><th>CVSS</th><th>URL</th></tr>'
+            f'{rows}</table></body></html>'
+        )
+        resp = HttpResponse(html, content_type='text/html')
+        resp['Content-Disposition'] = f'attachment; filename="safeweb-{scan.id}.html"'
+        return resp
+
+
+class ScanStreamView(views.APIView):
+    """
+    GET /api/scans/<id>/stream/
+    Server-Sent Events stream for real-time scan status and findings.
+    Polls the DB every 2 s and emits named events until the scan finishes.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        import time as _time
+        from django.http import StreamingHttpResponse
+
+        try:
+            Scan.objects.get(id=id, user=request.user)
+        except Scan.DoesNotExist:
+            return Response({'detail': 'Scan not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        user_id = request.user.id
+
+        def event_stream():
+            _TERMINAL = {'completed', 'failed', 'error', 'cancelled'}
+            _MAX_SECONDS = 600  # 10-minute cap
+            last_progress = -1
+            last_phase: str | None = None
+            deadline = _time.monotonic() + _MAX_SECONDS
+
+            while _time.monotonic() < deadline:
+                try:
+                    snap = Scan.objects.get(id=id, user_id=user_id)
+                except Exception:
+                    yield f'event: error\ndata: {json.dumps({"message": "Scan not found"})}\n\n'
+                    return
+
+                progress_changed = snap.progress != last_progress
+                phase_changed = snap.current_phase != last_phase
+
+                if phase_changed and snap.current_phase:
+                    yield (
+                        f'event: phase_change\ndata: '
+                        f'{json.dumps({"phase": snap.current_phase})}\n\n'
+                    )
+
+                if progress_changed or phase_changed:
+                    yield (
+                        f'event: progress\ndata: '
+                        f'{json.dumps({"id": str(snap.id), "progress": snap.progress, "currentPhase": snap.current_phase, "status": snap.status})}\n\n'
+                    )
+                    last_progress = snap.progress
+                    last_phase = snap.current_phase
+
+                if snap.status in _TERMINAL:
+                    yield (
+                        f'event: completed\ndata: '
+                        f'{json.dumps({"id": str(snap.id), "status": snap.status, "score": snap.score})}\n\n'
+                    )
+                    return
+
+                _time.sleep(2)
+
+            # Timeout — tell the client to stop listening
+            yield f'event: error\ndata: {json.dumps({"message": "Stream timeout"})}\n\n'
+
+        response = StreamingHttpResponse(
+            event_stream(), content_type='text/event-stream',
+        )
+        response['Cache-Control'] = 'no-cache'
+        response['X-Accel-Buffering'] = 'no'
+        return response
+
+
+class NucleiTemplateListView(generics.ListAPIView):
+    """
+    GET /api/templates/
+    List all active Nuclei templates (custom uploaded ones).
+    Also includes a set of built-in template category stubs.
+    """
+    serializer_class = NucleiTemplateSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):  # type: ignore[override]
+        return NucleiTemplate.objects.filter(is_active=True).order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        custom_qs = self.get_queryset()
+        custom_data = self.get_serializer(custom_qs, many=True).data
+
+        # Built-in category stubs
+        builtin = [
+            {'id': 'builtin-sqli', 'name': 'SQL Injection Templates', 'category': 'sqli',
+             'severity': 'high', 'content': '', 'description': 'Built-in SQL injection probes',
+             'uploaded_by': None, 'is_active': True, 'created_at': None},
+            {'id': 'builtin-xss', 'name': 'XSS Templates', 'category': 'xss',
+             'severity': 'medium', 'content': '', 'description': 'Built-in XSS detection templates',
+             'uploaded_by': None, 'is_active': True, 'created_at': None},
+            {'id': 'builtin-ssrf', 'name': 'SSRF Templates', 'category': 'ssrf',
+             'severity': 'high', 'content': '', 'description': 'Built-in SSRF detection',
+             'uploaded_by': None, 'is_active': True, 'created_at': None},
+            {'id': 'builtin-lfi', 'name': 'LFI Templates', 'category': 'lfi',
+             'severity': 'high', 'content': '', 'description': 'Built-in path traversal/LFI probes',
+             'uploaded_by': None, 'is_active': True, 'created_at': None},
+            {'id': 'builtin-misconfig', 'name': 'Misconfiguration Templates', 'category': 'misconfig',
+             'severity': 'medium', 'content': '', 'description': 'Built-in server misconfiguration checks',
+             'uploaded_by': None, 'is_active': True, 'created_at': None},
+        ]
+
+        return Response({'builtin': builtin, 'custom': list(custom_data)})
+
+
+class NucleiTemplateUploadView(views.APIView):
+    """
+    POST /api/templates/custom/
+    Upload a custom Nuclei YAML template.
+    """
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        name = request.data.get('name', '').strip()
+        content = request.data.get('content', '')
+
+        # Accept file upload or raw content field
+        uploaded_file = request.FILES.get('file')
+        if uploaded_file:
+            content = uploaded_file.read().decode('utf-8', errors='replace')
+            if not name:
+                name = uploaded_file.name
+
+        if not name:
+            return Response({'detail': 'name is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not content:
+            return Response({'detail': 'Template content is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        template = NucleiTemplate.objects.create(
+            name=name,
+            description=request.data.get('description', ''),
+            category=request.data.get('category', 'custom'),
+            severity=request.data.get('severity', 'medium'),
+            content=content,
+            uploaded_by=request.user,
+        )
+        logger.info(f'Custom Nuclei template uploaded: {template.id} by {request.user}')
+        return Response(
+            NucleiTemplateSerializer(template).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ScanProfileListView(views.APIView):
+    """
+    GET /api/profiles/
+    List available scan profiles from the engine registry.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .engine.profiles import list_profiles
+        profiles = list_profiles()
+        data = []
+        for p in profiles:
+            data.append({
+                'id': p.id,
+                'name': p.name,
+                'description': getattr(p, 'description', ''),
+                'depth': p.depth,
+                'stealth_level': getattr(p, 'stealth_level', 0),
+                'max_duration_minutes': getattr(p, 'max_duration_minutes', None),
+                'enabled_testers': list(getattr(p, 'testers', None) or []),
+                'nuclei_tags': list(getattr(p, 'nuclei_tags', None) or []),
+            })
+        return Response({'count': len(data), 'profiles': data})
+
+
+class AuthConfigCreateView(views.APIView):
+    """
+    POST /api/auth-configs/
+    Save an authentication configuration for use in future scans.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        scan_id = request.data.get('scan_id')
+        auth_type = request.data.get('auth_type', 'custom')
+        config_data = request.data.get('config_data', {})
+
+        if not config_data:
+            return Response(
+                {'detail': 'config_data is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from .models import AuthConfig
+        kwargs = {
+            'auth_type': auth_type,
+            'role': request.data.get('role', 'attacker'),
+            'config_data': config_data,
+        }
+
+        if scan_id:
+            try:
+                scan = Scan.objects.get(id=scan_id, user=request.user)
+                kwargs['scan'] = scan
+            except Scan.DoesNotExist:
+                return Response(
+                    {'detail': 'Scan not found.'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        else:
+            # Create a placeholder scan entry for storing the auth config
+            placeholder = Scan.objects.create(
+                user=request.user,
+                scan_type='website',
+                target='auth-config-placeholder',
+                status='pending',
+            )
+            kwargs['scan'] = placeholder
+
+        auth_config = AuthConfig.objects.create(**kwargs)
+        return Response({
+            'id': str(auth_config.id),
+            'auth_type': auth_config.auth_type,
+            'scan_id': str(auth_config.scan_id) if auth_config.scan_id else None,
+            'created_at': auth_config.created_at.isoformat(),
+        }, status=status.HTTP_201_CREATED)
+
+
+class WebhookListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/webhooks/  — List user's webhooks.
+    POST /api/webhooks/  — Create a new webhook.
+    """
+    serializer_class = WebhookSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):  # type: ignore[override]
+        return Webhook.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class WebhookDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /api/webhooks/<id>/  — Get webhook detail.
+    PATCH  /api/webhooks/<id>/  — Update webhook.
+    DELETE /api/webhooks/<id>/  — Delete webhook.
+    """
+    serializer_class = WebhookSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'id'
+
+    def get_queryset(self):  # type: ignore[override]
+        return Webhook.objects.filter(user=self.request.user)
+
+
+class WebhookTestView(views.APIView):
+    """
+    POST /api/webhooks/<id>/test/
+    Send a test event to the webhook endpoint.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        try:
+            webhook = Webhook.objects.get(id=id, user=request.user)
+        except Webhook.DoesNotExist:
+            return Response({'detail': 'Webhook not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        from .engine.webhooks import fire_webhook
+        test_payload = {
+            'event': 'test',
+            'message': 'SafeWeb AI webhook test',
+            'webhook_id': str(webhook.id),
+        }
+        success = fire_webhook(webhook, 'test', test_payload)
+        return Response({
+            'delivered': success,
+            'webhook_url': webhook.url,
+            'event': 'test',
+        })
+
+
+class WebhookDeliveryListView(generics.ListAPIView):
+    """
+    GET /api/webhooks/<id>/deliveries/
+    List delivery attempts for a webhook.
+    """
+    serializer_class = WebhookDeliverySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):  # type: ignore[override]
+        webhook_id = self.kwargs['id']
+        try:
+            webhook = Webhook.objects.get(id=webhook_id, user=self.request.user)
+        except Webhook.DoesNotExist:
+            return WebhookDelivery.objects.none()
+        return webhook.deliveries.all()
+
+
+# ── Phase 45: Multi-Target & Scope Management ───────────────────────────────
+
+class ScopeDefinitionListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/scan/scopes/  — list the authenticated user’s scope definitions
+    POST /api/scan/scopes/  — create a new scope definition
+    """
+    serializer_class = ScopeDefinitionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ScopeDefinition.objects.filter(user=self.request.user)
+
+
+class ScopeDefinitionDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /api/scan/scopes/<id>/  — retrieve a scope definition
+    PATCH  /api/scan/scopes/<id>/  — partial update
+    DELETE /api/scan/scopes/<id>/  — delete
+    """
+    serializer_class = ScopeDefinitionSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        return ScopeDefinition.objects.filter(user=self.request.user)
+
+
+class ScopeValidateView(views.APIView):
+    """
+    POST /api/scan/scopes/<id>/validate/
+    Body: {"url": "https://app.example.com/login"}
+    Returns: {in_scope: bool, host: str, matched_pattern: str|null, reason: str}
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        try:
+            scope = ScopeDefinition.objects.get(id=id, user=request.user)
+        except ScopeDefinition.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        ser = ScopeValidateSerializer(data=request.data)
+        if not ser.is_valid():
+            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        from .engine.scope import ScopeManager
+        sm = ScopeManager.from_scope_definition(scope)
+        result = sm.check_target(ser.validated_data['url'])
+        return Response(result)
+
+
+class ScopeImportView(views.APIView):
+    """
+    POST /api/scan/scopes/import/
+    Accepts a HackerOne / Bugcrowd / plain-text payload and creates a
+    ScopeDefinition plus returns the parsed target list.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        ser = ScopeImportSerializer(data=request.data)
+        if not ser.is_valid():
+            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        from .engine.scope import TargetImporter
+        platform = ser.validated_data['platform']
+        raw_data = ser.validated_data.get('raw_data') or {}
+        raw_text = ser.validated_data.get('raw_text', '')
+
+        if platform == 'hackerone':
+            targets, scope_dict = TargetImporter.from_hackerone(raw_data)
+        elif platform == 'bugcrowd':
+            targets, scope_dict = TargetImporter.from_bugcrowd(raw_data)
+        else:  # text
+            targets = TargetImporter.from_text(raw_text)
+            scope_dict = {'in_scope': targets, 'out_of_scope': []}
+
+        scope = ScopeDefinition.objects.create(
+            user=request.user,
+            name=ser.validated_data['name'],
+            organization=ser.validated_data.get('organization', ''),
+            in_scope=scope_dict['in_scope'],
+            out_of_scope=scope_dict['out_of_scope'],
+            import_format=platform,
+        )
+
+        return Response({
+            'scope': ScopeDefinitionSerializer(scope, context={'request': request}).data,
+            'parsed_targets': targets,
+            'total': len(targets),
+        }, status=status.HTTP_201_CREATED)
+
+
+class MultiTargetScanListView(generics.ListAPIView):
+    """
+    GET /api/scan/multi/  — list the authenticated user’s multi-target scans
+    """
+    serializer_class = MultiTargetScanSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return MultiTargetScan.objects.filter(user=self.request.user)
+
+
+class MultiTargetScanCreateView(views.APIView):
+    """
+    POST /api/scan/multi/create/
+    Creates a MultiTargetScan and kicks off individual scans per target.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        ser = MultiTargetScanSerializer(data=request.data, context={'request': request})
+        if not ser.is_valid():
+            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        targets = ser.validated_data.get('targets', [])
+        if not targets:
+            return Response({'detail': 'At least one target is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Optional scope filtering
+        scope_obj = ser.validated_data.get('scope')
+        if scope_obj:
+            from .engine.scope import ScopeManager
+            sm = ScopeManager.from_scope_definition(scope_obj)
+            targets = sm.filter_in_scope(targets)
+            if not targets:
+                return Response(
+                    {'detail': 'All provided targets were filtered out by the scope definition.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        multi_scan = MultiTargetScan.objects.create(
+            user=request.user,
+            name=ser.validated_data['name'],
+            targets=targets,
+            scope=scope_obj,
+            scan_depth=ser.validated_data.get('scan_depth', 'medium'),
+            parallel_limit=ser.validated_data.get('parallel_limit', 3),
+            total_targets=len(targets),
+            status='running',
+        )
+
+        # Create and queue individual scans
+        from .engine.scope import TargetImporter
+        for target in targets:
+            asset_type = TargetImporter.classify_asset(target)
+            scan = Scan.objects.create(
+                user=request.user,
+                target=target,
+                scan_type='website',
+                status='pending',
+            )
+            multi_scan.sub_scans.add(scan)
+            execute_scan_task.delay(str(scan.id))
+
+            # Upsert the discovered asset record
+            DiscoveredAsset.objects.update_or_create(
+                user=request.user,
+                url=target,
+                defaults={
+                    'organization': scope_obj.organization if scope_obj else '',
+                    'asset_type': asset_type,
+                    'is_new': True,
+                    'last_scan': scan,
+                },
+            )
+
+        return Response(
+            MultiTargetScanSerializer(multi_scan, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class MultiTargetScanDetailView(generics.RetrieveAPIView):
+    """
+    GET /api/scan/multi/<id>/  — retrieve a multi-target scan with progress
+    """
+    serializer_class = MultiTargetScanSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        return MultiTargetScan.objects.filter(user=self.request.user)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Sync status from sub-scans dynamically
+        sub_scans = list(instance.sub_scans.all())
+        if sub_scans:
+            statuses = [s.status for s in sub_scans]
+            completed = sum(1 for s in statuses if s == 'completed')
+            failed = sum(1 for s in statuses if s == 'failed')
+            instance.completed_targets = completed
+            instance.failed_targets = failed
+            if completed + failed == len(sub_scans):
+                instance.status = 'partial' if failed else 'completed'
+                if not instance.completed_at:
+                    instance.completed_at = timezone.now()
+            instance.save(update_fields=['completed_targets', 'failed_targets', 'status', 'completed_at'])
+
+        data = MultiTargetScanSerializer(instance, context={'request': request}).data
+        data['sub_scans'] = ScanListSerializer(sub_scans, many=True).data
+        return Response(data)
+
+
+class AssetInventoryListView(generics.ListAPIView):
+    """
+    GET /api/scan/assets/?organization=&asset_type=&is_new=
+    List discovered assets for the authenticated user.
+    """
+    serializer_class = DiscoveredAssetSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = DiscoveredAsset.objects.filter(user=self.request.user)
+        org = self.request.query_params.get('organization')
+        asset_type = self.request.query_params.get('asset_type')
+        is_new = self.request.query_params.get('is_new')
+        if org:
+            qs = qs.filter(organization__icontains=org)
+        if asset_type:
+            qs = qs.filter(asset_type=asset_type)
+        if is_new is not None:
+            qs = qs.filter(is_new=is_new.lower() in ('true', '1', 'yes'))
+        return qs
+
+
+class AssetInventoryDetailView(generics.RetrieveUpdateAPIView):
+    """
+    GET   /api/scan/assets/<id>/  — retrieve asset detail
+    PATCH /api/scan/assets/<id>/  — update notes / is_new / is_active
+    """
+    serializer_class = DiscoveredAssetSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        return DiscoveredAsset.objects.filter(user=self.request.user)
+
+
+# ── End Phase 45 ────────────────────────────────────────────────────────────────────────────────────────
+
+
+# -- Phase 43/48 Sync: Scheduled Scans -- ------------------------------------
+
+class ScheduledScanListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/scan/scheduled/  � list user's scheduled scans
+    POST /api/scan/scheduled/  � create a new scheduled scan
+    """
+    serializer_class = ScheduledScanSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ScheduledScan.objects.filter(user=self.request.user).order_by('-created_at')
+
+
+class ScheduledScanDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /api/scan/scheduled/<id>/  � retrieve
+    PATCH  /api/scan/scheduled/<id>/  � update (including is_active toggle)
+    DELETE /api/scan/scheduled/<id>/  � delete
+    """
+    serializer_class = ScheduledScanSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        return ScheduledScan.objects.filter(user=self.request.user)
+
+
+# -- Phase 43/48 Sync: Asset Monitor Records ----------------------------------
+
+class AssetMonitorRecordListView(generics.ListAPIView):
+    """
+    GET /api/scan/asset-monitor/?acknowledged=false  � list change records
+    """
+    serializer_class = AssetMonitorRecordSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = AssetMonitorRecord.objects.filter(
+            scheduled_scan__user=self.request.user,
+        )
+        acknowledged = self.request.query_params.get('acknowledged')
+        if acknowledged is not None:
+            qs = qs.filter(acknowledged=acknowledged.lower() in ('true', '1', 'yes'))
+        return qs
+
+
+class AssetMonitorRecordAcknowledgeView(views.APIView):
+    """
+    POST /api/scan/asset-monitor/<id>/acknowledge/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        try:
+            record = AssetMonitorRecord.objects.get(
+                id=id, scheduled_scan__user=request.user,
+            )
+        except AssetMonitorRecord.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        record.acknowledged = True
+        record.save(update_fields=['acknowledged'])
+        return Response({'status': 'acknowledged'})
+
+
+# -- Finding-level detail (false positive marking) ----------------------------
+
+class FindingDetailView(generics.RetrieveUpdateAPIView):
+    """
+    GET   /api/scan/<scan_id>/findings/<vuln_id>/  � retrieve single finding
+    PATCH /api/scan/<scan_id>/findings/<vuln_id>/  � mark false positive etc.
+    """
+    serializer_class = VulnerabilitySerializer
+    permission_classes = [IsAuthenticated]
+    lookup_url_kwarg = 'vuln_id'
+
+    def get_queryset(self):
+        return Vulnerability.objects.filter(
+            scan__id=self.kwargs['scan_id'],
+            scan__user=self.request.user,
+        )
+
+    def get_object(self):
+        return generics.get_object_or_404(
+            self.get_queryset(),
+            id=self.kwargs['vuln_id'],
+        )
+
+
+# -- Nuclei template detail (toggle / delete) ---------------------------------
+
+class NucleiTemplateDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /api/scan/nuclei-templates/<id>/
+    PATCH  /api/scan/nuclei-templates/<id>/  � toggle is_active
+    DELETE /api/scan/nuclei-templates/<id>/
+    """
+    serializer_class = NucleiTemplateSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        return NucleiTemplate.objects.filter(uploaded_by=self.request.user)
+
+
+class NucleiTemplateStatsView(views.APIView):
+    """
+    GET /api/scan/nuclei-templates/stats/
+    Returns indexing stats for the community Nuclei template collection.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            from apps.scanning.engine.nuclei.template_manager import TemplateManager
+            mgr = TemplateManager()
+            mgr.setup(clone=False)
+            return Response(mgr.get_stats())
+        except Exception as exc:
+            return Response({'error': str(exc)}, status=500)
+
+
+class NucleiTemplateUpdateView(views.APIView):
+    """
+    POST /api/scan/nuclei-templates/update/
+    Triggers a clone/pull of the community template repository.
+    Returns indexing stats when done.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            from apps.scanning.engine.nuclei.template_manager import TemplateManager
+            mgr = TemplateManager()
+            ready = mgr.setup(clone=True)
+            stats = mgr.get_stats()
+            return Response({'ready': ready, **stats}, status=202)
+        except Exception as exc:
+            return Response({'error': str(exc)}, status=500)
+
+
+class ToolHealthView(views.APIView):
+    """
+    GET /api/scan/tools/health/
+    Returns availability status for all 61 registered external tool wrappers.
+    Useful for admin dashboards to verify which tools are installed.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            from apps.scanning.engine.tools.registry import ToolRegistry
+            registry = ToolRegistry()
+            if len(registry.list_tools()) == 0:
+                registry.register_all_tools()
+            health = registry.health_check()
+            total = len(health)
+            available = sum(1 for v in health.values() if v)
+            return Response({
+                'total': total,
+                'available': available,
+                'unavailable': total - available,
+                'tools': health,
+            })
+        except Exception as exc:
+            return Response({'error': str(exc)}, status=500)
+
+
+# -- Dashboard trends endpoint -------------------------------------------------
+
+class DashboardTrendsView(views.APIView):
+    """
+    GET /api/dashboard/trends/?days=30
+    Returns daily severity counts for the vulnerability trend chart.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from datetime import timedelta
+        from django.db.models.functions import TruncDate
+
+        days = int(request.query_params.get('days', 30))
+        since = timezone.now() - timedelta(days=days)
+
+        qs = (
+            Vulnerability.objects
+            .filter(scan__user=request.user, scan__completed_at__gte=since)
+            .annotate(date=TruncDate('scan__completed_at'))
+            .values('date', 'severity')
+            .annotate(count=Count('id'))
+            .order_by('date')
+        )
+
+        # Pivot: [{date, critical, high, medium, low, info}, ...]
+        pivot: dict = {}
+        for row in qs:
+            d = str(row['date'])
+            if d not in pivot:
+                pivot[d] = {'date': d, 'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'info': 0}
+            pivot[d][row['severity']] = row['count']
+
+        return Response(sorted(pivot.values(), key=lambda r: r['date']))

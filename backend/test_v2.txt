@@ -1,0 +1,20 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.6.0
+django: version: 5.2.11, settings: config.settings.development (from ini)
+rootdir: D:\My Files\Graduation Project\safeweb-ai\backend
+configfile: pytest.ini
+plugins: django-4.12.0
+collected 248 items
+
+tests\test_base_tester.py .........                                      [  3%]
+tests\test_crawler.py ....................                               [ 11%]
+tests\test_misconfig_tester.py .......                                   [ 14%]
+tests\test_orchestrator.py .......                                       [ 17%]
+tests\test_payloads_and_registry.py ................................     [ 30%]
+tests\test_recon.py ................                                     [ 36%]
+tests\test_recon_modules.py ...................................          [ 50%]
+tests\test_recon_new.py ................                                 [ 57%]
+tests\test_scoring.py ............................                       [ 68%]
+tests\test_testers_phase1.py ................                            [ 75%]
+tests\test_testers_phase2.py ...................                         [ 82%]
+tests\test_testers_phase3_4.py .......................                   [ 91%]

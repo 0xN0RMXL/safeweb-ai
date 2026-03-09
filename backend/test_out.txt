@@ -1,0 +1,31 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.6.0 -- D:\My Files\Graduation Project\safeweb-ai\.venv\Scripts\python.exe
+django: version: 5.2.11, settings: config.settings.development (from ini)
+rootdir: d:\My Files\Graduation Project\safeweb-ai\backend
+configfile: pytest.ini
+plugins: django-4.12.0
+collecting ... collected 20 items
+
+tests/test_testers_phase5_6.py::TestPromptInjectionTester::test_tester_name PASSED [  5%]
+tests/test_testers_phase5_6.py::TestPromptInjectionTester::test_empty_page_no_crash PASSED [ 10%]
+tests/test_testers_phase5_6.py::TestPromptInjectionTester::test_accepts_recon_data PASSED [ 15%]
+tests/test_testers_phase5_6.py::TestPromptInjectionTester::test_ai_page_gets_tested PASSED [ 20%]
+tests/test_testers_phase5_6.py::TestAIEndpointTester::test_tester_name PASSED [ 25%]
+tests/test_testers_phase5_6.py::TestAIEndpointTester::test_empty_page_no_crash PASSED [ 30%]
+tests/test_testers_phase5_6.py::TestAIEndpointTester::test_accepts_recon_data PASSED [ 35%]
+tests/test_testers_phase5_6.py::TestAIEndpointTester::test_has_test_method PASSED [ 40%]
+tests/test_testers_phase5_6.py::TestPrototypePollutionTester::test_tester_name PASSED [ 45%]
+tests/test_testers_phase5_6.py::TestPrototypePollutionTester::test_empty_page_no_crash PASSED [ 50%]
+tests/test_testers_phase5_6.py::TestPrototypePollutionTester::test_json_api_gets_tested PASSED [ 55%]
+tests/test_testers_phase5_6.py::TestOpenRedirectTester::test_tester_name PASSED [ 60%]
+tests/test_testers_phase5_6.py::TestOpenRedirectTester::test_no_redirect_params_skips PASSED [ 65%]
+tests/test_testers_phase5_6.py::TestOpenRedirectTester::test_detects_redirect_parameter PASSED [ 70%]
+tests/test_testers_phase5_6.py::TestBusinessLogicTester::test_tester_name PASSED [ 75%]
+tests/test_testers_phase5_6.py::TestBusinessLogicTester::test_empty_page_no_crash PASSED [ 80%]
+tests/test_testers_phase5_6.py::TestBusinessLogicTester::test_checkout_page_gets_tested PASSED [ 85%]
+tests/test_testers_phase5_6.py::TestAPITester::test_tester_name PASSED   [ 90%]
+tests/test_testers_phase5_6.py::TestAPITester::test_empty_page_no_crash PASSED [ 95%]
+tests/test_testers_phase5_6.py::TestAPITester::test_api_endpoint_gets_tested PASSED [100%]
+
+======================= 20 passed in 2070.46s (0:34:30) =======================
+

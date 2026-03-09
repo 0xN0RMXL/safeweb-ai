@@ -69,6 +69,20 @@ export default function ChatbotWidget() {
         }
     }, []);
 
+    // Listen for external "ask about finding" events
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent<{ message: string }>).detail;
+            if (!detail?.message) return;
+            setIsOpen(true);
+            // Small delay so the panel is rendered before message sends
+            setTimeout(() => sendMessage(detail.message), 150);
+        };
+        window.addEventListener('safeweb-chatbot-ask', handler);
+        return () => window.removeEventListener('safeweb-chatbot-ask', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sessionId]);
+
     // Load session messages
     const loadSession = async (id: string) => {
         try {

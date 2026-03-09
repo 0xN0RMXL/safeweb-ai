@@ -1,0 +1,42 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.6.0
+django: version: 5.2.11, settings: config.settings.development (from ini)
+rootdir: D:\My Files\Graduation Project\safeweb-ai\backend
+configfile: pytest.ini
+plugins: django-4.12.0
+collected 156 items
+
+tests\test_base_tester.py .........                                      [  5%]
+tests\test_crawler.py .........F....                                     [ 14%]
+tests\test_misconfig_tester.py .......                                   [ 19%]
+tests\test_orchestrator.py .....                                         [ 22%]
+tests\test_payloads_and_registry.py ...................                  [ 34%]
+tests\test_recon.py ................                                     [ 44%]
+tests\test_scoring.py ............................                       [ 62%]
+tests\test_testers_phase1.py ..F.............                            [ 73%]
+tests\test_testers_phase2.py ...................                         [ 85%]
+tests\test_testers_phase3_4.py .......................                   [100%]
+
+================================== FAILURES ===================================
+_______________ TestCrawlerNeedsJSRendering.test_spa_indicators _______________
+tests\test_crawler.py:77: in test_spa_indicators
+    assert crawler._needs_js_rendering(page) is True
+E   assert False is True
+E    +  where False = _needs_js_rendering(Page(url='https://example.com', status_code=0, headers={}, cookies={}, body='<div id="root"></div>', forms=[], links=[], parameters={}, js_rendered=False))
+E    +    where _needs_js_rendering = <apps.scanning.engine.crawler.WebCrawler object at 0x00000255C1437110>._needs_js_rendering
+____________ TestSQLInjectionTester.test_detects_error_based_sqli _____________
+tests\test_testers_phase1.py:38: in test_detects_error_based_sqli
+    assert len(sqli_vulns) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+============================== warnings summary ===============================
+tests/test_testers_phase3_4.py::TestCloudStorageTester::test_detects_s3_reference
+  D:\My Files\Graduation Project\safeweb-ai\.venv\Lib\site-packages\urllib3\connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host 'mybucket.s3.amazonaws.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_crawler.py::TestCrawlerNeedsJSRendering::test_spa_indicators
+FAILED tests/test_testers_phase1.py::TestSQLInjectionTester::test_detects_error_based_sqli
+============ 2 failed, 154 passed, 1 warning in 200.90s (0:03:20) =============
+

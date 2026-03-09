@@ -1,0 +1,118 @@
+============================= test session starts =============================
+collected 2144 items
+
+tests\test_phase43_scheduled_scanning.py ........                        [  0%]
+tests\test_phase44_api_first.py ........................................ [  2%]
+......................                                                   [  3%]
+tests\test_phase45_scope.py ..........................................   [  5%]
+tests\test_auth.py ..............................................        [  7%]
+tests\test_base_tester.py .........                                      [  7%]
+tests\test_crawler.py ....................                               [  8%]
+tests\test_misconfig_tester.py .......                                   [  9%]
+tests\test_nuclei.py ................................................... [ 11%]
+......                                                                   [ 11%]
+tests\test_oob.py .............................................          [ 13%]
+tests\test_orchestrator.py .......                                       [ 14%]
+tests\test_osint.py ....................                                 [ 15%]
+tests\test_payload_loader.py ........................................... [ 17%]
+.................                                                        [ 17%]
+tests\test_payloads_and_registry.py ................................     [ 19%]
+tests\test_phase26_testers.py .......................................... [ 21%]
+...........                                                              [ 21%]
+tests\test_phase27_testers.py .......................................... [ 23%]
+......                                                                   [ 24%]
+tests\test_phase28_bypass.py ...............................             [ 25%]
+tests\test_phase29_cms.py .............................................. [ 27%]
+                                                                         [ 27%]
+tests\test_phase30_exploit.py .......................................... [ 29%]
+..................                                                       [ 30%]
+tests\test_phase31_logic.py ............................................ [ 32%]
+....F                                                                    [ 32%]
+tests\test_phase32_waf.py .............................................. [ 34%]
+.......F                                                                 [ 35%]
+tests\test_phase33_supply_chain.py ..................................... [ 36%]
+.....................................F.....                              [ 38%]
+tests\test_phase34_network.py .......................................... [ 40%]
+.............................................................F           [ 43%]
+tests\test_phase35_reporting.py ........................................ [ 45%]
+........................................................................ [ 49%]
+...............F                                                         [ 49%]
+tests\test_phase36_active_recon.py ..................................... [ 51%]
+..............................................F.F                        [ 53%]
+tests\test_phase37_js_intelligence.py .................................. [ 55%]
+......................................................................   [ 58%]
+tests\test_phase38_ml_enhancement.py ................................... [ 60%]
+.......................................................                  [ 62%]
+tests\test_phase39_scan_profiles.py .................................... [ 64%]
+..............................................                           [ 66%]
+tests\test_phase40_stealth.py .......................................... [ 68%]
+...................................                                      [ 70%]
+tests\test_phase41_knowledge.py ........................................ [ 72%]
+.....................................................                    [ 74%]
+tests\test_phase42_attack_graph.py ..................................... [ 76%]
+...................................                                      [ 77%]
+tests\test_phase43_scheduled_scanning.py ............................... [ 79%]
+......................................                                   [ 81%]
+tests\test_phase44_api_first.py ................                         [ 81%]
+tests\test_phase45_scope.py .........................................    [ 83%]
+tests\test_phase46_wstg.py ............................................. [ 85%]
+...........................................                              [ 87%]
+tests\test_recon.py ................                                     [ 88%]
+tests\test_recon_modules.py ...................................          [ 90%]
+tests\test_recon_new.py ................                                 [ 91%]
+tests\test_scoring.py ............................                       [ 92%]
+tests\test_secret_scanner.py ........................................... [ 94%]
+.................                                                        [ 95%]
+tests\test_spa_crawler.py .........................                      [ 96%]
+tests\test_testers_phase1.py ................                            [ 97%]
+tests\test_testers_phase2.py ...................                         [ 97%]
+tests\test_testers_phase3_4.py .......................                   [ 99%]
+tests\test_testers_phase5_6.py ....................                      [100%]
+
+============================== warnings summary ===============================
+tests/test_phase44_api_first.py: 51 warnings
+tests/test_phase45_scope.py: 32 warnings
+  D:\My Files\Graduation Project\safeweb-ai\.venv\Lib\site-packages\django\core\handlers\base.py:61: UserWarning: No directory at: D:\My Files\Graduation Project\safeweb-ai\backend\staticfiles\
+    mw_instance = middleware(adapted_handler)
+
+tests/test_misconfig_tester.py: 1 warning
+tests/test_orchestrator.py: 2 warnings
+tests/test_phase26_testers.py: 4 warnings
+tests/test_phase27_testers.py: 3 warnings
+tests/test_testers_phase1.py: 1 warning
+tests/test_testers_phase2.py: 5 warnings
+tests/test_testers_phase3_4.py: 1 warning
+tests/test_testers_phase5_6.py: 5 warnings
+  D:\My Files\Graduation Project\safeweb-ai\.venv\Lib\site-packages\urllib3\connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host 'example.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+    warnings.warn(
+
+tests/test_phase46_wstg.py::TestWSTGCryptographyTester::test_returns_list_https
+  D:\My Files\Graduation Project\safeweb-ai\backend\apps\scanning\engine\testers\wstg_cryp_tester.py:109: DeprecationWarning: ssl.TLSVersion.TLSv1 is deprecated
+    ctx.minimum_version = ssl.TLSVersion.TLSv1
+
+tests/test_phase46_wstg.py::TestWSTGCryptographyTester::test_returns_list_https
+  D:\My Files\Graduation Project\safeweb-ai\backend\apps\scanning\engine\testers\wstg_cryp_tester.py:110: DeprecationWarning: ssl.TLSVersion.TLSv1 is deprecated
+    ctx.maximum_version = ssl.TLSVersion.TLSv1
+
+tests/test_phase46_wstg.py::TestWSTGCryptographyTester::test_returns_list_https
+  D:\My Files\Graduation Project\safeweb-ai\backend\apps\scanning\engine\testers\wstg_cryp_tester.py:138: DeprecationWarning: ssl.TLSVersion.TLSv1_1 is deprecated
+    ctx2.minimum_version = ssl.TLSVersion.TLSv1_1
+
+tests/test_phase46_wstg.py::TestWSTGCryptographyTester::test_returns_list_https
+  D:\My Files\Graduation Project\safeweb-ai\backend\apps\scanning\engine\testers\wstg_cryp_tester.py:139: DeprecationWarning: ssl.TLSVersion.TLSv1_1 is deprecated
+    ctx2.maximum_version = ssl.TLSVersion.TLSv1_1
+
+tests/test_testers_phase3_4.py::TestCloudStorageTester::test_detects_s3_reference
+  D:\My Files\Graduation Project\safeweb-ai\.venv\Lib\site-packages\urllib3\connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host 'mybucket.s3.amazonaws.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_phase31_logic.py::TestBusinessLogicDeepTester::test_tester_count
+FAILED tests/test_phase32_waf.py::TestAdvancedWAFEvasionTester::test_tester_count
+FAILED tests/test_phase33_supply_chain.py::TestSupplyChainTester::test_tester_count
+FAILED tests/test_phase34_network.py::TestRegistration::test_tester_count - a...
+FAILED tests/test_phase35_reporting.py::TestRegistration::test_tester_count
+FAILED tests/test_phase36_active_recon.py::TestRegistration::test_tester_count_68
+FAILED tests/test_phase36_active_recon.py::TestRegistration::test_js_intelligence_tester_position
+========== 7 failed, 2137 passed, 110 warnings in 4145.55s (1:09:05) ==========

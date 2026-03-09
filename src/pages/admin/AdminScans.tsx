@@ -7,7 +7,7 @@ import Badge from '@components/ui/Badge';
 import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
 import Select from '@components/ui/Select';
-import { adminAPI } from '@services/api';
+import { adminAPI, scanAPI } from '@services/api';
 
 interface ScanRow {
     id: string;
@@ -18,6 +18,13 @@ interface ScanRow {
     severity: string;
     started: string;
     duration: string;
+}
+
+interface TesterEntry {
+    name: string;
+    findings: number;
+    duration: number;
+    status: string;
 }
 
 export default function AdminScans() {
@@ -34,6 +41,9 @@ export default function AdminScans() {
         { label: 'Failed Today', value: '—', change: '' },
         { label: 'Avg Duration', value: '—', change: '' },
     ]);
+    const [expandedScanId, setExpandedScanId] = useState<string | null>(null);
+    const [testerCache, setTesterCache] = useState<Record<string, TesterEntry[]>>({});
+    const [loadingTesters, setLoadingTesters] = useState<string | null>(null);
 
     const fetchScans = () => {
         setIsLoading(true);
@@ -57,6 +67,26 @@ export default function AdminScans() {
         const t = setTimeout(fetchScans, 400);
         return () => clearTimeout(t);
     }, [searchQuery]);
+
+    const handleToggleTesters = async (id: string) => {
+        if (expandedScanId === id) { setExpandedScanId(null); return; }
+        setExpandedScanId(id);
+        if (testerCache[id]) return;
+        setLoadingTesters(id);
+        try {
+            const { data } = await scanAPI.getResults(id);
+            const results: TesterEntry[] = Array.isArray(data.tester_results)
+                ? data.tester_results.map((t: Record<string, unknown>) => ({
+                    name: String(t.testerName ?? t.name ?? t.tester ?? ''),
+                    findings: Number(t.findingsCount ?? t.findings ?? t.finding_count ?? 0),
+                    duration: typeof t.durationMs === 'number' ? t.durationMs / 1000 : Number(t.duration ?? 0),
+                    status: String(t.status ?? 'completed'),
+                }))
+                : [];
+            setTesterCache((p) => ({ ...p, [id]: results }));
+        } catch { setTesterCache((p) => ({ ...p, [id]: [] })); }
+        finally { setLoadingTesters(null); }
+    };
 
     const handleDelete = async (id: string) => {
         if (!confirm('Delete this scan?')) return;
@@ -167,7 +197,8 @@ export default function AdminScans() {
                                 </thead>
                                 <tbody>
                                     {scans.map((scan) => (
-                                        <tr key={scan.id} className="border-t border-border-primary hover:bg-bg-secondary/50">
+                                        <React.Fragment key={scan.id}>
+                                        <tr className="border-t border-border-primary hover:bg-bg-secondary/50">
                                             <td className="py-4 px-6 text-text-secondary">#{scan.id}</td>
                                             <td className="py-4 px-6">
                                                 <div className="font-medium text-text-primary">{scan.url}</div>
@@ -214,22 +245,78 @@ export default function AdminScans() {
                                             <td className="py-4 px-6 text-sm text-text-secondary">{scan.duration}</td>
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-2">
-                                                    <button className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-accent-green transition-colors" onClick={() => navigate(`/scan/results/${scan.id}`)}>
+                                                    <button className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-accent-green transition-colors" title="View scan results" onClick={() => navigate(`/scan/results/${scan.id}`)}>
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                         </svg>
                                                     </button>
                                                     {scan.status === 'running' && (
-                                                        <button className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-status-high transition-colors" onClick={() => handleDelete(scan.id)}>
+                                                        <button className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-status-high transition-colors" title="Stop scan" onClick={() => handleDelete(scan.id)}>
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                                             </svg>
                                                         </button>
                                                     )}
+                                                    <button
+                                                        className={`p-2 rounded-lg hover:bg-bg-hover transition-colors ${expandedScanId === scan.id ? 'text-accent-green' : 'text-text-secondary hover:text-accent-green'}`}
+                                                        onClick={() => handleToggleTesters(scan.id)}
+                                                        title="View tester breakdown"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                        </svg>
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
+                                        {expandedScanId === scan.id && (
+                                            <tr className="bg-bg-secondary/30">
+                                                <td colSpan={9} className="px-6 py-4">
+                                                    {loadingTesters === scan.id ? (
+                                                        <div className="flex items-center gap-2 text-sm text-text-secondary">
+                                                            <div className="w-4 h-4 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
+                                                            Loading tester results…
+                                                        </div>
+                                                    ) : (testerCache[scan.id] ?? []).length === 0 ? (
+                                                        <p className="text-sm text-text-tertiary">No tester results available.</p>
+                                                    ) : (
+                                                        <table className="w-full text-xs">
+                                                            <thead>
+                                                                <tr className="text-text-tertiary">
+                                                                    <th className="text-left py-1 pr-6">Tester</th>
+                                                                    <th className="text-left py-1 pr-6">Findings</th>
+                                                                    <th className="text-left py-1 pr-6">Duration (s)</th>
+                                                                    <th className="text-left py-1">Status</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {testerCache[scan.id].map((t, i) => (
+                                                                    <tr key={i} className="border-t border-border-primary/30">
+                                                                        <td className="py-1.5 pr-6 font-mono">{t.name}</td>
+                                                                        <td className="py-1.5 pr-6">
+                                                                            {t.findings > 0
+                                                                                ? <span className="text-status-high font-medium">{t.findings}</span>
+                                                                                : '0'}
+                                                                        </td>
+                                                                        <td className="py-1.5 pr-6 text-text-tertiary">{t.duration.toFixed(1)}</td>
+                                                                        <td className="py-1.5">
+                                                                            <Badge
+                                                                                variant={t.status === 'completed' ? 'success' : t.status === 'failed' ? 'critical' : 'info'}
+                                                                                size="sm"
+                                                                            >
+                                                                                {t.status}
+                                                                            </Badge>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        )}
+                                        </React.Fragment>
                                     ))}
                                 </tbody>
                             </table>

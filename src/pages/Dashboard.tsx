@@ -7,18 +7,18 @@ import Button from '@components/ui/Button';
 import Badge from '@components/ui/Badge';
 import ScrollReveal from '@components/ui/ScrollReveal';
 import { formatDateTime } from '@utils/date';
-import { dashboardAPI } from '@/services/api';
+import { dashboardAPI, assetAPI, scheduledScanAPI } from '@/services/api';
+
+// Icons for stat cards — defined outside component to avoid recreation on every render
+const statIcons = [
+  <svg key="scans" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>,
+  <svg key="critical" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
+  <svg key="score" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
+  <svg key="time" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+];
 
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
-
-  // Icons for stat cards
-  const statIcons = [
-    <svg key="scans" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>,
-    <svg key="critical" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
-    <svg key="score" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
-    <svg key="time" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-  ];
 
   const [stats, setStats] = useState<{
     label: string; value: string; change: string; trend: 'up' | 'down' | 'neutral'; icon: React.ReactNode;
@@ -42,6 +42,12 @@ export default function Dashboard() {
     { severity: 'low' as const, count: 0, label: 'Low' },
   ]);
 
+  interface TrendPoint { date: string; critical: number; high: number; medium: number; low: number; total: number }
+  const [trends, setTrends] = useState<TrendPoint[]>([]);
+  const [assetChangeCount, setAssetChangeCount] = useState(0);
+  const [scheduledActive, setScheduledActive] = useState(0);
+  const [topCategories, setTopCategories] = useState<{ category: string; count: number }[]>([]);
+
   useEffect(() => {
     dashboardAPI.get()
       .then(({ data }) => {
@@ -62,7 +68,7 @@ export default function Dashboard() {
             target: s.target,
             type: s.scanType || s.type || 'Website',
             status: s.status,
-            date: new Date(s.createdAt as string || s.date as string),
+            date: new Date(String(s.createdAt || s.date || new Date().toISOString())),
             vulnerabilities: s.vulnerabilitySummary || s.vulnerabilities || { critical: 0, high: 0, medium: 0, low: 0 },
             score: s.score || 0,
           })));
@@ -77,12 +83,43 @@ export default function Dashboard() {
             { severity: 'low', count: data.vulnerabilityOverview.low ?? 0, label: 'Low' },
           ]);
         }
+        // Top categories
+        if (data.topCategories) {
+          setTopCategories(data.topCategories.slice(0, 6));
+        }
       })
       .catch((err) => {
         console.error('Dashboard load error:', err);
         setStats(prev => [{ ...prev[0], change: 'Error loading' }, ...prev.slice(1)]);
-      })
-      .finally(() => setIsLoading(false));
+      });
+
+      // Parallel: trends, asset changes, scheduled scans
+      dashboardAPI.getTrends(14).then(({ data }) => {
+        const arr: TrendPoint[] = Array.isArray(data)
+          ? data
+          : (data.dates ?? []).map((d: string, i: number) => ({
+              date: d,
+              critical: data.series?.critical?.[i] ?? 0,
+              high: data.series?.high?.[i] ?? 0,
+              medium: data.series?.medium?.[i] ?? 0,
+              low: data.series?.low?.[i] ?? 0,
+              total: (data.series?.total?.[i] ?? 0),
+            }));
+        setTrends(arr.slice(-14));
+      }).catch(() => {});
+
+      assetAPI.getMonitorRecords({ acknowledged: false }).then(({ data }) => {
+        const arr = Array.isArray(data) ? data : data.results ?? [];
+        setAssetChangeCount(arr.length);
+      }).catch(() => {});
+
+      scheduledScanAPI.getAll().then(({ data }) => {
+        const arr = Array.isArray(data) ? data : data.results ?? [];
+        setScheduledActive(arr.filter((s: { isActive: boolean }) => s.isActive).length);
+      }).catch(() => {});
+
+      // Resolve loading
+      Promise.resolve().then(() => setIsLoading(false));
   }, []);
 
   return (
@@ -147,6 +184,113 @@ export default function Dashboard() {
             ))}
           </div>
           </ScrollReveal>
+
+          {/* ── Trends + Side Widgets ─────────────────────────── */}
+          {trends.length > 0 && (() => {
+            const maxVal = Math.max(...trends.map(t => t.total), 1);
+            const W = 560; const H = 120; const barW = Math.floor(W / trends.length) - 2;
+            return (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <Card className="lg:col-span-2 p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <h2 className="text-lg font-heading font-semibold text-text-primary">Vulnerability Trends</h2>
+                    <span className="text-xs text-text-tertiary">Last {trends.length} days</span>
+                  </div>
+                  <svg viewBox={`0 0 ${W + 8} ${H + 24}`} className="w-full" aria-label="Vulnerability trend bar chart">
+                    {trends.map((pt, i) => {
+                      const x = i * (barW + 2) + 4;
+                      const totalH = Math.round((pt.total / maxVal) * H);
+                      const critH = Math.round((pt.critical / maxVal) * H);
+                      const highH = Math.round((pt.high / maxVal) * H);
+                      const medH = Math.round((pt.medium / maxVal) * H);
+                      const lowH = totalH - critH - highH - medH;
+                      let y = H;
+                      const segments = [
+                        { h: lowH > 0 ? lowH : 0, fill: '#22c55e' },
+                        { h: medH > 0 ? medH : 0, fill: '#f59e0b' },
+                        { h: highH > 0 ? highH : 0, fill: '#f97316' },
+                        { h: critH > 0 ? critH : 0, fill: '#ef4444' },
+                      ];
+                      return (
+                        <g key={i}>
+                          {segments.map((seg, si) => {
+                            if (seg.h === 0) return null;
+                            y -= seg.h;
+                            return <rect key={si} x={x} y={y} width={barW} height={seg.h} fill={seg.fill} opacity={0.85} rx={1} />;
+                          })}
+                          {i % 3 === 0 && (
+                            <text x={x + barW / 2} y={H + 16} textAnchor="middle" fontSize={8} fill="#6b7280">
+                              {pt.date.slice(5)}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
+                    <line x1={0} y1={H} x2={W + 8} y2={H} stroke="#374151" strokeWidth={1} />
+                  </svg>
+                  <div className="flex gap-4 mt-3 text-xs text-text-tertiary">
+                    {[['#ef4444','Critical'],['#f97316','High'],['#f59e0b','Medium'],['#22c55e','Low']].map(([c, l]) => (
+                      <span key={l} className="flex items-center gap-1">
+                        <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: c }} />
+                        {l}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+
+                <div className="flex flex-col gap-6">
+                  {/* Asset Changes */}
+                  <Card className="p-5 flex-1">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-text-primary">Asset Changes</h3>
+                      <Link to="/assets" className="text-xs text-accent-green hover:underline">View</Link>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${assetChangeCount > 0 ? 'bg-status-high/15 text-status-high' : 'bg-status-low/15 text-status-low'}`}>
+                        {assetChangeCount}
+                      </div>
+                      <p className="text-sm text-text-secondary">{assetChangeCount > 0 ? 'Unacknowledged changes detected' : 'All asset changes acknowledged'}</p>
+                    </div>
+                  </Card>
+
+                  {/* Scheduled Scans */}
+                  <Card className="p-5 flex-1">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-text-primary">Scheduled Scans</h3>
+                      <Link to="/scheduled-scans" className="text-xs text-accent-green hover:underline">Manage</Link>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-accent-green/15 flex items-center justify-center font-bold text-xl text-accent-green">
+                        {scheduledActive}
+                      </div>
+                      <p className="text-sm text-text-secondary">{scheduledActive} active schedule{scheduledActive !== 1 ? 's' : ''} running</p>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Top Categories ─────────────────────────────────────── */}
+          {topCategories.length > 0 && (
+            <Card className="p-6 mb-8">
+              <h2 className="text-lg font-heading font-semibold text-text-primary mb-4">Top Vulnerability Categories</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {topCategories.map((cat) => {
+                  const maxCat = Math.max(...topCategories.map(c => c.count), 1);
+                  return (
+                    <div key={cat.category} className="bg-bg-secondary rounded-lg p-3 text-center">
+                      <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-2">
+                        <div className="h-full bg-accent-green rounded-full" style={{ width: `${(cat.count / maxCat) * 100}%` }} />
+                      </div>
+                      <p className="text-lg font-bold text-text-primary">{cat.count}</p>
+                      <p className="text-xs text-text-tertiary truncate">{cat.category}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Recent Scans */}

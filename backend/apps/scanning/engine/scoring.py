@@ -93,12 +93,16 @@ def calculate_security_score(vulnerabilities: list) -> int:
     """
     Calculate an overall security score (0-100) from vulnerabilities.
     100 = perfect security, 0 = severely compromised.
+
+    Applies diminishing returns: each subsequent vulnerability of the same
+    severity deducts 80% of the previous one, preventing a single category
+    from flooding the score to zero.
     """
     if not vulnerabilities:
         return 100
 
     # Weight deductions by severity
-    deductions = {
+    base_deductions = {
         'critical': 25,
         'high': 15,
         'medium': 8,
@@ -106,13 +110,23 @@ def calculate_security_score(vulnerabilities: list) -> int:
         'info': 0,
     }
 
-    total_deduction = 0
-    for vuln in vulnerabilities:
-        severity = vuln.get('severity', 'info')
-        total_deduction += deductions.get(severity, 0)
+    # Count vulns per severity for diminishing returns
+    severity_counts = {}
+    total_deduction = 0.0
 
-    # Apply diminishing returns for many vulns of same type
-    score = max(0, 100 - total_deduction)
+    for vuln in vulnerabilities:
+        severity = vuln.get('severity', 'info') if isinstance(vuln, dict) else getattr(vuln, 'severity', 'info')
+        base = base_deductions.get(severity, 0)
+        if base == 0:
+            continue
+
+        count = severity_counts.get(severity, 0)
+        # Diminishing returns: each subsequent vuln deducts 80% of the previous
+        deduction = base * (0.8 ** count)
+        total_deduction += deduction
+        severity_counts[severity] = count + 1
+
+    score = max(0, round(100 - total_deduction))
     return score
 
 

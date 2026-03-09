@@ -164,11 +164,159 @@ export const scanAPI = {
             params: { export_format: format },
             responseType: format === 'json' ? 'json' : 'blob',
         }),
+
+    // ── Findings (paginated, filtered) ─────────────────────────────
+    getFindings: (id: string, params?: { severity?: string; category?: string; search?: string; page?: number }) =>
+        api.get(`/scan/${id}/findings/`, { params }),
+
+    markFalsePositive: (scanId: string, vulnId: string, isFalsePositive: boolean) =>
+        api.patch(`/scan/${scanId}/findings/${vulnId}/`, { is_false_positive: isFalsePositive }),
+
+    rescanFinding: (scanId: string, vulnId: string) =>
+        api.post(`/scan/${scanId}/rescan-finding/`, { finding_id: vulnId }),
+
+    // ── Scan comparison ─────────────────────────────────────────────
+    compareScan: (id1: string, id2: string) =>
+        api.get(`/scan/compare/${id1}/${id2}/`),
+
+    // ── SSE stream URL (not an axios call — returns the URL string) ─
+    getStreamUrl: (id: string) => {
+        const token = getAccessToken();
+        const base = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+        return `${base}/scan/${id}/stream/?token=${token}`;
+    },
+
+    // ── Scan profiles ───────────────────────────────────────────────
+    getScanProfiles: () => api.get('/scan/profiles/'),
+
+    // ── Auth config ─────────────────────────────────────────────────
+    createAuthConfig: (data: Record<string, unknown>) =>
+        api.post('/scan/auth-configs/', data),
+
+    updateAuthConfig: (id: string, data: Record<string, unknown>) =>
+        api.patch(`/scan/auth-configs/${id}/`, data),
+
+    deleteAuthConfig: (id: string) =>
+        api.delete(`/scan/auth-configs/${id}/`),
+};
+
+// ── Webhooks ────────────────────────────────────────────────────────
+export const webhookAPI = {
+    getAll: () => api.get('/scan/webhooks/'),
+
+    create: (data: { url: string; secret?: string; events: string[]; isActive?: boolean; maxRetries?: number }) =>
+        api.post('/scan/webhooks/', data),
+
+    update: (id: string, data: Record<string, unknown>) =>
+        api.patch(`/scan/webhooks/${id}/`, data),
+
+    delete: (id: string) =>
+        api.delete(`/scan/webhooks/${id}/`),
+
+    test: (id: string) =>
+        api.post(`/scan/webhooks/${id}/test/`),
+
+    getDeliveries: (id: string) =>
+        api.get(`/scan/webhooks/${id}/deliveries/`),
+};
+
+// ── Scopes ──────────────────────────────────────────────────────────
+export const scopeAPI = {
+    getAll: () => api.get('/scan/scopes/'),
+
+    create: (data: { name: string; description?: string; organization?: string; inScope: string[]; outOfScope?: string[] }) =>
+        api.post('/scan/scopes/', data),
+
+    update: (id: string, data: Record<string, unknown>) =>
+        api.patch(`/scan/scopes/${id}/`, data),
+
+    delete: (id: string) =>
+        api.delete(`/scan/scopes/${id}/`),
+
+    import: (data: { format: string; content: string }) =>
+        api.post('/scan/scopes/import/', data),
+
+    validate: (id: string, url: string) =>
+        api.post(`/scan/scopes/${id}/validate/`, { url }),
+};
+
+// ── Multi-target scans ───────────────────────────────────────────────
+export const multiTargetAPI = {
+    getAll: () => api.get('/scan/multi/'),
+
+    create: (data: {
+        name: string;
+        targets: string[];
+        scopeId?: string;
+        scanDepth?: string;
+        parallelLimit?: number;
+    }) => api.post('/scan/multi/create/', data),
+
+    get: (id: string) => api.get(`/scan/multi/${id}/`),
+
+    delete: (id: string) => api.delete(`/scan/multi/${id}/`),
+};
+
+// ── Scheduled scans ─────────────────────────────────────────────────
+export const scheduledScanAPI = {
+    getAll: () => api.get('/scan/scheduled/'),
+
+    create: (data: {
+        name: string;
+        target: string;
+        scanConfig?: Record<string, unknown>;
+        schedulePreset?: string;
+        cronExpr?: string;
+        notifications?: Record<string, boolean>;
+    }) => api.post('/scan/scheduled/', data),
+
+    update: (id: string, data: Record<string, unknown>) =>
+        api.patch(`/scan/scheduled/${id}/`, data),
+
+    delete: (id: string) =>
+        api.delete(`/scan/scheduled/${id}/`),
+
+    toggle: (id: string, isActive: boolean) =>
+        api.patch(`/scan/scheduled/${id}/`, { is_active: isActive }),
+};
+
+// ── Asset inventory ──────────────────────────────────────────────────
+export const assetAPI = {
+    getAll: (params?: { assetType?: string; isNew?: boolean; isActive?: boolean; search?: string }) =>
+        api.get('/scan/assets/', { params }),
+
+    get: (id: string) => api.get(`/scan/assets/${id}/`),
+
+    update: (id: string, data: Record<string, unknown>) =>
+        api.patch(`/scan/assets/${id}/`, data),
+
+    delete: (id: string) => api.delete(`/scan/assets/${id}/`),
+
+    getMonitorRecords: (params?: { acknowledged?: boolean }) =>
+        api.get('/scan/asset-monitor/', { params }),
+
+    acknowledgeRecord: (id: string) =>
+        api.post(`/scan/asset-monitor/${id}/acknowledge/`),
+};
+
+// ── Nuclei templates ─────────────────────────────────────────────────
+export const nucleiAPI = {
+    getAll: () => api.get('/scan/nuclei-templates/'),
+
+    create: (data: { name: string; description?: string; category?: string; severity?: string }) =>
+        api.post('/scan/nuclei-templates/upload/', data),
+
+    toggle: (id: string, isActive: boolean) =>
+        api.patch(`/scan/nuclei-templates/${id}/`, { is_active: isActive }),
+
+    delete: (id: string) => api.delete(`/scan/nuclei-templates/${id}/`),
 };
 
 // ── Dashboard ───────────────────────────────────────────────────────
 export const dashboardAPI = {
     get: () => api.get('/dashboard/'),
+
+    getTrends: (days = 30) => api.get('/dashboard/trends/', { params: { days } }),
 };
 
 // ── Chat endpoints ──────────────────────────────────────────────────
@@ -237,6 +385,9 @@ export const adminAPI = {
 
     deleteApplication: (id: string) =>
         api.delete(`/admin/applications/${id}/`),
+
+    getToolHealth: () =>
+        api.get('/scan/tools/health/'),
 };
 
 // ── Learn endpoints ─────────────────────────────────────────────────

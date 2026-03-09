@@ -5,7 +5,7 @@ import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
 import Badge from '@components/ui/Badge';
 import Button from '@components/ui/Button';
-import { adminAPI } from '@services/api';
+import { adminAPI, nucleiAPI, scheduledScanAPI } from '@services/api';
 
 interface DashboardData {
     stats: { label: string; value: string; change: string; trend: string }[];
@@ -26,6 +26,8 @@ export default function AdminDashboard() {
     const [timeRange, setTimeRange] = useState('7d');
     const [data, setData] = useState<DashboardData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [nucleiCount, setNucleiCount] = useState(0);
+    const [scheduledCount, setScheduledCount] = useState(0);
 
     useEffect(() => {
         setIsLoading(true);
@@ -33,6 +35,16 @@ export default function AdminDashboard() {
             .then((res) => setData(res.data))
             .catch(() => setData(null))
             .finally(() => setIsLoading(false));
+
+        nucleiAPI.getAll().then(({ data: d }) => {
+            const arr = Array.isArray(d) ? d : d.results ?? [];
+            setNucleiCount(arr.length);
+        }).catch(() => {});
+
+        scheduledScanAPI.getAll().then(({ data: d }) => {
+            const arr = Array.isArray(d) ? d : d.results ?? [];
+            setScheduledCount(arr.filter((s: { isActive: boolean }) => s.isActive).length);
+        }).catch(() => {});
     }, [timeRange]);
 
     const stats = (data?.stats ?? [
@@ -158,12 +170,16 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Quick Admin Links */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                         {[
                             { label: 'Manage Users', path: '/admin/users', icon: '👥' },
                             { label: 'Scan Management', path: '/admin/scans', icon: '🔍' },
                             { label: 'Contact Messages', path: '/admin/contacts', icon: '✉️' },
                             { label: 'Job Applications', path: '/admin/applications', icon: '📋' },
+                            { label: 'ML Models', path: '/admin/ml', icon: '🤖' },
+                            { label: 'Scheduled Scans', path: '/scheduled-scans', icon: '🕐' },
+                            { label: 'Asset Inventory', path: '/assets', icon: '🗄️' },
+                            { label: 'Webhook Settings', path: '/settings/webhooks', icon: '🔗' },
                         ].map((link) => (
                             <Card
                                 key={link.path}
@@ -172,11 +188,37 @@ export default function AdminDashboard() {
                             >
                                 <div className="flex items-center gap-3">
                                     <span className="text-2xl">{link.icon}</span>
-                                    <span className="font-medium text-text-primary">{link.label}</span>
+                                    <span className="font-medium text-text-primary text-sm">{link.label}</span>
                                 </div>
                             </Card>
                         ))}
                     </div>
+
+                    {/* Scanner Engine Status */}
+                    <Card className="p-6 mb-8">
+                        <h2 className="text-lg font-heading font-semibold text-text-primary mb-4">Scanner Engine Status</h2>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div className="text-center">
+                                <p className="text-3xl font-bold text-accent-green">87</p>
+                                <p className="text-sm text-text-tertiary mt-1">Active Testers</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-3xl font-bold text-text-primary">{nucleiCount}</p>
+                                <p className="text-sm text-text-tertiary mt-1">Nuclei Templates</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-3xl font-bold text-text-primary">{scheduledCount}</p>
+                                <p className="text-sm text-text-tertiary mt-1">Active Schedules</p>
+                            </div>
+                            <div className="text-center">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-status-low/15 text-status-low text-sm font-medium">
+                                    <span className="w-2 h-2 rounded-full bg-status-low animate-pulse" />
+                                    Operational
+                                </div>
+                                <p className="text-sm text-text-tertiary mt-2">Engine Status</p>
+                            </div>
+                        </div>
+                    </Card>
 
                     {/* Recent Users */}
                     <Card className="p-6">

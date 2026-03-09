@@ -8,19 +8,26 @@ import Select from '@components/ui/Select';
 import Button from '@components/ui/Button';
 import ScrollReveal from '@components/ui/ScrollReveal';
 import { isValidUrl } from '@utils/validation';
-import { scanAPI } from '@/services/api';
+import { scanAPI, multiTargetAPI } from '@/services/api';
 import { AxiosError } from 'axios';
 
 export default function ScanWebsite() {
     const navigate = useNavigate();
-    const [scanType, setScanType] = useState<'url' | 'file'>('url');
+    const [scanType, setScanType] = useState<'url' | 'file' | 'multi'>('url');
     const [formData, setFormData] = useState({
         url: '',
         scanDepth: 'medium',
         includeSubdomains: false,
         checkSsl: true,
         followRedirects: true,
+        scanMode: 'normal',
+        wafEvasion: false,
+        authUrl: '',
+        authUsername: '',
+        authPassword: '',
     });
+    const [showAdvanced, setShowAdvanced] = useState(false);
+    const [multiTargets, setMultiTargets] = useState('');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [errors, setErrors] = useState({ url: '' });
     const [apiError, setApiError] = useState('');
@@ -30,6 +37,12 @@ export default function ScanWebsite() {
         { value: 'shallow', label: 'Shallow (Fast - 5-10 minutes)' },
         { value: 'medium', label: 'Medium (Recommended - 15-30 minutes)' },
         { value: 'deep', label: 'Deep (Thorough - 45-60 minutes)' },
+    ];
+
+    const scanModeOptions = [
+        { value: 'normal', label: 'Normal' },
+        { value: 'stealth', label: 'Stealth (Low-noise, slower)' },
+        { value: 'aggressive', label: 'Aggressive (More requests, faster)' },
     ];
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -70,13 +83,23 @@ export default function ScanWebsite() {
         setApiError('');
 
         try {
-            const { data } = await scanAPI.scanWebsite({
+            const payload: Record<string, unknown> = {
                 url: formData.url,
                 scanDepth: formData.scanDepth,
                 includeSubdomains: formData.includeSubdomains,
                 checkSsl: formData.checkSsl,
                 followRedirects: formData.followRedirects,
-            });
+                scanMode: formData.scanMode,
+                wafEvasion: formData.wafEvasion,
+            };
+            if (formData.authUrl && formData.authUsername) {
+                payload.authConfig = {
+                    loginUrl: formData.authUrl,
+                    username: formData.authUsername,
+                    password: formData.authPassword,
+                };
+            }
+            const { data } = await scanAPI.scanWebsite(payload as Parameters<typeof scanAPI.scanWebsite>[0]);
             navigate(`/scan/results/${data.id}`);
         } catch (err) {
             const axiosErr = err as AxiosError<{ detail?: string; message?: string }>;
@@ -157,13 +180,21 @@ export default function ScanWebsite() {
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
                                     URL Scan
                                 </button>
-                                <button
+                                    <button
                                     type="button"
                                     onClick={() => { setScanType('file'); setApiError(''); }}
                                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-colors ${scanType === 'file' ? 'bg-accent-green text-bg-primary' : 'text-text-secondary hover:text-text-primary'}`}
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                     File Scan
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setScanType('multi'); setApiError(''); }}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-colors ${scanType === 'multi' ? 'bg-accent-green text-bg-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                                    Multi-Target
                                 </button>
                             </div>
 
@@ -262,6 +293,80 @@ export default function ScanWebsite() {
                                             </p>
                                         </div>
                                     </label>
+                                </div>
+
+                                {/* Advanced Options */}
+                                <div>
+                                    <button
+                                        type="button"
+                                        className="flex items-center gap-2 text-sm text-text-secondary hover:text-accent-green transition-colors"
+                                        onClick={() => setShowAdvanced((v) => !v)}
+                                    >
+                                        <svg className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                        Advanced Options
+                                    </button>
+
+                                    {showAdvanced && (
+                                        <div className="mt-4 space-y-4 pl-6 border-l-2 border-border-primary">
+                                            {/* Scan Mode */}
+                                            <Select
+                                                name="scanMode"
+                                                label="Scan Mode"
+                                                options={scanModeOptions}
+                                                value={formData.scanMode}
+                                                onChange={handleChange}
+                                                helperText="Stealth mode reduces detection probability; Aggressive is faster but noisier"
+                                            />
+
+                                            {/* WAF Evasion */}
+                                            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-bg-secondary hover:bg-bg-hover transition-colors">
+                                                <input
+                                                    type="checkbox"
+                                                    name="wafEvasion"
+                                                    checked={formData.wafEvasion}
+                                                    onChange={handleChange}
+                                                    className="w-4 h-4 rounded border-border-primary bg-bg-primary text-accent-green focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-bg-primary cursor-pointer"
+                                                />
+                                                <div className="flex-1">
+                                                    <span className="text-sm font-medium text-text-primary">WAF Evasion Techniques</span>
+                                                    <p className="text-xs text-text-tertiary mt-0.5">Use payload obfuscation to bypass Web Application Firewalls</p>
+                                                </div>
+                                            </label>
+
+                                            {/* Auth Config */}
+                                            <div className="space-y-3">
+                                                <p className="text-sm font-medium text-text-secondary">Authenticated Scan (optional)</p>
+                                                <Input
+                                                    type="url"
+                                                    name="authUrl"
+                                                    label="Login URL"
+                                                    placeholder="https://example.com/login"
+                                                    value={formData.authUrl}
+                                                    onChange={handleChange}
+                                                />
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <Input
+                                                        type="text"
+                                                        name="authUsername"
+                                                        label="Username"
+                                                        placeholder="user@example.com"
+                                                        value={formData.authUsername}
+                                                        onChange={handleChange}
+                                                    />
+                                                    <Input
+                                                        type="password"
+                                                        name="authPassword"
+                                                        label="Password"
+                                                        placeholder="••••••••"
+                                                        value={formData.authPassword}
+                                                        onChange={handleChange}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Submit Button */}
@@ -363,6 +468,52 @@ export default function ScanWebsite() {
                                                 Scan File
                                             </>
                                         )}
+                                    </Button>
+                                </div>
+                            </form>
+                            )}
+                            {scanType === 'multi' && (
+                            <form onSubmit={async (e) => {
+                                e.preventDefault();
+                                const targets = multiTargets.split('\n').map((t) => t.trim()).filter(Boolean);
+                                if (targets.length === 0) { setApiError('Enter at least one URL'); return; }
+                                setIsScanning(true); setApiError('');
+                                try {
+                                    const { data } = await multiTargetAPI.create({
+                                        name: `Batch scan ${new Date().toLocaleDateString()}`,
+                                        targets,
+                                        scanDepth: formData.scanDepth,
+                                    });
+                                    navigate(`/scan/results/${data.id}`);
+                                } catch (err) {
+                                    const axiosErr = err as AxiosError<{ detail?: string }>;
+                                    setApiError(axiosErr.response?.data?.detail || 'Failed to start multi-target scan.');
+                                    setIsScanning(false);
+                                }
+                            }} className="space-y-6">
+                                {apiError && (
+                                    <div className="p-3 rounded-lg bg-status-critical/10 border border-status-critical/20 text-status-critical text-sm">{apiError}</div>
+                                )}
+                                <div>
+                                    <label className="text-sm font-medium text-text-secondary block mb-2">Target URLs</label>
+                                    <textarea
+                                        className="w-full h-48 bg-bg-secondary border border-border-primary rounded-lg px-4 py-3 text-sm text-text-primary font-mono placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-green/50 resize-none"
+                                        placeholder={`https://example.com\nhttps://another.com\nhttps://third-target.org`}
+                                        value={multiTargets}
+                                        onChange={(e) => setMultiTargets(e.target.value)}
+                                    />
+                                    <p className="text-xs text-text-tertiary mt-1">One URL per line. Maximum 10 targets per batch scan.</p>
+                                </div>
+                                <Select
+                                    name="scanDepth"
+                                    label="Scan Depth"
+                                    options={scanDepthOptions}
+                                    value={formData.scanDepth}
+                                    onChange={handleChange}
+                                />
+                                <div className="pt-4">
+                                    <Button type="submit" variant="primary" size="lg" className="w-full" isLoading={isScanning}>
+                                        {isScanning ? 'Starting Batch Scan...' : 'Start Multi-Target Scan'}
                                     </Button>
                                 </div>
                             </form>

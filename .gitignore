@@ -52,3 +52,6 @@ backend/apps/scanning/engine/payloads/data/seclists/
 
 # Locked payload file (Windows permission issue)
 backend/apps/scanning/engine/payloads/data/waf_bypass/imperva.txt
+
+# Go module cache (readonly files, regeneratable)
+tools/go/pkg/mod/
