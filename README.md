@@ -561,7 +561,7 @@ cd backend && python manage.py collectstatic --noinput
 **SafeWeb AI** — University Graduation Project
 
 ---
-
+---
 <div align="center">
 
 Built with 🛡️ for web security
