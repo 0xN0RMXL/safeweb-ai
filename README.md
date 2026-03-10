@@ -370,11 +370,11 @@ Detailed testers across Injection, Authentication, API, Network, File Upload, Bu
 
 ### Scan Depth
 
-| Depth | Recon | Testers | Time |
-|:------|:------|:--------|:-----|
-| **Shallow** | Basic (DNS, tech fingerprint) | Top 20 common tests | Minutes |
-| **Medium** | Standard (full recon waves) | 50+ targeted tests | ~30 min |
-| **Deep** | Comprehensive (all 37 modules) | All 87+ testers + Nuclei | Hours |
+| Depth | Recon | Testers |
+|:------|:------|:--------|
+| **Shallow** | Basic (DNS, tech fingerprint) | Top 20 common tests |
+| **Medium** | Standard (full recon waves) | 50+ targeted tests |
+| **Deep** | Comprehensive (all 37 modules) | All 87+ testers + Nuclei |
 
 ---
 
@@ -546,13 +546,13 @@ cd backend && python manage.py collectstatic --noinput
 
 ## 🎨 Design System
 
-(omitted here for brevity — full design tokens and typography in top sections)
+
 
 ---
 
 ## 🔐 Security Features
 
-(omitted here for brevity — see above)
+
 
 ---
 
@@ -561,7 +561,7 @@ cd backend && python manage.py collectstatic --noinput
 **SafeWeb AI** — University Graduation Project
 
 ---
-
+---
 <div align="center">
 
 Built with 🛡️ for web security
