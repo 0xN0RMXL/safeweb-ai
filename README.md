@@ -569,3 +569,4 @@ Built with 🛡️ for web security
 **[⬆ Back to Top](#-safeweb-ai)**
 
 </div>
+Contribution by Mohammed Mostafa
