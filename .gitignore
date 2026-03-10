@@ -82,3 +82,8 @@ backend/apps/chatbot/engine_old.py
 srv_err.txt
 srv_out.txt
 
+
+## Auto-added: Python bytecode files
+__pycache__/
+*.py[cod]
+*$py.class
