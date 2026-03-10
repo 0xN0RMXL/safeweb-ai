@@ -546,13 +546,13 @@ cd backend && python manage.py collectstatic --noinput
 
 ## 🎨 Design System
 
-(omitted here for brevity — full design tokens and typography in top sections)
+
 
 ---
 
 ## 🔐 Security Features
 
-(omitted here for brevity — see above)
+
 
 ---
 
