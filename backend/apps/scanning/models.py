@@ -5,14 +5,26 @@ from django.conf import settings
 
 class Scan(models.Model):
     """Scan job model — tracks a security scan request and its results."""
-    SCAN_TYPES = [('website', 'Website'), ('file', 'File'), ('url', 'URL')]
+    SCAN_TYPES = [
+        ('website', 'Website'),
+        # DEACTIVATED: File/URL threat detection disabled — code preserved
+        # ('file', 'File'),
+        # ('url', 'URL'),
+    ]
     SCAN_STATUSES = [
         ('pending', 'Pending'),
+        ('pending_confirmation', 'Pending Confirmation'),
         ('scanning', 'Scanning'),
         ('completed', 'Completed'),
         ('failed', 'Failed'),
     ]
     SCAN_DEPTHS = [('shallow', 'Shallow'), ('medium', 'Medium'), ('deep', 'Deep')]
+
+    SCOPE_TYPES = [
+        ('single_domain', 'Single Domain'),
+        ('wildcard', 'Wildcard Domain'),
+        ('wide_scope', 'Wide Scope'),
+    ]
 
     # Phase 18: scan mode choices
     SCAN_MODES = [
@@ -28,10 +40,18 @@ class Scan(models.Model):
         related_name='scans',
     )
     scan_type = models.CharField(max_length=20, choices=SCAN_TYPES)
-    target = models.TextField()  # URL or filename
+    target = models.TextField()  # URL, wildcard pattern, or company name
     status = models.CharField(max_length=20, choices=SCAN_STATUSES, default='pending')
     depth = models.CharField(max_length=20, choices=SCAN_DEPTHS, default='medium')
-    include_subdomains = models.BooleanField(default=False)
+    include_subdomains = models.BooleanField(default=True)
+
+    # Scope type — determines how the target is resolved into scannable domains
+    scope_type = models.CharField(
+        max_length=20, choices=SCOPE_TYPES, default='single_domain',
+    )
+    seed_domains = models.JSONField(default=list, blank=True)
+    discovered_domains = models.JSONField(default=list, blank=True)
+
     check_ssl = models.BooleanField(default=True)
     follow_redirects = models.BooleanField(default=True)
     score = models.IntegerField(default=0)  # 0-100 security score
@@ -50,6 +70,8 @@ class Scan(models.Model):
     # Progress tracking
     progress = models.IntegerField(default=0)  # 0-100
     current_phase = models.CharField(max_length=64, blank=True, default='')
+    current_tool = models.CharField(max_length=150, blank=True, default='')  # live tool name shown in UI
+    phase_timings = models.JSONField(default=dict, blank=True)  # {phase_name: duration_seconds} for ETA
     total_requests = models.IntegerField(default=0)
     pages_crawled = models.IntegerField(default=0)
 
@@ -65,6 +87,10 @@ class Scan(models.Model):
 
     # Phase 48: per-tester execution metrics
     tester_results = models.JSONField(default=list, blank=True)
+
+    # Incremental-update counter: incremented each time recon_data or tester_results
+    # are saved mid-scan so the SSE stream can emit a data_update signal.
+    data_version = models.IntegerField(default=0)
 
     class Meta:
         db_table = 'scans'

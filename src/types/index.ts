@@ -8,10 +8,43 @@ export interface User {
     lastLogin?: string;
 }
 
+export type ScopeType = 'single_domain' | 'wildcard' | 'wide_scope';
+
 export interface ScanTarget {
     url?: string;
-    file?: File;
-    type: 'website' | 'file' | 'url';
+    // DEACTIVATED: file scanning disabled
+    // file?: File;
+    type: 'website';
+}
+
+export interface ScanCreatePayload {
+    target: string;
+    scopeType: ScopeType;
+    seedDomains?: string[];
+    scanDepth: string;
+    checkSsl: boolean;
+    followRedirects: boolean;
+    scanMode?: string;
+    wafEvasion?: boolean;
+    authConfig?: {
+        loginUrl: string;
+        username: string;
+        password: string;
+    };
+}
+
+export interface ChildScan {
+    id: string;
+    target: string;
+    status: string;
+    score: number;
+    vulnerabilitySummary?: {
+        critical: number;
+        high: number;
+        medium: number;
+        low: number;
+        info: number;
+    };
 }
 
 export interface Vulnerability {
@@ -75,8 +108,12 @@ export interface MLResult {
 export interface ScanResult {
     id: string;
     target: string;
-    type: 'website' | 'file' | 'url';
-    status: 'pending' | 'scanning' | 'completed' | 'failed';
+    type: 'website';
+    status: 'pending' | 'pending_confirmation' | 'scanning' | 'completed' | 'failed';
+    scopeType?: ScopeType;
+    discoveredDomains?: string[];
+    seedDomains?: string[];
+    childScans?: ChildScan[];
     startTime: string;
     endTime?: string;
     duration?: number;
@@ -97,13 +134,19 @@ export interface ScanResult {
     };
     // Advanced fields
     progress?: number;       // 0–100 during active scan
-    currentPhase?: string;   // e.g. "Running XSS Tester"
+    currentPhase?: string;   // e.g. "testing"
+    currentTool?: string;    // e.g. "Running Nuclei Template Engine"
     totalRequests?: number;
     pagesCrawled?: number;
     mode?: 'standard' | 'continuous' | 'hunting';
     reconData?: ReconData;
     testerResults?: TesterResult[];
     mlResult?: MLResult;
+    // Live timing (populated from SSE progress events)
+    startedAtIso?: string;          // ISO timestamp from server
+    elapsedSeconds?: number;
+    estimatedRemainingSeconds?: number;
+    dataVersion?: number;           // incremented whenever recon_data / tester_results change
 }
 
 export interface ScanHistory {

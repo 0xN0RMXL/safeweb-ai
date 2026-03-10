@@ -8,16 +8,28 @@ import Select from '@components/ui/Select';
 import Button from '@components/ui/Button';
 import ScrollReveal from '@components/ui/ScrollReveal';
 import { isValidUrl } from '@utils/validation';
-import { scanAPI, multiTargetAPI } from '@/services/api';
+import { scanAPI } from '@/services/api';
 import { AxiosError } from 'axios';
+import type { ScopeType } from '@/types';
+
+type ScanStep = 'configure' | 'confirm_domains';
+
+interface WideScopeState {
+    scanId: string;
+    discoveredDomains: string[];
+    selectedDomains: string[];
+}
 
 export default function ScanWebsite() {
     const navigate = useNavigate();
-    const [scanType, setScanType] = useState<'url' | 'file' | 'multi'>('url');
+    const [scopeType, setScopeType] = useState<ScopeType>('single_domain');
+    const [step, setStep] = useState<ScanStep>('configure');
+    const [wideScopeState, setWideScopeState] = useState<WideScopeState | null>(null);
+
     const [formData, setFormData] = useState({
-        url: '',
+        target: '',
+        seedDomains: '',
         scanDepth: 'medium',
-        includeSubdomains: false,
         checkSsl: true,
         followRedirects: true,
         scanMode: 'normal',
@@ -27,11 +39,10 @@ export default function ScanWebsite() {
         authPassword: '',
     });
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [multiTargets, setMultiTargets] = useState('');
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [errors, setErrors] = useState({ url: '' });
+    const [errors, setErrors] = useState({ target: '' });
     const [apiError, setApiError] = useState('');
     const [isScanning, setIsScanning] = useState(false);
+    const [isResolving, setIsResolving] = useState(false);
 
     const scanDepthOptions = [
         { value: 'shallow', label: 'Shallow (Fast - 5-10 minutes)' },
@@ -45,7 +56,43 @@ export default function ScanWebsite() {
         { value: 'aggressive', label: 'Aggressive (More requests, faster)' },
     ];
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const scopeTypes: { id: ScopeType; title: string; description: string; icon: JSX.Element; example: string }[] = [
+        {
+            id: 'single_domain',
+            title: 'Single Domain',
+            description: 'Scan one domain and all its subdomains',
+            example: 'https://example.com',
+            icon: (
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+            ),
+        },
+        {
+            id: 'wildcard',
+            title: 'Wildcard Domain',
+            description: 'Discover and scan all matching domains via CT logs',
+            example: '*.example.com',
+            icon: (
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+            ),
+        },
+        {
+            id: 'wide_scope',
+            title: 'Wide Scope (Company)',
+            description: 'Full OSINT discovery — WHOIS, ASN, CT logs — then scan all found domains',
+            example: 'Acme Corp',
+            icon: (
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+            ),
+        },
+    ];
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
         const checked = (e.target as HTMLInputElement).checked;
 
@@ -54,29 +101,39 @@ export default function ScanWebsite() {
             [name]: type === 'checkbox' ? checked : value,
         }));
 
-        if (errors.url && name === 'url') {
-            setErrors({ url: '' });
+        if (errors.target && name === 'target') {
+            setErrors({ target: '' });
         }
     };
 
     const validateForm = (): boolean => {
-        if (!formData.url.trim()) {
-            setErrors({ url: 'Website URL is required' });
+        const target = formData.target.trim();
+        if (!target) {
+            setErrors({ target: 'Target is required' });
             return false;
         }
 
-        if (!isValidUrl(formData.url)) {
-            setErrors({ url: 'Please enter a valid URL (e.g., https://example.com)' });
+        if (scopeType === 'single_domain' && !isValidUrl(target)) {
+            setErrors({ target: 'Please enter a valid URL (e.g., https://example.com)' });
             return false;
         }
 
-        setErrors({ url: '' });
+        if (scopeType === 'wildcard' && !target.startsWith('*.')) {
+            setErrors({ target: 'Wildcard pattern must start with *. (e.g., *.example.com)' });
+            return false;
+        }
+
+        if (scopeType === 'wide_scope' && target.length < 2) {
+            setErrors({ target: 'Please enter a company or organization name' });
+            return false;
+        }
+
+        setErrors({ target: '' });
         return true;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
         if (!validateForm()) return;
 
         setIsScanning(true);
@@ -84,14 +141,19 @@ export default function ScanWebsite() {
 
         try {
             const payload: Record<string, unknown> = {
-                url: formData.url,
+                target: formData.target,
+                scope_type: scopeType,
                 scanDepth: formData.scanDepth,
-                includeSubdomains: formData.includeSubdomains,
                 checkSsl: formData.checkSsl,
                 followRedirects: formData.followRedirects,
                 scanMode: formData.scanMode,
                 wafEvasion: formData.wafEvasion,
             };
+
+            if (scopeType === 'wide_scope' && formData.seedDomains.trim()) {
+                payload.seed_domains = formData.seedDomains.split('\n').map(d => d.trim()).filter(Boolean);
+            }
+
             if (formData.authUrl && formData.authUsername) {
                 payload.authConfig = {
                     loginUrl: formData.authUrl,
@@ -99,8 +161,30 @@ export default function ScanWebsite() {
                     password: formData.authPassword,
                 };
             }
-            const { data } = await scanAPI.scanWebsite(payload as Parameters<typeof scanAPI.scanWebsite>[0]);
-            navigate(`/scan/results/${data.id}`);
+
+            const { data } = await scanAPI.createScan(payload as Parameters<typeof scanAPI.createScan>[0]);
+
+            if (scopeType === 'wide_scope') {
+                // Wide scope: resolve domains then ask user to confirm
+                setIsResolving(true);
+                try {
+                    const resolveRes = await scanAPI.resolveScope(data.id);
+                    const domains: string[] = resolveRes.data.discovered_domains || [];
+                    setWideScopeState({
+                        scanId: data.id,
+                        discoveredDomains: domains,
+                        selectedDomains: [...domains],
+                    });
+                    setStep('confirm_domains');
+                } catch {
+                    setApiError('Failed to resolve domains. You can retry from the scan results page.');
+                    navigate(`/scan/results/${data.id}`);
+                } finally {
+                    setIsResolving(false);
+                }
+            } else {
+                navigate(`/scan/results/${data.id}`);
+            }
         } catch (err) {
             const axiosErr = err as AxiosError<{ detail?: string; message?: string }>;
             setApiError(
@@ -108,121 +192,276 @@ export default function ScanWebsite() {
                 axiosErr.response?.data?.message ||
                 'Failed to start scan. Please try again.',
             );
+        } finally {
             setIsScanning(false);
         }
     };
 
-    const handleFileSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedFile) {
-            setApiError('Please select a file to scan');
-            return;
-        }
+    const handleConfirmDomains = async () => {
+        if (!wideScopeState || wideScopeState.selectedDomains.length === 0) return;
+
         setIsScanning(true);
         setApiError('');
+
         try {
-            const fd = new FormData();
-            fd.append('file', selectedFile);
-            const { data } = await scanAPI.scanFile(fd);
-            navigate(`/scan/results/${data.id}`);
+            await scanAPI.confirmScope(wideScopeState.scanId, wideScopeState.selectedDomains);
+            navigate(`/scan/results/${wideScopeState.scanId}`);
         } catch (err) {
             const axiosErr = err as AxiosError<{ detail?: string; message?: string }>;
             setApiError(
                 axiosErr.response?.data?.detail ||
                 axiosErr.response?.data?.message ||
-                'Failed to scan file. Please try again.',
+                'Failed to confirm scope. Please try again.',
             );
             setIsScanning(false);
         }
     };
 
+    const toggleDomain = (domain: string) => {
+        if (!wideScopeState) return;
+        setWideScopeState(prev => {
+            if (!prev) return prev;
+            const selected = prev.selectedDomains.includes(domain)
+                ? prev.selectedDomains.filter(d => d !== domain)
+                : [...prev.selectedDomains, domain];
+            return { ...prev, selectedDomains: selected };
+        });
+    };
+
+    const toggleAllDomains = () => {
+        if (!wideScopeState) return;
+        setWideScopeState(prev => {
+            if (!prev) return prev;
+            const allSelected = prev.selectedDomains.length === prev.discoveredDomains.length;
+            return { ...prev, selectedDomains: allSelected ? [] : [...prev.discoveredDomains] };
+        });
+    };
+
+    const getTargetLabel = () => {
+        switch (scopeType) {
+            case 'single_domain': return 'Target URL';
+            case 'wildcard': return 'Wildcard Pattern';
+            case 'wide_scope': return 'Company / Organization Name';
+        }
+    };
+
+    const getTargetPlaceholder = () => {
+        switch (scopeType) {
+            case 'single_domain': return 'https://example.com';
+            case 'wildcard': return '*.example.com';
+            case 'wide_scope': return 'Acme Corporation';
+        }
+    };
+
+    const getTargetHelperText = () => {
+        switch (scopeType) {
+            case 'single_domain': return 'Enter the full URL including http:// or https://';
+            case 'wildcard': return 'All domains matching this pattern will be discovered via CT logs and scanned';
+            case 'wide_scope': return 'We\'ll discover all domains belonging to this organization using OSINT techniques';
+        }
+    };
+
     const vulnerabilityChecks = [
-        'SQL Injection',
-        'Cross-Site Scripting (XSS)',
-        'CSRF Attacks',
-        'Broken Authentication',
-        'Security Misconfiguration',
-        'Sensitive Data Exposure',
-        'Broken Access Control',
-        'XML External Entities (XXE)',
-        'Insecure Deserialization',
-        'Known Vulnerable Components',
-        'Insufficient Logging',
-        'Server-Side Request Forgery (SSRF)',
+        'SQL Injection', 'Cross-Site Scripting (XSS)', 'CSRF Attacks',
+        'Broken Authentication', 'Security Misconfiguration', 'Sensitive Data Exposure',
+        'Broken Access Control', 'XML External Entities (XXE)', 'Insecure Deserialization',
+        'Known Vulnerable Components', 'Insufficient Logging', 'Server-Side Request Forgery (SSRF)',
     ];
 
+    // ── Wide scope domain confirmation step ──────────────────────
+    if (step === 'confirm_domains' && wideScopeState) {
+        return (
+            <Layout>
+                <div className="py-12">
+                    <Container>
+                        <ScrollReveal>
+                            <div className="mb-8">
+                                <button
+                                    onClick={() => { setStep('configure'); setWideScopeState(null); }}
+                                    className="text-sm text-accent-green hover:text-accent-green-hover mb-2 inline-flex items-center gap-1"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                    Back to Configuration
+                                </button>
+                                <h1 className="text-3xl md:text-4xl font-heading font-bold text-text-primary mb-3">
+                                    Confirm Discovered Domains
+                                </h1>
+                                <p className="text-lg text-text-secondary">
+                                    We discovered <span className="text-accent-green font-semibold">{wideScopeState.discoveredDomains.length}</span> domains
+                                    for &ldquo;{formData.target}&rdquo;. Select which domains to include in the scan.
+                                </p>
+                            </div>
+                        </ScrollReveal>
+
+                        {apiError && (
+                            <div className="p-3 rounded-lg bg-status-critical/10 border border-status-critical/20 text-status-critical text-sm mb-6">
+                                {apiError}
+                            </div>
+                        )}
+
+                        <Card className="p-6 mb-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={wideScopeState.selectedDomains.length === wideScopeState.discoveredDomains.length}
+                                            onChange={toggleAllDomains}
+                                            className="w-4 h-4 rounded border-border-primary bg-bg-primary text-accent-green focus:ring-2 focus:ring-accent-green"
+                                        />
+                                        <span className="text-sm font-medium text-text-primary">Select All</span>
+                                    </label>
+                                    <span className="text-sm text-text-tertiary">
+                                        {wideScopeState.selectedDomains.length} of {wideScopeState.discoveredDomains.length} selected
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-96 overflow-y-auto">
+                                {wideScopeState.discoveredDomains.map((domain) => (
+                                    <label
+                                        key={domain}
+                                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                                            wideScopeState.selectedDomains.includes(domain)
+                                                ? 'bg-accent-green/10 border border-accent-green/30'
+                                                : 'bg-bg-secondary border border-transparent hover:bg-bg-hover'
+                                        }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={wideScopeState.selectedDomains.includes(domain)}
+                                            onChange={() => toggleDomain(domain)}
+                                            className="w-4 h-4 rounded border-border-primary bg-bg-primary text-accent-green focus:ring-2 focus:ring-accent-green"
+                                        />
+                                        <span className="text-sm font-mono text-text-primary truncate">{domain}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </Card>
+
+                        <div className="flex items-center gap-4">
+                            <Button
+                                variant="primary"
+                                size="lg"
+                                onClick={handleConfirmDomains}
+                                isLoading={isScanning}
+                                className="flex-1"
+                            >
+                                {isScanning
+                                    ? 'Launching Scans...'
+                                    : `Start Scanning ${wideScopeState.selectedDomains.length} Domain${wideScopeState.selectedDomains.length !== 1 ? 's' : ''}`}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                onClick={() => { setStep('configure'); setWideScopeState(null); }}
+                            >
+                                Cancel
+                            </Button>
+                        </div>
+                    </Container>
+                </div>
+            </Layout>
+        );
+    }
+
+    // ── Main scan configuration form ─────────────────────────────
     return (
         <Layout>
             <div className="py-12">
                 <Container>
-                    {/* Header */}
                     <ScrollReveal>
-                    <div className="mb-8">
-                        <h1 className="text-3xl md:text-4xl font-heading font-bold text-text-primary mb-3">
-                            Scan Website for Vulnerabilities
-                        </h1>
-                        <p className="text-lg text-text-secondary">
-                            Comprehensive security analysis powered by AI
-                        </p>
-                    </div>
+                        <div className="mb-8">
+                            <h1 className="text-3xl md:text-4xl font-heading font-bold text-text-primary mb-3">
+                                Web Application Penetration Test
+                            </h1>
+                            <p className="text-lg text-text-secondary">
+                                Comprehensive security analysis powered by AI
+                            </p>
+                        </div>
                     </ScrollReveal>
+
+                    {/* Scope Type Selector */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                        {scopeTypes.map((scope) => (
+                            <button
+                                key={scope.id}
+                                onClick={() => { setScopeType(scope.id); setErrors({ target: '' }); setFormData(prev => ({ ...prev, target: '' })); }}
+                                className={`p-6 rounded-xl border-2 text-left transition-all duration-200 ${
+                                    scopeType === scope.id
+                                        ? 'border-accent-green bg-accent-green/5 shadow-lg'
+                                        : 'border-border-primary bg-bg-card hover:border-accent-green/50 hover:bg-bg-hover'
+                                }`}
+                            >
+                                <div className={`mb-3 ${scopeType === scope.id ? 'text-accent-green' : 'text-text-tertiary'}`}>
+                                    {scope.icon}
+                                </div>
+                                <h3 className="text-lg font-heading font-semibold text-text-primary mb-1">{scope.title}</h3>
+                                <p className="text-sm text-text-tertiary mb-2">{scope.description}</p>
+                                <code className="text-xs text-text-tertiary bg-bg-secondary px-2 py-1 rounded">{scope.example}</code>
+                            </button>
+                        ))}
+                    </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Scan Form */}
                         <Card className="lg:col-span-2 p-8">
-                            {/* Tab Switcher */}
-                            <div className="flex gap-1 p-1 rounded-lg bg-bg-secondary mb-6">
-                                <button
-                                    type="button"
-                                    onClick={() => { setScanType('url'); setApiError(''); }}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-colors ${scanType === 'url' ? 'bg-accent-green text-bg-primary' : 'text-text-secondary hover:text-text-primary'}`}
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
-                                    URL Scan
-                                </button>
-                                    <button
-                                    type="button"
-                                    onClick={() => { setScanType('file'); setApiError(''); }}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-colors ${scanType === 'file' ? 'bg-accent-green text-bg-primary' : 'text-text-secondary hover:text-text-primary'}`}
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                    File Scan
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { setScanType('multi'); setApiError(''); }}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-colors ${scanType === 'multi' ? 'bg-accent-green text-bg-primary' : 'text-text-secondary hover:text-text-primary'}`}
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-                                    Multi-Target
-                                </button>
-                            </div>
-
-                            {scanType === 'url' ? (
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                {/* API Error */}
                                 {apiError && (
                                     <div className="p-3 rounded-lg bg-status-critical/10 border border-status-critical/20 text-status-critical text-sm">
                                         {apiError}
                                     </div>
                                 )}
 
-                                {/* URL Input */}
+                                {isResolving && (
+                                    <div className="p-4 rounded-lg bg-accent-green/5 border border-accent-green/20">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-5 h-5 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
+                                            <span className="text-sm text-text-primary">
+                                                Discovering domains via OSINT (WHOIS, ASN, CT logs)...
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Target Input */}
                                 <Input
-                                    type="url"
-                                    name="url"
-                                    label="Target URL"
-                                    placeholder="https://example.com"
-                                    value={formData.url}
+                                    type="text"
+                                    name="target"
+                                    label={getTargetLabel()}
+                                    placeholder={getTargetPlaceholder()}
+                                    value={formData.target}
                                     onChange={handleChange}
-                                    error={errors.url}
-                                    helperText="Enter the full URL including http:// or https://"
+                                    error={errors.target}
+                                    helperText={getTargetHelperText()}
                                     leftIcon={
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                                         </svg>
                                     }
                                 />
+
+                                {/* Seed Domains — only for wide scope */}
+                                {scopeType === 'wide_scope' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-text-secondary mb-2">
+                                            Known Seed Domains (optional)
+                                        </label>
+                                        <textarea
+                                            name="seedDomains"
+                                            value={formData.seedDomains}
+                                            onChange={handleChange}
+                                            placeholder={'example.com\napp.example.com\napi.example.io'}
+                                            rows={4}
+                                            className="w-full px-4 py-3 rounded-lg bg-bg-secondary border border-border-primary text-text-primary text-sm font-mono placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-green focus:border-transparent resize-none"
+                                        />
+                                        <p className="text-xs text-text-tertiary mt-1">
+                                            One domain per line. These will be included alongside OSINT-discovered domains.
+                                        </p>
+                                    </div>
+                                )}
 
                                 {/* Scan Depth */}
                                 <Select
@@ -238,24 +477,6 @@ export default function ScanWebsite() {
                                 <div className="space-y-3">
                                     <label className="text-sm font-medium text-text-secondary block mb-3">
                                         Scan Options
-                                    </label>
-
-                                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-bg-secondary hover:bg-bg-hover transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            name="includeSubdomains"
-                                            checked={formData.includeSubdomains}
-                                            onChange={handleChange}
-                                            className="w-4 h-4 rounded border-border-primary bg-bg-primary text-accent-green focus:ring-2 focus:ring-accent-green focus:ring-offset-2 focus:ring-offset-bg-primary cursor-pointer"
-                                        />
-                                        <div className="flex-1">
-                                            <span className="text-sm font-medium text-text-primary">
-                                                Include Subdomains
-                                            </span>
-                                            <p className="text-xs text-text-tertiary mt-0.5">
-                                                Scan all subdomains under the main domain
-                                            </p>
-                                        </div>
                                     </label>
 
                                     <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-bg-secondary hover:bg-bg-hover transition-colors">
@@ -310,7 +531,6 @@ export default function ScanWebsite() {
 
                                     {showAdvanced && (
                                         <div className="mt-4 space-y-4 pl-6 border-l-2 border-border-primary">
-                                            {/* Scan Mode */}
                                             <Select
                                                 name="scanMode"
                                                 label="Scan Mode"
@@ -320,7 +540,6 @@ export default function ScanWebsite() {
                                                 helperText="Stealth mode reduces detection probability; Aggressive is faster but noisier"
                                             />
 
-                                            {/* WAF Evasion */}
                                             <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-bg-secondary hover:bg-bg-hover transition-colors">
                                                 <input
                                                     type="checkbox"
@@ -335,7 +554,6 @@ export default function ScanWebsite() {
                                                 </div>
                                             </label>
 
-                                            {/* Auth Config */}
                                             <div className="space-y-3">
                                                 <p className="text-sm font-medium text-text-secondary">Authenticated Scan (optional)</p>
                                                 <Input
@@ -376,153 +594,25 @@ export default function ScanWebsite() {
                                         variant="primary"
                                         size="lg"
                                         className="w-full"
-                                        isLoading={isScanning}
+                                        isLoading={isScanning || isResolving}
                                     >
-                                        {isScanning ? (
-                                            'Initiating Scan...'
+                                        {isScanning || isResolving ? (
+                                            scopeType === 'wide_scope' ? 'Discovering Domains...' : 'Initiating Scan...'
                                         ) : (
                                             <>
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                                 </svg>
-                                                Start Security Scan
+                                                {scopeType === 'wide_scope' ? 'Discover & Review Domains' : 'Start Security Scan'}
                                             </>
                                         )}
                                     </Button>
                                 </div>
                             </form>
-                            ) : (
-                            <form onSubmit={handleFileSubmit} className="space-y-6">
-                                {/* API Error */}
-                                {apiError && (
-                                    <div className="p-3 rounded-lg bg-status-critical/10 border border-status-critical/20 text-status-critical text-sm">
-                                        {apiError}
-                                    </div>
-                                )}
-
-                                {/* File Upload */}
-                                <div>
-                                    <label className="text-sm font-medium text-text-secondary block mb-3">Upload File</label>
-                                    <div
-                                        className="border-2 border-dashed border-border-primary rounded-lg p-8 text-center hover:border-accent-green/50 transition-colors cursor-pointer"
-                                        onClick={() => document.getElementById('file-input')?.click()}
-                                        onDragOver={(e) => e.preventDefault()}
-                                        onDrop={(e) => {
-                                            e.preventDefault();
-                                            const file = e.dataTransfer.files[0];
-                                            if (file) setSelectedFile(file);
-                                        }}
-                                    >
-                                        <input
-                                            id="file-input"
-                                            type="file"
-                                            className="hidden"
-                                            accept=".html,.htm,.js,.ts,.jsx,.tsx,.php,.py,.rb,.java,.cs,.go,.rs,.xml,.json,.yaml,.yml"
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) setSelectedFile(file);
-                                            }}
-                                        />
-                                        {selectedFile ? (
-                                            <div>
-                                                <svg className="w-10 h-10 mx-auto text-accent-green mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                <p className="text-sm font-medium text-text-primary">{selectedFile.name}</p>
-                                                <p className="text-xs text-text-tertiary mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
-                                                <button
-                                                    type="button"
-                                                    className="text-xs text-accent-red mt-2 hover:underline"
-                                                    onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <svg className="w-10 h-10 mx-auto text-text-tertiary mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                                </svg>
-                                                <p className="text-sm text-text-secondary">Drag and drop a file here, or click to browse</p>
-                                                <p className="text-xs text-text-tertiary mt-1">Supports HTML, JS, TS, PHP, Python, and more</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Submit Button */}
-                                <div className="pt-4">
-                                    <Button
-                                        type="submit"
-                                        variant="primary"
-                                        size="lg"
-                                        className="w-full"
-                                        isLoading={isScanning}
-                                        disabled={!selectedFile}
-                                    >
-                                        {isScanning ? 'Scanning File...' : (
-                                            <>
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                                Scan File
-                                            </>
-                                        )}
-                                    </Button>
-                                </div>
-                            </form>
-                            )}
-                            {scanType === 'multi' && (
-                            <form onSubmit={async (e) => {
-                                e.preventDefault();
-                                const targets = multiTargets.split('\n').map((t) => t.trim()).filter(Boolean);
-                                if (targets.length === 0) { setApiError('Enter at least one URL'); return; }
-                                setIsScanning(true); setApiError('');
-                                try {
-                                    const { data } = await multiTargetAPI.create({
-                                        name: `Batch scan ${new Date().toLocaleDateString()}`,
-                                        targets,
-                                        scanDepth: formData.scanDepth,
-                                    });
-                                    navigate(`/scan/results/${data.id}`);
-                                } catch (err) {
-                                    const axiosErr = err as AxiosError<{ detail?: string }>;
-                                    setApiError(axiosErr.response?.data?.detail || 'Failed to start multi-target scan.');
-                                    setIsScanning(false);
-                                }
-                            }} className="space-y-6">
-                                {apiError && (
-                                    <div className="p-3 rounded-lg bg-status-critical/10 border border-status-critical/20 text-status-critical text-sm">{apiError}</div>
-                                )}
-                                <div>
-                                    <label className="text-sm font-medium text-text-secondary block mb-2">Target URLs</label>
-                                    <textarea
-                                        className="w-full h-48 bg-bg-secondary border border-border-primary rounded-lg px-4 py-3 text-sm text-text-primary font-mono placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-green/50 resize-none"
-                                        placeholder={`https://example.com\nhttps://another.com\nhttps://third-target.org`}
-                                        value={multiTargets}
-                                        onChange={(e) => setMultiTargets(e.target.value)}
-                                    />
-                                    <p className="text-xs text-text-tertiary mt-1">One URL per line. Maximum 10 targets per batch scan.</p>
-                                </div>
-                                <Select
-                                    name="scanDepth"
-                                    label="Scan Depth"
-                                    options={scanDepthOptions}
-                                    value={formData.scanDepth}
-                                    onChange={handleChange}
-                                />
-                                <div className="pt-4">
-                                    <Button type="submit" variant="primary" size="lg" className="w-full" isLoading={isScanning}>
-                                        {isScanning ? 'Starting Batch Scan...' : 'Start Multi-Target Scan'}
-                                    </Button>
-                                </div>
-                            </form>
-                            )}
                         </Card>
 
                         {/* Info Sidebar */}
                         <div className="space-y-6">
-                            {/* What We Scan */}
                             <Card className="p-6">
                                 <h3 className="text-lg font-heading font-semibold text-text-primary mb-4">
                                     What We Scan For
@@ -539,34 +629,27 @@ export default function ScanWebsite() {
                                 </div>
                             </Card>
 
-                            {/* Security Standards */}
                             <Card className="p-6">
                                 <h3 className="text-lg font-heading font-semibold text-text-primary mb-4">
                                     Compliance Standards
                                 </h3>
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary">
-                                        <div className="w-10 h-10 rounded bg-accent-green/10 flex items-center justify-center text-accent-green text-xs font-bold">
-                                            OWASP
-                                        </div>
+                                        <div className="w-10 h-10 rounded bg-accent-green/10 flex items-center justify-center text-accent-green text-xs font-bold">OWASP</div>
                                         <div>
                                             <div className="text-sm font-medium text-text-primary">OWASP Top 10</div>
                                             <div className="text-xs text-text-tertiary">Web Security</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary">
-                                        <div className="w-10 h-10 rounded bg-accent-blue/10 flex items-center justify-center text-accent-blue text-xs font-bold">
-                                            CWE
-                                        </div>
+                                        <div className="w-10 h-10 rounded bg-accent-blue/10 flex items-center justify-center text-accent-blue text-xs font-bold">CWE</div>
                                         <div>
                                             <div className="text-sm font-medium text-text-primary">CWE Top 25</div>
                                             <div className="text-xs text-text-tertiary">Common Weaknesses</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary">
-                                        <div className="w-10 h-10 rounded bg-accent-green/10 flex items-center justify-center text-accent-green text-xs font-bold">
-                                            PCI
-                                        </div>
+                                        <div className="w-10 h-10 rounded bg-accent-green/10 flex items-center justify-center text-accent-green text-xs font-bold">PCI</div>
                                         <div>
                                             <div className="text-sm font-medium text-text-primary">PCI DSS</div>
                                             <div className="text-xs text-text-tertiary">Payment Security</div>
@@ -575,7 +658,6 @@ export default function ScanWebsite() {
                                 </div>
                             </Card>
 
-                            {/* Help */}
                             <Card className="p-6 bg-gradient-to-br from-accent-green/5 to-accent-blue/5 border-accent-green/20">
                                 <div className="flex items-start gap-3">
                                     <div className="w-10 h-10 rounded-lg bg-accent-green/20 flex items-center justify-center text-accent-green flex-shrink-0">
@@ -584,16 +666,9 @@ export default function ScanWebsite() {
                                         </svg>
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-semibold text-text-primary mb-1">
-                                            Need Help?
-                                        </h4>
-                                        <p className="text-xs text-text-tertiary mb-3">
-                                            Check our documentation for scanning best practices
-                                        </p>
-                                        <Link
-                                            to="/docs"
-                                            className="text-sm text-accent-green hover:text-accent-green-hover font-medium"
-                                        >
+                                        <h4 className="text-sm font-semibold text-text-primary mb-1">Need Help?</h4>
+                                        <p className="text-xs text-text-tertiary mb-3">Check our documentation for scanning best practices</p>
+                                        <Link to="/docs" className="text-sm text-accent-green hover:text-accent-green-hover font-medium">
                                             View Documentation →
                                         </Link>
                                     </div>

@@ -132,6 +132,12 @@ def execute_scan_task(self, scan_id):
         orchestrator = ScanOrchestrator()
         orchestrator.execute_scan(scan_id)
         logger.info(f'Scan completed: {scan_id}')
+
+        # If this scan has a parent (child of wildcard/wide_scope), check aggregation
+        scan = Scan.objects.get(id=scan_id)
+        if scan.parent_scan_id:
+            check_parent_scan_completion.delay(str(scan.parent_scan_id))
+
     except Scan.DoesNotExist:
         logger.error(f'Scan not found: {scan_id}')
         return  # Don't retry — permanent failure
@@ -150,6 +156,61 @@ def execute_scan_task(self, scan_id):
         except Scan.DoesNotExist:
             return
         raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def check_parent_scan_completion(self, parent_scan_id: str):
+    """Check if all child scans of a parent (wildcard/wide_scope) are done.
+
+    When every child has reached a terminal status (completed / failed),
+    aggregate scores and vulnerability summaries into the parent scan.
+    """
+    from apps.scanning.models import Scan
+
+    try:
+        parent = Scan.objects.get(id=parent_scan_id)
+    except Scan.DoesNotExist:
+        logger.error(f'Parent scan not found: {parent_scan_id}')
+        return
+
+    children = Scan.objects.filter(parent_scan=parent)
+    total = children.count()
+    if total == 0:
+        return
+
+    terminal_states = {'completed', 'failed'}
+    done = children.filter(status__in=terminal_states).count()
+
+    # Update parent progress based on children completion ratio
+    parent.progress = int((done / total) * 100)
+    parent.save(update_fields=['progress'])
+
+    if done < total:
+        logger.info(
+            f'Parent scan {parent_scan_id}: {done}/{total} children done — waiting.'
+        )
+        return
+
+    # All children finished — aggregate results
+    completed_children = children.filter(status='completed')
+    scores = [c.score for c in completed_children if c.score is not None]
+
+    parent.score = round(sum(scores) / len(scores), 1) if scores else 0
+    parent.status = 'completed' if completed_children.exists() else 'failed'
+
+    # Aggregate vulnerability summary across children
+    agg_summary = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'info': 0}
+    for child in completed_children:
+        child_summary = child.vulnerability_summary or {}
+        for sev in agg_summary:
+            agg_summary[sev] += child_summary.get(sev, 0)
+    parent.vulnerability_summary = agg_summary
+    parent.save(update_fields=['score', 'status', 'vulnerability_summary', 'progress'])
+
+    logger.info(
+        f'Parent scan {parent_scan_id} aggregated: score={parent.score}, '
+        f'status={parent.status}, vulns={agg_summary}'
+    )
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)

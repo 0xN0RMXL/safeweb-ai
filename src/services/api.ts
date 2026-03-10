@@ -131,21 +131,34 @@ export const userAPI = {
 
 // ── Scan endpoints ──────────────────────────────────────────────────
 export const scanAPI = {
-    scanWebsite: (data: {
-        url: string;
+    createScan: (data: {
+        target: string;
+        scope_type: string;
+        seed_domains?: string[];
         scanDepth: string;
-        includeSubdomains: boolean;
         checkSsl: boolean;
         followRedirects: boolean;
+        scanMode?: string;
+        wafEvasion?: boolean;
+        authConfig?: Record<string, string>;
     }) => api.post('/scan/website/', data),
 
-    scanFile: (formData: FormData) =>
-        api.post('/scan/file/', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        }),
+    resolveScope: (id: string) =>
+        api.post(`/scan/${id}/resolve/`),
 
-    scanUrl: (url: string) =>
-        api.post('/scan/url/', { url }),
+    confirmScope: (id: string, selectedDomains: string[]) =>
+        api.post(`/scan/${id}/confirm/`, { selectedDomains }),
+
+    // Legacy alias
+    scanWebsite: (data: Record<string, unknown>) => api.post('/scan/website/', data),
+
+    // DEACTIVATED: File/URL threat detection endpoints removed
+    // scanFile: (formData: FormData) =>
+    //     api.post('/scan/file/', formData, {
+    //         headers: { 'Content-Type': 'multipart/form-data' },
+    //     }),
+    // scanUrl: (url: string) =>
+    //     api.post('/scan/url/', { url }),
 
     getResults: (id: string) =>
         api.get(`/scan/${id}/`),
@@ -331,6 +344,15 @@ export const chatAPI = {
 
     deleteSession: (id: string) =>
         api.delete(`/chat/sessions/${id}/`),
+
+    sendFeedback: (messageId: string, feedback: 'positive' | 'negative') =>
+        api.post(`/chat/messages/${messageId}/feedback/`, { feedback }),
+
+    getSuggestions: (scanId?: string) =>
+        api.get('/chat/suggestions/', { params: scanId ? { scan_id: scanId } : {} }),
+
+    getAnalytics: (timeRange = '30d') =>
+        api.get('/chat/analytics/', { params: { timeRange } }),
 };
 
 // ── Admin endpoints ─────────────────────────────────────────────────

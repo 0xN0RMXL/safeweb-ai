@@ -1,5 +1,7 @@
 import json
 import logging
+import threading
+from django.conf import settings as django_settings
 from django.utils import timezone
 from django.db.models import Count, Avg, Q
 from rest_framework import generics, status, views
@@ -9,7 +11,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models import Scan, Vulnerability, Webhook, WebhookDelivery, NucleiTemplate, ScopeDefinition, MultiTargetScan, DiscoveredAsset, ScheduledScan, AssetMonitorRecord, AuthConfig
 from .serializers import (
-    ScanCreateSerializer, ScanURLCreateSerializer,
+    ScanCreateSerializer,
+    # DEACTIVATED: ScanURLCreateSerializer,
     ScanDetailSerializer, ScanListSerializer,
     ScanFullCreateSerializer, WebhookSerializer,
     WebhookDeliverySerializer, NucleiTemplateSerializer,
@@ -24,6 +27,16 @@ from apps.accounts.utils import time_ago
 logger = logging.getLogger(__name__)
 
 
+def _dispatch_scan_task(scan_id: str):
+    """Dispatch scan task. In dev mode (eager), uses a background thread
+    so the HTTP response returns immediately instead of blocking."""
+    if getattr(django_settings, 'CELERY_TASK_ALWAYS_EAGER', False):
+        t = threading.Thread(target=execute_scan_task, args=(scan_id,), daemon=True)
+        t.start()
+    else:
+        execute_scan_task.delay(scan_id)
+
+
 class WebsiteScanCreateView(views.APIView):
     """POST /api/scan/website — Create a new website scan."""
     permission_classes = [IsAuthenticated]
@@ -34,30 +47,145 @@ class WebsiteScanCreateView(views.APIView):
         assert serializer.validated_data is not None
         data = serializer.validated_data
 
+        scope_type = data.get('scope_type', 'single_domain')
+        seed_domains = data.get('seed_domains', [])
+
+        # Wide scope starts in pending_confirmation so user can review discovered domains
+        initial_status = 'pending_confirmation' if scope_type == 'wide_scope' else 'pending'
+
         scan = Scan.objects.create(
             user=request.user,
             scan_type='website',
-            target=data['url'],
-            depth=data['scan_depth'],
-            include_subdomains=data['include_subdomains'],
-            check_ssl=data['check_ssl'],
-            follow_redirects=data['follow_redirects'],
-            status='pending',
+            target=data['target'],
+            depth=data.get('scan_depth', 'medium'),
+            include_subdomains=True,  # Always true for all scope types
+            check_ssl=data.get('check_ssl', True),
+            follow_redirects=data.get('follow_redirects', True),
+            scope_type=scope_type,
+            seed_domains=seed_domains,
+            status=initial_status,
         )
 
-        # Dispatch async scan task
-        execute_scan_task.delay(str(scan.id))
+        # For single_domain and wildcard: dispatch immediately
+        if scope_type != 'wide_scope':
+            _dispatch_scan_task(str(scan.id))
 
-        logger.info(f'Website scan created: {scan.id} for {scan.target} by {request.user.email}')
+        logger.info(f'Website scan created: {scan.id} (scope={scope_type}) for {scan.target} by {request.user.email}')
 
         return Response({
             'id': str(scan.id),
             'target': scan.target,
             'type': 'website',
-            'status': 'pending',
+            'scopeType': scope_type,
+            'status': initial_status,
             'startTime': timezone.now().isoformat(),
-            'message': 'Scan initiated. Use GET /api/scan/{id} to check progress.',
+            'message': 'Scan initiated. Use GET /api/scan/{id} to check progress.' if scope_type != 'wide_scope' else 'Wide scope scan created. Confirm discovered domains to start scanning.',
         }, status=status.HTTP_201_CREATED)
+
+
+class ResolveScopeView(views.APIView):
+    """POST /api/scan/{id}/resolve — Trigger scope resolution for wide_scope scans.
+
+    Runs OSINT sources to discover domains associated with the target company.
+    Updates scan.discovered_domains and returns the list for user confirmation.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        import asyncio
+        try:
+            scan = Scan.objects.get(id=id, user=request.user)
+        except Scan.DoesNotExist:
+            return Response({'detail': 'Scan not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if scan.status != 'pending_confirmation':
+            return Response(
+                {'detail': f'Scope resolution only available for pending_confirmation scans (current: {scan.status}).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from .engine.scope import ScopeResolver
+        resolver = ScopeResolver()
+
+        try:
+            domains = asyncio.run(resolver.resolve(
+                scan.scope_type, scan.target, scan.seed_domains,
+            ))
+        except Exception as exc:
+            logger.error(f'Scope resolution failed for scan {id}: {exc}')
+            return Response(
+                {'detail': f'Scope resolution failed: {str(exc)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        scan.discovered_domains = domains
+        scan.save(update_fields=['discovered_domains'])
+
+        logger.info(f'Scope resolved for scan {id}: {len(domains)} domains discovered')
+        return Response({
+            'id': str(scan.id),
+            'discoveredDomains': domains,
+            'count': len(domains),
+        })
+
+
+class ConfirmWideScopeView(views.APIView):
+    """POST /api/scan/{id}/confirm — Confirm and start a wide_scope scan.
+
+    Accepts a list of selected domains. Creates child scans and dispatches them.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        try:
+            scan = Scan.objects.get(id=id, user=request.user)
+        except Scan.DoesNotExist:
+            return Response({'detail': 'Scan not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if scan.status != 'pending_confirmation':
+            return Response(
+                {'detail': f'Confirmation only available for pending_confirmation scans (current: {scan.status}).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        selected_domains = request.data.get('selectedDomains', scan.discovered_domains)
+        if not selected_domains:
+            return Response(
+                {'detail': 'No domains selected.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Update discovered_domains to reflect user's selection
+        scan.discovered_domains = selected_domains
+        scan.status = 'scanning'
+        scan.started_at = timezone.now()
+        scan.save(update_fields=['discovered_domains', 'status', 'started_at'])
+
+        # Create child scans for each selected domain
+        child_ids = []
+        for domain in selected_domains:
+            child = Scan.objects.create(
+                user=request.user,
+                scan_type='website',
+                target=domain,
+                depth=scan.depth,
+                include_subdomains=True,
+                check_ssl=scan.check_ssl,
+                follow_redirects=scan.follow_redirects,
+                scope_type='single_domain',
+                parent_scan=scan,
+                status='pending',
+            )
+            _dispatch_scan_task(str(child.id))
+            child_ids.append(str(child.id))
+
+        logger.info(f'Wide scope confirmed for scan {id}: {len(child_ids)} child scans created')
+        return Response({
+            'id': str(scan.id),
+            'status': 'scanning',
+            'childScans': child_ids,
+            'count': len(child_ids),
+        })
 
 
 class FileScanCreateView(views.APIView):
@@ -88,7 +216,7 @@ class FileScanCreateView(views.APIView):
             status='pending',
         )
 
-        execute_scan_task.delay(str(scan.id))
+        _dispatch_scan_task(str(scan.id))
         logger.info(f'File scan created: {scan.id} for {uploaded_file.name}')
 
         return Response({
@@ -115,7 +243,7 @@ class URLScanCreateView(views.APIView):
             status='pending',
         )
 
-        execute_scan_task.delay(str(scan.id))
+        _dispatch_scan_task(str(scan.id))
         logger.info(f'URL scan created: {scan.id} for {scan.target}')
 
         return Response({
@@ -178,7 +306,7 @@ class RescanView(views.APIView):
         )
 
         try:
-            execute_scan_task.delay(str(new_scan.id))
+            _dispatch_scan_task(str(new_scan.id))
         except Exception as e:
             logger.error(f'Rescan task failed for {new_scan.id}: {e}')
             # The task/orchestrator already sets status to 'failed' on error,
@@ -463,7 +591,7 @@ class ScanCreateFullView(views.APIView):
                 config_data=auth_cfg,
             )
 
-        execute_scan_task.delay(str(scan.id))
+        _dispatch_scan_task(str(scan.id))
         logger.info(f'Full-config scan created: {scan.id} by {request.user}')
 
         return Response({
@@ -551,7 +679,7 @@ class RescanFindingView(views.APIView):
             recon_data={'rescan_finding': str(finding.id), 'parent_scan': str(scan.id)},
             parent_scan=scan,
         )
-        execute_scan_task.delay(str(new_scan.id))
+        _dispatch_scan_task(str(new_scan.id))
 
         return Response({
             'id': str(new_scan.id),
@@ -737,30 +865,100 @@ class ScanExportFormatView(views.APIView):
         return resp
 
 
+def _get_historical_phase_averages(depth: str = 'medium') -> dict:
+    """Return average seconds per phase from the last 10 completed scans.
+
+    Used by ScanStreamView to compute estimated remaining time.
+    Falls back to depth-based preset defaults if no history is available.
+    """
+    defaults = {
+        'shallow':  {'recon': 30, 'crawling': 60, 'analysis': 20, 'testing': 90,  'testing_verification': 30, 'nuclei_templates': 30, 'secret_scanning': 15, 'integrated_scanners': 30, 'verification': 30, 'correlation': 10},
+        'medium':   {'recon': 90, 'crawling': 180, 'analysis': 40, 'testing': 300, 'testing_verification': 60, 'nuclei_templates': 60, 'secret_scanning': 30, 'integrated_scanners': 60, 'verification': 60, 'correlation': 20},
+        'deep':     {'recon': 300, 'crawling': 600, 'analysis': 60, 'testing': 900, 'testing_verification': 120, 'nuclei_templates': 180, 'secret_scanning': 60, 'integrated_scanners': 120, 'verification': 120, 'correlation': 30},
+    }
+    fallback = defaults.get(depth, defaults['medium'])
+    try:
+        recent = Scan.objects.filter(
+            status='completed', depth=depth,
+        ).exclude(phase_timings={}).order_by('-created_at')[:10]
+        if not recent:
+            return fallback
+        aggregated: dict[str, list] = {}
+        for s in recent:
+            for phase, dur in (s.phase_timings or {}).items():
+                aggregated.setdefault(phase, []).append(float(dur))
+        return {phase: sum(vals) / len(vals) for phase, vals in aggregated.items()} or fallback
+    except Exception:
+        return fallback
+
+
+# Phase ordering for ETA calculation (phases in execution order)
+_PHASE_ORDER = [
+    'pre_scan_checks', 'reconnaissance', 'crawling', 'analyzing',
+    'testing', 'testing_verification', 'oob_polling',
+    'nuclei_templates', 'secret_scanning', 'integrated_scanners',
+    'verification', 'exploit_gen', 'correlation', 'chaining', 'fp_reduction',
+    'saving',
+]
+
+
 class ScanStreamView(views.APIView):
     """
     GET /api/scans/<id>/stream/
     Server-Sent Events stream for real-time scan status and findings.
     Polls the DB every 2 s and emits named events until the scan finishes.
+
+    Enhanced payload includes:
+      progress — percent, currentPhase, currentTool, status,
+                 startedAt, elapsedSeconds, estimatedRemainingSeconds, findingCount
+      finding  — emitted when new vulnerabilities are saved (totalFindings, newCount, phase)
+      completed — final status + score
     """
-    permission_classes = [IsAuthenticated]
+    authentication_classes = []  # Auth handled manually via query-param token
+    permission_classes = []
+
+    def perform_content_negotiation(self, request, force=False):
+        """SSE endpoint — bypass DRF content negotiation.
+        The actual response is a StreamingHttpResponse; use JSON for errors."""
+        from rest_framework.renderers import JSONRenderer
+        return (JSONRenderer(), 'application/json')
 
     def get(self, request, id):
         import time as _time
         from django.http import StreamingHttpResponse
+        from rest_framework_simplejwt.tokens import AccessToken
+        from django.contrib.auth import get_user_model
+
+        # Authenticate via query-param token (EventSource can't set headers)
+        token_str = request.GET.get('token', '')
+        if not token_str:
+            return Response({'detail': 'Authentication token required.'}, status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            validated = AccessToken(token_str)
+            User = get_user_model()
+            user = User.objects.get(id=validated['user_id'])
+        except Exception:
+            return Response({'detail': 'Invalid or expired token.'}, status=status.HTTP_401_UNAUTHORIZED)
 
         try:
-            Scan.objects.get(id=id, user=request.user)
+            scan_obj = Scan.objects.get(id=id, user=user)
         except Scan.DoesNotExist:
             return Response({'detail': 'Scan not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        user_id = request.user.id
+        user_id = user.id
+        scan_depth = scan_obj.depth
+
+        # Pre-compute historical phase averages once per connection
+        hist_avgs = _get_historical_phase_averages(scan_depth)
 
         def event_stream():
             _TERMINAL = {'completed', 'failed', 'error', 'cancelled'}
-            _MAX_SECONDS = 600  # 10-minute cap
+            _MAX_SECONDS = 14400  # 4-hour cap for deep scans
             last_progress = -1
             last_phase: str | None = None
+            last_tool: str | None = None
+            last_vuln_count = -1
+            last_data_version = -1
             deadline = _time.monotonic() + _MAX_SECONDS
 
             while _time.monotonic() < deadline:
@@ -772,6 +970,36 @@ class ScanStreamView(views.APIView):
 
                 progress_changed = snap.progress != last_progress
                 phase_changed = snap.current_phase != last_phase
+                tool_changed = snap.current_tool != last_tool
+                data_version_changed = snap.data_version != last_data_version
+
+                # ── Elapsed / ETA ──────────────────────────────────────────
+                elapsed_seconds = 0
+                estimated_remaining = 0
+                started_at_iso = None
+                if snap.started_at:
+                    from django.utils import timezone as _tz
+                    elapsed_seconds = int((_tz.now() - snap.started_at).total_seconds())
+                    started_at_iso = snap.started_at.isoformat()
+
+                    # Estimate remaining time from historical phase averages
+                    current_phase_name = snap.current_phase or ''
+                    try:
+                        idx = _PHASE_ORDER.index(current_phase_name)
+                        remaining_phases = _PHASE_ORDER[idx + 1:]
+                        estimated_remaining = sum(
+                            hist_avgs.get(p, 0) for p in remaining_phases
+                        )
+                        # Add remaining fraction of the current phase
+                        current_phase_avg = hist_avgs.get(current_phase_name, 0)
+                        phase_progress_estimate = (snap.progress - (snap.progress * 0.1)) / 100
+                        estimated_remaining += current_phase_avg * max(0, 1 - phase_progress_estimate)
+                        estimated_remaining = int(estimated_remaining)
+                    except ValueError:
+                        estimated_remaining = 0
+
+                # ── Current finding count ──────────────────────────────────
+                vuln_count = snap.vulnerabilities.count()
 
                 if phase_changed and snap.current_phase:
                     yield (
@@ -779,13 +1007,50 @@ class ScanStreamView(views.APIView):
                         f'{json.dumps({"phase": snap.current_phase})}\n\n'
                     )
 
-                if progress_changed or phase_changed:
-                    yield (
-                        f'event: progress\ndata: '
-                        f'{json.dumps({"id": str(snap.id), "progress": snap.progress, "currentPhase": snap.current_phase, "status": snap.status})}\n\n'
-                    )
+                if progress_changed or phase_changed or tool_changed:
+                    payload = {
+                        'id': str(snap.id),
+                        'progress': snap.progress,
+                        'currentPhase': snap.current_phase,
+                        'currentTool': snap.current_tool,
+                        'status': snap.status,
+                        'startedAt': started_at_iso,
+                        'elapsedSeconds': elapsed_seconds,
+                        'estimatedRemainingSeconds': estimated_remaining,
+                        'findingCount': vuln_count,
+                        'pagesCrawled': snap.pages_crawled,
+                        'totalRequests': snap.total_requests,
+                        'dataVersion': snap.data_version,
+                    }
+                    yield f'event: progress\ndata: {json.dumps(payload)}\n\n'
                     last_progress = snap.progress
                     last_phase = snap.current_phase
+                    last_tool = snap.current_tool
+
+                # ── Finding notification (new vulns saved to DB) ───────────
+                if vuln_count != last_vuln_count and vuln_count > 0:
+                    new_count = vuln_count - max(last_vuln_count, 0)
+                    summary = {
+                        sev: snap.vulnerabilities.filter(severity=sev).count()
+                        for sev in ('critical', 'high', 'medium', 'low', 'info')
+                        if snap.vulnerabilities.filter(severity=sev).exists()
+                    }
+                    finding_payload = {
+                        'totalFindings': vuln_count,
+                        'newCount': new_count,
+                        'phase': snap.current_phase,
+                        'summary': summary,
+                    }
+                    yield f'event: finding\ndata: {json.dumps(finding_payload)}\n\n'
+                    last_vuln_count = vuln_count
+
+                # ── data_update: recon_data or tester_results changed ──────
+                if data_version_changed and last_data_version != -1:
+                    yield (
+                        f'event: data_update\ndata: '
+                        f'{json.dumps({"dataVersion": snap.data_version})}\n\n'
+                    )
+                last_data_version = snap.data_version
 
                 if snap.status in _TERMINAL:
                     yield (
@@ -796,7 +1061,6 @@ class ScanStreamView(views.APIView):
 
                 _time.sleep(2)
 
-            # Timeout — tell the client to stop listening
             yield f'event: error\ndata: {json.dumps({"message": "Stream timeout"})}\n\n'
 
         response = StreamingHttpResponse(
@@ -1190,7 +1454,7 @@ class MultiTargetScanCreateView(views.APIView):
                 status='pending',
             )
             multi_scan.sub_scans.add(scan)
-            execute_scan_task.delay(str(scan.id))
+            _dispatch_scan_task(str(scan.id))
 
             # Upsert the discovered asset record
             DiscoveredAsset.objects.update_or_create(

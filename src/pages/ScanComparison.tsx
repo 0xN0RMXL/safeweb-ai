@@ -39,24 +39,43 @@ function FindingRow({ vuln }: { vuln: Vulnerability }) {
     );
 }
 
-function FindingsTable({ vulns, emptyMsg }: { vulns: Vulnerability[]; emptyMsg: string }) {
+function FindingsTable({ vulns, emptyMsg, scanId }: { vulns: Vulnerability[]; emptyMsg: string; scanId?: string }) {
     const sorted = [...vulns].sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 5) - (SEVERITY_ORDER[b.severity] ?? 5));
     if (sorted.length === 0) {
         return <p className="text-sm text-text-tertiary py-4 px-4">{emptyMsg}</p>;
     }
     return (
-        <table className="w-full text-sm">
-            <thead>
-                <tr className="text-xs text-text-tertiary border-b border-border-primary">
-                    <th className="text-left px-4 py-2">Finding</th>
-                    <th className="text-left px-4 py-2">Severity</th>
-                    <th className="text-left px-4 py-2">Category</th>
-                </tr>
-            </thead>
-            <tbody>
-                {sorted.map((v) => <FindingRow key={v.id} vuln={v} />)}
-            </tbody>
-        </table>
+        <div>
+            <table className="w-full text-sm">
+                <thead>
+                    <tr className="text-xs text-text-tertiary border-b border-border-primary">
+                        <th className="text-left px-4 py-2">Finding</th>
+                        <th className="text-left px-4 py-2">Severity</th>
+                        <th className="text-left px-4 py-2">Category</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {sorted.map((v) => <FindingRow key={v.id} vuln={v} />)}
+                </tbody>
+            </table>
+            {sorted.length > 0 && (
+                <div className="px-4 py-3 border-t border-border-primary">
+                    <button
+                        onClick={() => {
+                            const summary = sorted.slice(0, 5).map(v => `${v.severity}: ${v.name}`).join(', ');
+                            const msg = `Explain these findings and suggest fixes: ${summary}${sorted.length > 5 ? ` (and ${sorted.length - 5} more)` : ''}`;
+                            window.dispatchEvent(new CustomEvent('safeweb-chatbot-ask', { detail: { message: msg, scanId } }));
+                        }}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-accent-green/10 text-accent-green hover:bg-accent-green/20 transition-colors border border-accent-green/30 flex items-center gap-1.5"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        Ask AI about these findings
+                    </button>
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -149,7 +168,7 @@ export default function ScanComparison() {
                                     <h3 className="font-semibold text-text-primary">New Findings in Scan B</h3>
                                     <span className="ml-auto text-sm text-status-high font-medium">{data.new.length}</span>
                                 </div>
-                                <FindingsTable vulns={data.new} emptyMsg="No new findings — no regressions!" />
+                                <FindingsTable vulns={data.new} emptyMsg="No new findings — no regressions!" scanId={id2} />
                             </Card>
 
                             {/* Fixed findings */}
@@ -161,7 +180,7 @@ export default function ScanComparison() {
                                     <h3 className="font-semibold text-text-primary">Fixed / Resolved</h3>
                                     <span className="ml-auto text-sm text-status-low font-medium">{data.fixed.length}</span>
                                 </div>
-                                <FindingsTable vulns={data.fixed} emptyMsg="No fixed findings between these scans." />
+                                <FindingsTable vulns={data.fixed} emptyMsg="No fixed findings between these scans." scanId={id1} />
                             </Card>
 
                             {/* Persisted findings */}
@@ -173,7 +192,7 @@ export default function ScanComparison() {
                                     <h3 className="font-semibold text-text-primary">Persisted (Both Scans)</h3>
                                     <span className="ml-auto text-sm text-text-tertiary font-medium">{data.persisted.length}</span>
                                 </div>
-                                <FindingsTable vulns={data.persisted} emptyMsg="No persisted findings." />
+                                <FindingsTable vulns={data.persisted} emptyMsg="No persisted findings." scanId={id2} />
                             </Card>
                         </>
                     ) : null}

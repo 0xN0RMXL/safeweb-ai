@@ -53,5 +53,32 @@ backend/apps/scanning/engine/payloads/data/seclists/
 # Locked payload file (Windows permission issue)
 backend/apps/scanning/engine/payloads/data/waf_bypass/imperva.txt
 
-# Go module cache (readonly files, regeneratable)
-tools/go/pkg/mod/
+# Bug bounty / scanning tools — large binaries, installed at runtime
+tools/ruby/
+tools/cargo/
+tools/rustup/
+tools/gems/
+tools/npm/
+tools/AWSBucketDump/
+tools/cloud_enum/
+tools/ghauri/
+tools/linkfinder/
+tools/secretfinder/
+tools/tplmap/
+tools/whatweb/
+tools/xsstrike/
+tools/go/pkg/
+# tools/bin — nmap scripts/libs and executables
+tools/bin/nselib/
+tools/bin/scripts/
+tools/bin/*.exe
+tools/bin/*.dll
+tools/bin/CHANGELOG
+tools/bin/LICENSE*
+tools/bin/NDIFF_README
+tools/bin/README*
+# Backup/log files
+backend/apps/chatbot/engine_old.py
+srv_err.txt
+srv_out.txt
+

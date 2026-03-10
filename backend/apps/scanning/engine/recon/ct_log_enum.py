@@ -310,3 +310,55 @@ def run_ct_log_enum(target_url: str, depth: str = 'medium') -> dict:
         root_domain, len(sorted_subs),
     )
     return finalize_result(result, start)
+
+
+# ── Organization-based CT search (for wide scope resolution) ─────────────
+
+def search_by_org(org_name: str) -> list[str]:
+    """Search CT logs for certificates issued to an organization name.
+
+    Queries crt.sh with the organization parameter to find domains
+    associated with a company. Used by ScopeResolver for wide-scope scans.
+
+    Returns:
+        Deduplicated list of domain names (without scheme).
+    """
+    if not org_name or not org_name.strip():
+        return []
+
+    try:
+        import requests
+    except ImportError:
+        logger.warning('requests library not available — cannot query crt.sh')
+        return []
+
+    domains: set[str] = set()
+
+    # crt.sh supports searching by organization name
+    try:
+        params = {'O': org_name, 'output': 'json'}
+        resp = requests.get(_CRT_SH_URL, params=params, timeout=_REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        data = resp.json()
+
+        if not isinstance(data, list):
+            return []
+
+        for entry in data:
+            name_value = entry.get('name_value', '')
+            for name in name_value.split('\n'):
+                name = name.strip().lower()
+                if name.startswith('*.'):
+                    name = name[2:]
+                # Basic domain validation
+                if '.' in name and not name.startswith('.') and len(name) < 253:
+                    # Filter out obvious non-domains
+                    if all(c.isalnum() or c in '.-' for c in name):
+                        domains.add(name)
+
+    except Exception as exc:
+        logger.warning('crt.sh org search failed for %s: %s', org_name, exc)
+
+    logger.info('CT org search for "%s" found %d domains', org_name, len(domains))
+    return sorted(domains)
+

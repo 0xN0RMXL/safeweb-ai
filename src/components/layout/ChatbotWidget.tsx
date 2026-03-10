@@ -1,14 +1,30 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 import Card from '@components/ui/Card';
 import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
 import { chatAPI } from '@/services/api';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+interface ChatAction {
+    type: 'navigate' | 'download';
+    path?: string;
+    url?: string;
+}
 
 interface ChatMsg {
     id: number;
+    messageId?: string;       // backend UUID for feedback
     text: string;
     sender: 'user' | 'bot';
     time: string;
+    suggestions?: string[];
+    actions?: ChatAction[];
+    feedback?: 'positive' | 'negative' | null;
+    source?: string;
+    tokensUsed?: number;
 }
 
 interface SessionItem {
@@ -20,10 +36,22 @@ interface SessionItem {
 
 const WELCOME_MSG: ChatMsg = {
     id: 1,
-    text: 'Hello! I\'m your SafeWeb AI assistant. How can I help you today?',
+    text: "Hello! I'm **SafeWeb AI Assistant** — your cybersecurity expert.\n\nI can help you with:\n- 🔍 Starting and managing security scans\n- 🛡️ Understanding vulnerabilities and remediation\n- 📊 Analyzing your scan results\n- ⚙️ Navigating SafeWeb AI features\n\nWhat would you like to know?",
     sender: 'bot',
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    suggestions: ['How do I start a scan?', 'What is OWASP Top 10?', 'Check my subscription'],
 };
+
+const QUICK_ACTIONS = [
+    { label: '🔍 Start a scan', text: 'How do I start a new scan?' },
+    { label: '📊 My scans', text: 'Show my recent scans' },
+    { label: '🛡️ OWASP Top 10', text: 'What is OWASP Top 10?' },
+    { label: '💳 Subscription', text: 'What is my subscription plan?' },
+    { label: '📤 Export report', text: 'How do I export scan results?' },
+    { label: '⚙️ Security score', text: 'How is my security score calculated?' },
+    { label: '🔐 Enable 2FA', text: 'How do I enable 2FA?' },
+    { label: '❓ Help', text: 'What can you help me with?' },
+];
 
 export default function ChatbotWidget() {
     const [isOpen, setIsOpen] = useState(false);
@@ -32,18 +60,19 @@ export default function ChatbotWidget() {
     const [sessionId, setSessionId] = useState<string | undefined>();
     const [messages, setMessages] = useState<ChatMsg[]>([WELCOME_MSG]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    // Auto-detect scanId from current URL (e.g. /scan/results/:id)
+    const detectedScanId = React.useMemo(() => {
+        const match = location.pathname.match(/\/scan\/results\/([a-f0-9-]+)/i);
+        return match ? match[1] : undefined;
+    }, [location.pathname]);
 
     // Session management state
     const [showSessions, setShowSessions] = useState(false);
     const [sessions, setSessions] = useState<SessionItem[]>([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
-
-    const quickActions = [
-        'Start a new scan',
-        'View scan history',
-        'Check my subscription',
-        'Read documentation',
-    ];
 
     // Auto-scroll to bottom
     useEffect(() => {
@@ -72,11 +101,10 @@ export default function ChatbotWidget() {
     // Listen for external "ask about finding" events
     useEffect(() => {
         const handler = (e: Event) => {
-            const detail = (e as CustomEvent<{ message: string }>).detail;
+            const detail = (e as CustomEvent<{ message: string; scanId?: string }>).detail;
             if (!detail?.message) return;
             setIsOpen(true);
-            // Small delay so the panel is rendered before message sends
-            setTimeout(() => sendMessage(detail.message), 150);
+            setTimeout(() => sendMessage(detail.message, detail.scanId), 150);
         };
         window.addEventListener('safeweb-chatbot-ask', handler);
         return () => window.removeEventListener('safeweb-chatbot-ask', handler);
@@ -90,20 +118,22 @@ export default function ChatbotWidget() {
             const msgs: ChatMsg[] = (data.messages ?? []).map(
                 (m: Record<string, unknown>, i: number) => ({
                     id: i + 1,
+                    messageId: String(m.id || ''),
                     text: String(m.content),
-                    sender: m.role === 'user' ? 'user' : 'bot',
+                    sender: m.role === 'user' ? 'user' as const : 'bot' as const,
                     time: m.createdAt
                         ? new Date(String(m.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         : m.created_at
                             ? new Date(String(m.created_at)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                             : '',
+                    feedback: (m.feedback as string) || null,
                 })
             );
             setSessionId(id);
             setMessages(msgs.length > 0 ? msgs : [WELCOME_MSG]);
             setShowSessions(false);
         } catch {
-            alert('Failed to load session.');
+            // silently fail
         }
     };
 
@@ -113,13 +143,12 @@ export default function ChatbotWidget() {
         try {
             await chatAPI.deleteSession(id);
             setSessions((prev) => prev.filter((s) => s.id !== id));
-            // If we deleted the active session, reset
             if (sessionId === id) {
                 setSessionId(undefined);
                 setMessages([WELCOME_MSG]);
             }
         } catch {
-            alert('Failed to delete session.');
+            // silently fail
         }
     };
 
@@ -130,7 +159,37 @@ export default function ChatbotWidget() {
         setShowSessions(false);
     };
 
-    const sendMessage = async (text: string) => {
+    // Execute chatbot action
+    const executeAction = (action: ChatAction) => {
+        if (action.type === 'navigate' && action.path) {
+            navigate(action.path);
+            setIsOpen(false);
+        } else if (action.type === 'download' && action.url) {
+            window.open(action.url, '_blank');
+        }
+    };
+
+    // Send feedback
+    const sendFeedback = async (msgIndex: number, feedback: 'positive' | 'negative') => {
+        const msg = messages[msgIndex];
+        if (!msg?.messageId) return;
+        try {
+            await chatAPI.sendFeedback(msg.messageId, feedback);
+            setMessages((prev) =>
+                prev.map((m, i) => i === msgIndex ? { ...m, feedback } : m)
+            );
+        } catch {
+            // silently fail
+        }
+    };
+
+    // Copy message text
+    const copyText = (text: string) => {
+        navigator.clipboard.writeText(text);
+    };
+
+    const sendMessage = async (text: string, scanId?: string) => {
+        const effectiveScanId = scanId || detectedScanId;
         const userMsg: ChatMsg = {
             id: messages.length + 1,
             text,
@@ -144,17 +203,31 @@ export default function ChatbotWidget() {
             const { data } = await chatAPI.send({
                 message: text,
                 sessionId,
+                scanId: effectiveScanId,
             });
 
             if (data.sessionId) setSessionId(data.sessionId);
+
+            // Execute any actions automatically
+            const actions: ChatAction[] = data.actions || [];
+            actions.forEach((a: ChatAction) => {
+                if (a.type === 'navigate') {
+                    // Don't auto-navigate, let user click
+                }
+            });
 
             setMessages((prev) => [
                 ...prev,
                 {
                     id: prev.length + 1,
+                    messageId: data.message_id || data.messageId,
                     text: data.response || data.message || 'I apologize, I could not process that.',
                     sender: 'bot' as const,
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    suggestions: data.suggestions || [],
+                    actions: actions.length > 0 ? actions : undefined,
+                    source: data.source,
+                    tokensUsed: data.tokens_used,
                 },
             ]);
         } catch {
@@ -162,7 +235,7 @@ export default function ChatbotWidget() {
                 ...prev,
                 {
                     id: prev.length + 1,
-                    text: 'I\'m having trouble connecting. Please try again later.',
+                    text: "I'm having trouble connecting. Please try again later.",
                     sender: 'bot' as const,
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 },
@@ -179,9 +252,15 @@ export default function ChatbotWidget() {
         sendMessage(text);
     };
 
-    const handleQuickAction = (action: string) => {
-        sendMessage(action);
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
     };
+
+    // Relative timestamp
+    const relativeTime = (time: string) => time;
 
     return (
         <>
@@ -217,7 +296,6 @@ export default function ChatbotWidget() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {/* New Chat button */}
                                     <button
                                         onClick={startNewChat}
                                         className="p-1.5 text-bg-primary hover:text-bg-secondary transition-colors rounded"
@@ -227,7 +305,6 @@ export default function ChatbotWidget() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                         </svg>
                                     </button>
-                                    {/* Session History button */}
                                     <button
                                         onClick={() => { setShowSessions(!showSessions); if (!showSessions) fetchSessions(); }}
                                         className="p-1.5 text-bg-primary hover:text-bg-secondary transition-colors rounded"
@@ -237,7 +314,6 @@ export default function ChatbotWidget() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     </button>
-                                    {/* Close button */}
                                     <button
                                         onClick={() => setIsOpen(false)}
                                         className="p-1.5 text-bg-primary hover:text-bg-secondary transition-colors rounded"
@@ -304,25 +380,119 @@ export default function ChatbotWidget() {
                         {!showSessions && (
                         <>
                         <div className="h-96 overflow-y-auto p-4 space-y-4 bg-bg-secondary">
-                            {messages.map((msg) => (
-                                <div
-                                    key={msg.id}
-                                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                                >
-                                    <div
-                                        className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.sender === 'user'
-                                                ? 'bg-accent-green text-bg-primary'
-                                                : 'bg-bg-primary border border-border-primary text-text-primary'
-                                            }`}
-                                    >
-                                        <div className="text-sm">{msg.text}</div>
+                            {messages.map((msg, idx) => (
+                                <div key={msg.id}>
+                                    <div className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                                         <div
-                                            className={`text-xs mt-1 ${msg.sender === 'user' ? 'text-bg-primary/70' : 'text-text-tertiary'
+                                            className={`max-w-[85%] rounded-lg px-4 py-2 ${msg.sender === 'user'
+                                                    ? 'bg-accent-green text-bg-primary'
+                                                    : 'bg-bg-primary border border-border-primary text-text-primary'
                                                 }`}
                                         >
-                                            {msg.time}
+                                            {msg.sender === 'bot' ? (
+                                                <div className="text-sm prose prose-invert prose-sm max-w-none
+                                                    prose-headings:text-text-primary prose-headings:mt-3 prose-headings:mb-1 prose-headings:text-sm
+                                                    prose-p:my-1 prose-li:my-0.5
+                                                    prose-strong:text-accent-green
+                                                    prose-code:text-accent-blue prose-code:bg-bg-secondary prose-code:px-1 prose-code:rounded prose-code:text-xs
+                                                    prose-pre:bg-bg-secondary prose-pre:border prose-pre:border-border-primary prose-pre:rounded-lg prose-pre:my-2
+                                                    prose-a:text-accent-blue prose-a:no-underline hover:prose-a:underline
+                                                    prose-table:text-xs prose-th:px-2 prose-th:py-1 prose-td:px-2 prose-td:py-1
+                                                    prose-th:border prose-th:border-border-primary prose-td:border prose-td:border-border-primary">
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                                                        {msg.text}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            ) : (
+                                                <div className="text-sm">{msg.text}</div>
+                                            )}
+                                            <div className={`text-xs mt-1 flex items-center gap-2 ${msg.sender === 'user' ? 'text-bg-primary/70' : 'text-text-tertiary'}`}>
+                                                <span>{relativeTime(msg.time)}</span>
+                                                {msg.source === 'llm' && msg.tokensUsed ? (
+                                                    <span className="bg-accent-blue/20 text-accent-blue px-1.5 py-0.5 rounded text-[10px]">
+                                                        AI · {msg.tokensUsed} tokens
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     </div>
+
+                                    {/* Bot message toolbar: feedback + copy */}
+                                    {msg.sender === 'bot' && msg.messageId && (
+                                        <div className="flex items-center gap-1 mt-1 ml-1">
+                                            <button
+                                                onClick={() => sendFeedback(idx, 'positive')}
+                                                className={`p-1 rounded transition-colors ${msg.feedback === 'positive' ? 'text-accent-green' : 'text-text-tertiary hover:text-accent-green'}`}
+                                                title="Helpful"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill={msg.feedback === 'positive' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z M4 15h-2v7h2v-7z" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => sendFeedback(idx, 'negative')}
+                                                className={`p-1 rounded transition-colors ${msg.feedback === 'negative' ? 'text-red-400' : 'text-text-tertiary hover:text-red-400'}`}
+                                                title="Not helpful"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill={msg.feedback === 'negative' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z M20 2h2v7h-2V2z" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => copyText(msg.text)}
+                                                className="p-1 text-text-tertiary hover:text-text-primary rounded transition-colors"
+                                                title="Copy"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Action buttons */}
+                                    {msg.actions && msg.actions.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2 ml-1">
+                                            {msg.actions.map((action, aIdx) => (
+                                                <button
+                                                    key={aIdx}
+                                                    onClick={() => executeAction(action)}
+                                                    className="px-3 py-1.5 rounded-lg text-xs bg-accent-green/20 text-accent-green border border-accent-green/30 hover:bg-accent-green/30 transition-all flex items-center gap-1"
+                                                >
+                                                    {action.type === 'navigate' ? (
+                                                        <>
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                            </svg>
+                                                            Go to {action.path}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                            </svg>
+                                                            Download
+                                                        </>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Suggested follow-up questions */}
+                                    {msg.suggestions && msg.suggestions.length > 0 && idx === messages.length - 1 && (
+                                        <div className="flex flex-wrap gap-1.5 mt-2 ml-1">
+                                            {msg.suggestions.map((s, sIdx) => (
+                                                <button
+                                                    key={sIdx}
+                                                    onClick={() => sendMessage(s)}
+                                                    className="px-2.5 py-1 rounded-full text-xs bg-bg-primary border border-border-primary text-text-secondary hover:border-accent-green/50 hover:text-accent-green transition-all"
+                                                >
+                                                    {s}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             {isTyping && (
@@ -339,18 +509,18 @@ export default function ChatbotWidget() {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Quick Actions */}
+                        {/* Quick Actions — shown only on welcome */}
                         {messages.length === 1 && (
                             <div className="px-4 py-3 bg-bg-secondary border-t border-border-primary">
                                 <div className="text-xs text-text-tertiary mb-2">Quick actions:</div>
-                                <div className="flex flex-wrap gap-2">
-                                    {quickActions.map((action, index) => (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {QUICK_ACTIONS.map((qa, index) => (
                                         <button
                                             key={index}
-                                            onClick={() => handleQuickAction(action)}
-                                            className="px-3 py-1.5 rounded-lg text-xs bg-bg-primary border border-border-primary text-text-secondary hover:bg-bg-hover hover:border-accent-green/30 transition-all"
+                                            onClick={() => sendMessage(qa.text)}
+                                            className="px-2.5 py-1.5 rounded-lg text-xs bg-bg-primary border border-border-primary text-text-secondary hover:bg-bg-hover hover:border-accent-green/30 transition-all"
                                         >
-                                            {action}
+                                            {qa.label}
                                         </button>
                                     ))}
                                 </div>
@@ -362,10 +532,10 @@ export default function ChatbotWidget() {
                             <div className="flex items-center gap-2">
                                 <Input
                                     type="text"
-                                    placeholder="Type your message..."
+                                    placeholder="Ask about security, scans, features..."
                                     value={message}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMessage(e.target.value)}
-                                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleSend()}
+                                    onKeyDown={handleKeyDown}
                                     className="flex-1"
                                 />
                                 <Button
@@ -373,7 +543,7 @@ export default function ChatbotWidget() {
                                     variant="primary"
                                     size="sm"
                                     className="px-4"
-                                    disabled={!message.trim()}
+                                    disabled={!message.trim() || isTyping}
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path

@@ -17,7 +17,7 @@ export default function ScanHistory() {
     const [isLoading, setIsLoading] = useState(true);
 
     const [scans, setScans] = useState<{
-        id: string; target: string; type: string; status: string;
+        id: string; target: string; type: string; status: string; scopeType: string;
         date: Date; duration: number; score: number;
         vulnerabilities: { critical: number; high: number; medium: number; low: number };
     }[]>([]);
@@ -27,7 +27,7 @@ export default function ScanHistory() {
             const params: Record<string, string> = {};
             if (searchQuery) params.search = searchQuery;
             if (filterStatus !== 'all') params.status = filterStatus;
-            if (filterType !== 'all') params.type = filterType;
+            if (filterType !== 'all') params.scope_type = filterType;
 
             scanAPI.getList(params)
                 .then(({ data }) => {
@@ -36,6 +36,7 @@ export default function ScanHistory() {
                         id: s.id,
                         target: s.target,
                         type: s.scanType || s.type || 'Website',
+                        scopeType: (s.scopeType || s.scope_type || 'single_domain') as string,
                         status: s.status,
                         date: new Date(s.createdAt as string || s.date as string),
                         duration: s.duration || 0,
@@ -128,7 +129,7 @@ export default function ScanHistory() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <Input
                                 type="text"
-                                placeholder="Search by URL or filename..."
+                                placeholder="Search by target domain..."
                                 value={searchQuery}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                                 leftIcon={
@@ -148,10 +149,10 @@ export default function ScanHistory() {
                             />
                             <Select
                                 options={[
-                                    { value: 'all', label: 'All Types' },
-                                    { value: 'website', label: 'Website' },
-                                    { value: 'api', label: 'API' },
-                                    { value: 'file', label: 'File' },
+                                    { value: 'all', label: 'All Scope Types' },
+                                    { value: 'single_domain', label: 'Single Domain' },
+                                    { value: 'wildcard', label: 'Wildcard' },
+                                    { value: 'wide_scope', label: 'Wide Scope' },
                                 ]}
                                 value={filterType}
                                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterType(e.target.value)}
@@ -184,7 +185,13 @@ export default function ScanHistory() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <Badge variant="default" size="sm">{scan.type}</Badge>
+                                                <Badge variant="default" size="sm">
+                                                    {{
+                                                        single_domain: 'Single Domain',
+                                                        wildcard: 'Wildcard',
+                                                        wide_scope: 'Wide Scope',
+                                                    }[scan.scopeType] || scan.type}
+                                                </Badge>
                                             </td>
                                             <td className="px-6 py-4">
                                                 {scan.status === 'completed' ? (

@@ -25,4 +25,18 @@ export default defineConfig({
             },
         },
     },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    // Core vendor libs — cached separately, never change with app deploys
+                    'vendor-react': ['react', 'react-dom'],
+                    'vendor-router': ['react-router-dom'],
+                    'vendor-axios': ['axios'],
+                },
+            },
+        },
+        // Raise the warning threshold now that chunks are split
+        chunkSizeWarningLimit: 400,
+    },
 });

@@ -4,12 +4,17 @@ from . import views
 urlpatterns = [
     # ── Existing endpoints ────────────────────────────────────────────
     path('website/', views.WebsiteScanCreateView.as_view(), name='scan-website'),
-    path('file/', views.FileScanCreateView.as_view(), name='scan-file'),
-    path('url/', views.URLScanCreateView.as_view(), name='scan-url'),
+    # DEACTIVATED: File/URL threat detection endpoints hidden (code preserved in views.py)
+    # path('file/', views.FileScanCreateView.as_view(), name='scan-file'),
+    # path('url/', views.URLScanCreateView.as_view(), name='scan-url'),
     path('<uuid:id>/', views.ScanDetailView.as_view(), name='scan-detail'),
     path('<uuid:id>/delete/', views.ScanDeleteView.as_view(), name='scan-delete'),
     path('<uuid:id>/rescan/', views.RescanView.as_view(), name='scan-rescan'),
     path('<uuid:id>/export/', views.ScanExportView.as_view(), name='scan-export'),
+
+    # Scope resolution & confirmation (for wildcard/wide_scope)
+    path('<uuid:id>/resolve/', views.ResolveScopeView.as_view(), name='scan-resolve'),
+    path('<uuid:id>/confirm/', views.ConfirmWideScopeView.as_view(), name='scan-confirm'),
 
     # ── Phase 44: API-First endpoints ─────────────────────────────────
 

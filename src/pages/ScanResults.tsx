@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSSE } from '@/hooks/useSSE';
+import type { SSEFindingData } from '@/hooks/useSSE';
+import { useScanTimer } from '@/hooks/useScanTimer';
 import { useParams, Link } from 'react-router-dom';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
@@ -9,10 +11,11 @@ import Button from '@components/ui/Button';
 import ReconTab from '@components/scan/ReconTab';
 import TesterBreakdownTab from '@components/scan/TesterBreakdownTab';
 import AttackChainTab from '@components/scan/AttackChainTab';
-import MLAnalysisTab from '@components/scan/MLAnalysisTab';
+// DEACTIVATED: ML Analysis tab disabled
+// import MLAnalysisTab from '@components/scan/MLAnalysisTab';
 import { formatDateTime } from '@utils/date';
 import { scanAPI } from '@/services/api';
-import type { ScanResult, Vulnerability } from '@/types';
+import type { ScanResult, Vulnerability, ChildScan } from '@/types';
 
 type Tab = 'overview' | 'findings' | 'recon' | 'testers' | 'chains' | 'ml';
 
@@ -22,7 +25,23 @@ const TABS: { id: Tab; label: string }[] = [
     { id: 'recon',     label: 'Recon' },
     { id: 'testers',   label: 'Tester Breakdown' },
     { id: 'chains',    label: 'Attack Chains' },
-    { id: 'ml',        label: 'ML Analysis' },
+    // DEACTIVATED: ML Analysis tab removed
+    // { id: 'ml',        label: 'ML Analysis' },
+];
+
+// Phase timeline metadata
+const SCAN_PHASES: { key: string; label: string }[] = [
+    { key: 'pre_scan_checks',    label: 'Pre-Scan'  },
+    { key: 'reconnaissance',     label: 'Recon'     },
+    { key: 'crawling',           label: 'Crawl'     },
+    { key: 'analyzing',          label: 'Analyze'   },
+    { key: 'testing',            label: 'Test'      },
+    { key: 'nuclei_templates',   label: 'Nuclei'    },
+    { key: 'secret_scanning',    label: 'Secrets'   },
+    { key: 'integrated_scanners',label: 'Scanners'  },
+    { key: 'verification',       label: 'Verify'    },
+    { key: 'correlation',        label: 'Correlate' },
+    { key: 'completed',          label: 'Done'      },
 ];
 
 export default function ScanResults() {
@@ -33,6 +52,13 @@ export default function ScanResults() {
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const statusRef = useRef('scanning');
     const [sseUrl, setSseUrl] = useState<string | null>(null);
+
+    // Live state updated from SSE progress events
+    const [liveProgress, setLiveProgress] = useState(0);
+    const [livePhase, setLivePhase] = useState('');
+    const [liveTool, setLiveTool] = useState('');
+    const [liveStartedAt, setLiveStartedAt] = useState<string | null>(null);
+    const [liveEstimatedRemaining, setLiveEstimatedRemaining] = useState<number | null>(null);
 
     const [scan, setScan] = useState<ScanResult>({
         id: id || '',
@@ -45,56 +71,70 @@ export default function ScanResults() {
         summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0, info: 0 },
     });
 
+    // ── Shared mapper: API response → ScanResult ─────────────────────────
+    // Single source of truth for snake_case → camelCase conversion.
+    // Defined at component scope so all callbacks can use it without duplication.
+    const mapApiResponse = useCallback((data: Record<string, unknown>): ScanResult => {
+        const vuln: Vulnerability[] = ((data.vulnerabilities ?? []) as Record<string, unknown>[]).map(
+            (v) => ({
+                id: v.id as string,
+                name: (v.name ?? v.title) as string,
+                severity: v.severity as Vulnerability['severity'],
+                category: v.category as string,
+                cwe: (v.cwe ?? v.cwe_id ?? '') as string,
+                cvss: (v.cvss ?? 0) as number,
+                affectedUrl: (v.affectedUrl ?? v.affected_url ?? v.url ?? '') as string,
+                evidenceCode: v.evidence as string ?? '',
+                description: v.description as string ?? '',
+                impact: v.impact as string ?? '',
+                remediation: v.remediation as string ?? '',
+                verified: (v.verified ?? false) as boolean,
+                isFalsePositive: (v.isFalsePositive ?? v.is_false_positive ?? false) as boolean,
+                falsePositiveScore: (v.falsePositiveScore ?? v.false_positive_score) as number | undefined,
+                attackChain: (v.attackChain ?? v.attack_chain) as string | undefined,
+                oobCallback: (v.oobCallback ?? v.oob_callback) as string | undefined,
+                exploitData: (v.exploitData ?? v.exploit_data) as Vulnerability['exploitData'] | undefined,
+                toolName: (v.toolName ?? v.tool_name) as string | undefined,
+            }),
+        );
+        return {
+            id: data.id as string,
+            target: data.target as string,
+            type: (data.type ?? 'website') as 'website',
+            status: data.status as ScanResult['status'],
+            startTime: (data.startTime ?? data.start_time ?? data.started_at ?? data.created_at) as string,
+            endTime: (data.endTime ?? data.end_time ?? data.completed_at ?? undefined) as string | undefined,
+            duration: (data.duration ?? 0) as number,
+            score: (data.score ?? 0) as number,
+            vulnerabilities: vuln,
+            summary: (data.summary ?? { total: 0, critical: 0, high: 0, medium: 0, low: 0, info: 0 }) as ScanResult['summary'],
+            scanOptions: (data.scanOptions ?? data.scan_options) as ScanResult['scanOptions'],
+            progress: data.progress as number | undefined,
+            currentPhase: (data.currentPhase ?? data.current_phase) as string | undefined,
+            currentTool: (data.currentTool ?? data.current_tool) as string | undefined,
+            totalRequests: (data.totalRequests ?? data.total_requests) as number | undefined,
+            pagesCrawled: (data.pagesCrawled ?? data.pages_crawled) as number | undefined,
+            mode: data.mode as ScanResult['mode'],
+            reconData: (data.reconData ?? data.recon_data) as ScanResult['reconData'],
+            testerResults: (data.testerResults ?? data.tester_results) as ScanResult['testerResults'],
+            mlResult: (data.mlResult ?? data.ml_result) as ScanResult['mlResult'],
+            scopeType: (data.scopeType ?? data.scope_type) as ScanResult['scopeType'],
+            discoveredDomains: (data.discoveredDomains ?? data.discovered_domains) as string[] | undefined,
+            seedDomains: (data.seedDomains ?? data.seed_domains) as string[] | undefined,
+            childScans: (data.childScans ?? data.child_scans ?? []) as ChildScan[],
+            dataVersion: (data.dataVersion ?? data.data_version) as number | undefined,
+        };
+    }, []);
+
     useEffect(() => {
         if (!id) return;
 
         const fetchResults = () => {
             scanAPI.getResults(id).then(({ data }) => {
-                const vuln: Vulnerability[] = (data.vulnerabilities ?? []).map((v: Record<string, unknown>) => ({
-                    id: v.id,
-                    name: v.name ?? v.title,
-                    severity: v.severity,
-                    category: v.category,
-                    cwe: v.cwe ?? v.cwe_id ?? '',
-                    cvss: v.cvss ?? 0,
-                    affectedUrl: (v.affectedUrl ?? v.affected_url ?? v.url ?? '') as string,
-                    evidenceCode: v.evidence as string ?? '',
-                    description: v.description as string ?? '',
-                    impact: v.impact as string ?? '',
-                    remediation: v.remediation as string ?? '',
-                    verified: (v.verified ?? false) as boolean,
-                    isFalsePositive: (v.isFalsePositive ?? v.is_false_positive ?? false) as boolean,
-                    falsePositiveScore: (v.falsePositiveScore ?? v.false_positive_score) as number | undefined,
-                    attackChain: (v.attackChain ?? v.attack_chain) as string | undefined,
-                    oobCallback: (v.oobCallback ?? v.oob_callback) as string | undefined,
-                    exploitData: (v.exploitData ?? v.exploit_data) as Vulnerability['exploitData'] | undefined,
-                    toolName: (v.toolName ?? v.tool_name) as string | undefined,
-                }));
-
-                setScan({
-                    id: data.id,
-                    target: data.target,
-                    type: data.type ?? 'website',
-                    status: data.status,
-                    startTime: data.startTime ?? data.start_time ?? data.started_at ?? data.created_at,
-                    endTime: data.endTime ?? data.end_time ?? data.completed_at ?? undefined,
-                    duration: data.duration ?? 0,
-                    score: data.score ?? 0,
-                    vulnerabilities: vuln,
-                    summary: data.summary ?? { total: 0, critical: 0, high: 0, medium: 0, low: 0, info: 0 },
-                    scanOptions: data.scanOptions ?? data.scan_options,
-                    progress: data.progress,
-                    currentPhase: data.currentPhase ?? data.current_phase,
-                    totalRequests: data.totalRequests ?? data.total_requests,
-                    pagesCrawled: data.pagesCrawled ?? data.pages_crawled,
-                    mode: data.mode,
-                    reconData: data.reconData ?? data.recon_data,
-                    testerResults: data.testerResults ?? data.tester_results,
-                    mlResult: data.mlResult ?? data.ml_result,
-                });
-
-                statusRef.current = data.status;
-                if (data.status === 'completed' || data.status === 'failed') {
+                const mapped = mapApiResponse(data);
+                setScan(mapped);
+                statusRef.current = mapped.status;
+                if (mapped.status === 'completed' || mapped.status === 'failed' || mapped.status === 'pending_confirmation') {
                     setIsLoading(false);
                 }
             }).catch(() => setIsLoading(false));
@@ -120,7 +160,7 @@ export default function ScanResults() {
             clearInterval(interval);
             setSseUrl(null);
         };
-    }, [id]);
+    }, [id, mapApiResponse]);
 
     useEffect(() => {
         if ((scan.status === 'completed' || scan.status === 'failed') && pollRef.current) {
@@ -135,16 +175,61 @@ export default function ScanResults() {
         if (!id) return;
         setSseUrl(null);
         if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        // Full state refresh — ensures reconData, testerResults, endTime, duration,
+        // score, vulnerabilities, summary are all populated after completion.
         scanAPI.getResults(id).then(({ data }) => {
-            statusRef.current = data.status ?? 'completed';
-            setScan((prev) => ({ ...prev, status: data.status ?? 'completed', score: data.score ?? prev.score }));
+            const mapped = mapApiResponse(data);
+            statusRef.current = mapped.status;
+            setScan(mapped);
             setIsLoading(false);
         }).catch(() => setIsLoading(false));
-    }, [id]);
+    }, [id, mapApiResponse]);
+
+    // Elapsed / remaining timer — ticks locally every second
+    const isActiveTimer = scan.status === 'scanning' || scan.status === 'pending';
+    const { elapsed, remaining } = useScanTimer(
+        liveStartedAt || scan.startTime,
+        liveEstimatedRemaining,
+        isActiveTimer,
+    );
+
+    const handleFinding = useCallback((data: SSEFindingData) => {
+        if (!id || data.newCount <= 0) return;
+        // Full state refresh — also picks up pagesCrawled, totalRequests, summary, etc.
+        scanAPI.getResults(id).then(({ data: scanData }) => {
+            setScan(mapApiResponse(scanData));
+        }).catch(() => {});
+    }, [id, mapApiResponse]);
+
+    // Re-fetch when the backend increments data_version (recon_data / tester_results changed)
+    const handleDataUpdate = useCallback(() => {
+        if (!id) return;
+        scanAPI.getResults(id).then(({ data }) => {
+            setScan(mapApiResponse(data));
+        }).catch(() => {});
+    }, [id, mapApiResponse]);
 
     useSSE(sseUrl, {
+        onProgress: (data) => {
+            setLiveProgress(data.percent);
+            setLivePhase(data.phase);
+            if (data.currentTool) setLiveTool(data.currentTool);
+            if (data.startedAt) setLiveStartedAt(data.startedAt);
+            if (data.estimatedRemainingSeconds != null) setLiveEstimatedRemaining(data.estimatedRemainingSeconds);
+            setScan((prev) => ({
+                ...prev,
+                progress: data.percent,
+                currentPhase: data.phase,
+                currentTool: data.currentTool,
+                // Update live counts from SSE so overview stats stay current
+                ...(data.pagesCrawled != null ? { pagesCrawled: data.pagesCrawled } : {}),
+                ...(data.totalRequests != null ? { totalRequests: data.totalRequests } : {}),
+            }));
+        },
+        onFinding: handleFinding,
         onCompleted: handleSseCompleted,
-        onError: () => { /* SSE failed — polling fallback continues */ setSseUrl(null); },
+        onDataUpdate: handleDataUpdate,
+        onError: () => { setSseUrl(null); },
     });
 
     const handleMarkFalsePositive = async (vulnId: string, current: boolean) => {
@@ -207,37 +292,185 @@ export default function ScanResults() {
         ? scan.vulnerabilities
         : scan.vulnerabilities.filter((v) => v.severity === selectedSeverity);
 
+    const scopeLabel: Record<string, string> = {
+        single_domain: 'Single Domain',
+        wildcard: 'Wildcard',
+        wide_scope: 'Wide Scope',
+    };
+
+    const hasChildScans = scan.childScans && scan.childScans.length > 0;
+
     // ── Scanning progress banner ─────────────────────────────────────────────
     const renderScanningBanner = () => {
         if (scan.status !== 'scanning' && scan.status !== 'pending') return null;
+        const progress = liveProgress || scan.progress || 0;
+        const phase = livePhase || scan.currentPhase || '';
+        const tool = liveTool || '';
+
+        // Determine current phase index for timeline
+        const currentPhaseIdx = SCAN_PHASES.findIndex((p) => p.key === phase);
+
         return (
-            <Card className="p-4 mb-6 border-accent-green/30 bg-accent-green/5">
-                <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                        <div className="w-5 h-5 border-2 border-accent-green border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                        <span className="text-sm text-text-primary font-medium">
-                            {scan.currentPhase || 'Scan in progress…'}
-                        </span>
-                    </div>
-                    <span className="text-sm text-accent-green font-semibold">{scan.progress ?? 0}%</span>
+            <div className="mb-6 space-y-3">
+                {/* Phase timeline */}
+                <div className="hidden md:flex items-center overflow-x-auto pb-1">
+                    {SCAN_PHASES.map((p, idx) => {
+                        const isDone = currentPhaseIdx > -1 && idx < currentPhaseIdx;
+                        const isCurrent = idx === currentPhaseIdx;
+                        return (
+                            <React.Fragment key={p.key}>
+                                <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                                        isDone ? 'bg-accent-green text-bg-primary'
+                                        : isCurrent ? 'border-2 border-accent-green text-accent-green bg-accent-green/10'
+                                        : 'border border-border-primary text-text-tertiary bg-bg-secondary'
+                                    }`}>
+                                        {isDone ? '✓' : isCurrent
+                                            ? <div className="w-2.5 h-2.5 border border-accent-green border-t-transparent rounded-full animate-spin" />
+                                            : <span>{idx + 1}</span>}
+                                    </div>
+                                    <span className={`text-xs whitespace-nowrap ${
+                                        isCurrent ? 'text-accent-green font-semibold'
+                                        : isDone ? 'text-text-secondary'
+                                        : 'text-text-tertiary'
+                                    }`}>{p.label}</span>
+                                </div>
+                                {idx < SCAN_PHASES.length - 1 && (
+                                    <div className={`flex-1 h-0.5 min-w-[6px] mx-1 rounded transition-all duration-500 ${
+                                        isDone ? 'bg-accent-green' : 'bg-border-primary'
+                                    }`} />
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
                 </div>
-                {typeof scan.progress === 'number' && (
-                    <div className="h-1.5 bg-bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-accent-green rounded-full transition-all duration-500"
-                            style={{ width: `${scan.progress}%` }} />
+
+                {/* Main progress card */}
+                <div className="rounded-xl border border-accent-green/30 bg-accent-green/5 p-5">
+                    {/* Progress bar */}
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="flex-1 h-3 bg-bg-secondary rounded-full overflow-hidden">
+                            <div
+                                className="h-full rounded-full transition-all duration-700 ease-out"
+                                style={{
+                                    width: `${progress}%`,
+                                    background: 'linear-gradient(90deg, #22c55e, #10b981)',
+                                }}
+                            />
+                        </div>
+                        <span className="text-xl font-bold text-accent-green w-14 text-right tabular-nums">{progress}%</span>
+                    </div>
+
+                    {/* Status grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <p className="text-xs text-text-tertiary mb-0.5">Phase</p>
+                            <p className="text-sm font-medium text-text-primary capitalize">
+                                {phase.replace(/_/g, ' ') || 'Initializing…'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-text-tertiary mb-0.5">Current Tool</p>
+                            <p className="text-sm text-accent-green truncate">
+                                {tool || <span className="text-text-tertiary">—</span>}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-text-tertiary mb-0.5">Elapsed</p>
+                            <p className="text-sm font-mono text-text-primary tabular-nums">{elapsed}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-text-tertiary mb-0.5">Est. Remaining</p>
+                            <p className="text-sm font-mono text-text-secondary tabular-nums">{remaining}</p>
+                        </div>
+                    </div>
+
+                    {/* Live finding badges */}
+                    {scan.summary.total > 0 && (
+                        <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border-primary">
+                            <span className="text-xs text-text-tertiary">Live findings:</span>
+                            {(['critical', 'high', 'medium', 'low', 'info'] as const)
+                                .filter((s) => (scan.summary[s] ?? 0) > 0)
+                                .map((sev) => (
+                                    <span
+                                        key={sev}
+                                        className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold ${
+                                            sev === 'critical' ? 'bg-status-critical/15 text-status-critical'
+                                            : sev === 'high'   ? 'bg-status-high/15 text-status-high'
+                                            : sev === 'medium' ? 'bg-status-medium/15 text-status-medium'
+                                            : sev === 'low'    ? 'bg-status-low/15 text-status-low'
+                                            : 'bg-bg-secondary text-text-tertiary'
+                                        }`}
+                                    >
+                                        {scan.summary[sev]}
+                                        <span className="capitalize">{sev}</span>
+                                    </span>
+                                ))}
+                            <span className="ml-auto text-xs text-text-tertiary">{scan.summary.total} total</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Live findings feed — visible while scanning */}
+                {scan.vulnerabilities.length > 0 && (
+                    <div className="rounded-xl border border-border-primary bg-bg-secondary/50 overflow-hidden">
+                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border-primary">
+                            <span className="text-sm font-semibold text-text-primary">Live Findings</span>
+                            <span className="text-xs text-text-tertiary">Updates as each phase completes</span>
+                        </div>
+                        <div className="divide-y divide-border-primary max-h-72 overflow-y-auto">
+                            {scan.vulnerabilities.slice(0, 20).map((vuln) => (
+                                <div key={vuln.id} className="flex items-start gap-3 px-4 py-3 hover:bg-bg-hover transition-colors">
+                                    <span className={`flex-shrink-0 text-xs font-bold px-1.5 py-0.5 rounded uppercase mt-0.5 ${
+                                        vuln.severity === 'critical' ? 'bg-status-critical/20 text-status-critical'
+                                        : vuln.severity === 'high'   ? 'bg-status-high/20 text-status-high'
+                                        : vuln.severity === 'medium' ? 'bg-status-medium/20 text-status-medium'
+                                        : vuln.severity === 'low'    ? 'bg-status-low/20 text-status-low'
+                                        : 'bg-bg-secondary text-text-tertiary'
+                                    }`}>{vuln.severity}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm text-text-primary font-medium truncate">{vuln.name}</p>
+                                        {vuln.affectedUrl && (
+                                            <p className="text-xs text-text-tertiary font-mono truncate mt-0.5">{vuln.affectedUrl}</p>
+                                        )}
+                                    </div>
+                                    {vuln.toolName && (
+                                        <span className="flex-shrink-0 text-xs text-accent-green bg-accent-green/10 px-1.5 py-0.5 rounded font-mono">{vuln.toolName}</span>
+                                    )}
+                                </div>
+                            ))}
+                            {scan.vulnerabilities.length > 20 && (
+                                <div className="px-4 py-2 text-xs text-text-tertiary text-center">
+                                    +{scan.vulnerabilities.length - 20} more — view all in Findings tab
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
-                <div className="flex gap-6 mt-2 text-xs text-text-tertiary">
-                    {scan.totalRequests !== undefined && <span>{scan.totalRequests.toLocaleString()} requests</span>}
-                    {scan.pagesCrawled !== undefined && <span>{scan.pagesCrawled.toLocaleString()} pages crawled</span>}
-                </div>
-            </Card>
+            </div>
         );
     };
 
     // ── Overview tab ─────────────────────────────────────────────────────────
     const renderOverview = () => (
         <div className="space-y-6">
+            {/* Scope type badge */}
+            {scan.scopeType && scan.scopeType !== 'single_domain' && (
+                <Card className="p-4 flex items-center gap-3 bg-accent-blue/5 border-accent-blue/20">
+                    <Badge variant="info" size="sm">{scopeLabel[scan.scopeType] ?? scan.scopeType}</Badge>
+                    <span className="text-sm text-text-secondary">
+                        {scan.scopeType === 'wildcard'
+                            ? `Wildcard scan matching pattern: ${scan.target}`
+                            : `Company-wide OSINT scan for: ${scan.target}`}
+                    </span>
+                    {scan.discoveredDomains && scan.discoveredDomains.length > 0 && (
+                        <span className="text-sm text-accent-green ml-auto">
+                            {scan.discoveredDomains.length} domains discovered
+                        </span>
+                    )}
+                </Card>
+            )}
+
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <Card className="p-6 text-center md:col-span-1">
                     <div className={`text-4xl font-bold mb-2 ${scan.score >= 70 ? 'text-accent-green' : scan.score >= 40 ? 'text-status-medium' : 'text-status-critical'}`}>
@@ -255,6 +488,35 @@ export default function ScanResults() {
                     </Card>
                 ))}
             </div>
+
+            {/* AI Analyze button */}
+            {scan.status === 'completed' && scan.vulnerabilities.length > 0 && (
+                <Card className="p-4 flex items-center justify-between bg-accent-green/5 border-accent-green/20">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-accent-green/10 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div className="text-sm font-medium text-text-primary">AI Analysis Available</div>
+                            <div className="text-xs text-text-tertiary">{scan.summary.total} findings ready for analysis</div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => {
+                            const msg = `Analyze the scan results for ${scan.target}. Score: ${scan.score}/100, ${scan.summary.critical} critical, ${scan.summary.high} high, ${scan.summary.medium} medium, ${scan.summary.low} low, ${scan.summary.info} info findings. What should I fix first?`;
+                            window.dispatchEvent(new CustomEvent('safeweb-chatbot-ask', { detail: { message: msg, scanId: id } }));
+                        }}
+                        className="px-4 py-2 rounded-lg text-sm font-medium bg-accent-green text-bg-primary hover:bg-accent-green/90 transition-colors flex items-center gap-2"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        Analyze with AI
+                    </button>
+                </Card>
+            )}
 
             <Card className="p-6">
                 <h3 className="text-lg font-semibold text-text-primary mb-4">Scan Details</h3>
@@ -300,24 +562,47 @@ export default function ScanResults() {
                 </div>
             </Card>
 
-            {scan.mlResult && (
-                <Card className="p-6 border-accent-green/20">
-                    <div className="flex items-center gap-4">
-                        <svg className="w-8 h-8 text-accent-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                        <div className="flex-1">
-                            <div className="text-sm font-semibold text-text-primary mb-1">ML Assessment</div>
-                            <div className="flex items-center gap-3">
-                                <Badge variant={scan.mlResult.prediction === 'benign' ? 'low' : scan.mlResult.prediction === 'malicious' ? 'critical' : 'high'} size="sm">
-                                    {scan.mlResult.prediction?.toUpperCase() ?? 'N/A'}
-                                </Badge>
-                                {scan.mlResult.confidence !== undefined && (
-                                    <span className="text-sm text-text-secondary">{Math.round(scan.mlResult.confidence * 100)}% confidence</span>
-                                )}
-                            </div>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => setActiveTab('ml')}>Full ML Report →</Button>
+            {/* DEACTIVATED: ML Assessment card removed */}
+
+            {/* ── Child Scans (wildcard / wide_scope) ────────────────── */}
+            {hasChildScans && (
+                <Card className="p-6">
+                    <h3 className="text-lg font-semibold text-text-primary mb-4">
+                        Sub-Scans ({scan.childScans!.length} domains)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {scan.childScans!.map((child) => {
+                            const vulnSummary = child.vulnerabilitySummary;
+                            return (
+                                <Link
+                                    key={child.id}
+                                    to={`/scan/results/${child.id}`}
+                                    className="p-4 rounded-lg bg-bg-secondary border border-border-primary hover:bg-bg-hover hover:border-accent-green/30 transition-all"
+                                >
+                                    <div className="flex items-start justify-between mb-2">
+                                        <span className="text-sm font-mono text-text-primary truncate flex-1">{child.target}</span>
+                                        {child.status === 'completed' && (
+                                            <span className={`text-lg font-bold ml-2 ${child.score >= 70 ? 'text-accent-green' : child.score >= 40 ? 'text-status-medium' : 'text-status-critical'}`}>
+                                                {child.score}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Badge
+                                            variant={child.status === 'completed' ? 'low' : child.status === 'failed' ? 'critical' : 'info'}
+                                            size="sm"
+                                        >
+                                            {child.status}
+                                        </Badge>
+                                        {vulnSummary && child.status === 'completed' && (
+                                            <span className="text-xs text-text-tertiary">
+                                                {(vulnSummary.critical || 0) + (vulnSummary.high || 0) + (vulnSummary.medium || 0) + (vulnSummary.low || 0)} issues
+                                            </span>
+                                        )}
+                                    </div>
+                                </Link>
+                            );
+                        })}
                     </div>
                 </Card>
             )}
@@ -389,7 +674,7 @@ export default function ScanResults() {
                                     <button
                                         onClick={() => {
                                             const msg = `Tell me about this vulnerability: "${vuln.name}" (${vuln.severity.toUpperCase()})${vuln.cwe ? ` | ${vuln.cwe}` : ''}${vuln.affectedUrl ? ` | URL: ${vuln.affectedUrl}` : ''}${vuln.description ? `\n\n${vuln.description}` : ''}`;
-                                            window.dispatchEvent(new CustomEvent('safeweb-chatbot-ask', { detail: { message: msg } }));
+                                            window.dispatchEvent(new CustomEvent('safeweb-chatbot-ask', { detail: { message: msg, scanId: id } }));
                                         }}
                                         className="text-xs px-2 py-1 rounded bg-accent-green/10 text-accent-green hover:bg-accent-green/20 transition-colors border border-accent-green/30"
                                         title="Ask AI about this finding"
@@ -578,7 +863,8 @@ export default function ScanResults() {
                     {activeTab === 'recon'    && <ReconTab reconData={scan.reconData} />}
                     {activeTab === 'testers'  && <TesterBreakdownTab testerResults={scan.testerResults} totalTesters={87} />}
                     {activeTab === 'chains'   && <AttackChainTab vulnerabilities={scan.vulnerabilities} />}
-                    {activeTab === 'ml'       && <MLAnalysisTab mlResult={scan.mlResult} vulnerabilities={scan.vulnerabilities} />}
+                    {/* DEACTIVATED: ML Analysis tab */}
+                    {/* {activeTab === 'ml' && <MLAnalysisTab mlResult={scan.mlResult} vulnerabilities={scan.vulnerabilities} />} */}
                 </Container>
             </div>
         </Layout>

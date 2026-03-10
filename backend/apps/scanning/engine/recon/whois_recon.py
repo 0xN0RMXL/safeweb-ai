@@ -529,3 +529,68 @@ def _parse_date(date_str: str) -> datetime | None:
 def _get_root_domain(hostname: str) -> str:
     """Extract root domain from hostname (legacy wrapper)."""
     return extract_root_domain(hostname)
+
+
+# ── Reverse WHOIS — discover domains owned by an organization ────────────
+
+def reverse_whois(org_name: str) -> list[str]:
+    """Reverse WHOIS lookup: find domains registered to an organization.
+
+    Uses multiple public sources:
+      1. viewdns.info reverse WHOIS (HTML scraping)
+      2. RDAP bootstrap → search by entity name
+
+    Returns a deduplicated list of domain names (without scheme).
+    """
+    if not org_name or not org_name.strip():
+        return []
+
+    domains: set[str] = set()
+
+    # Source 1: ViewDNS.info reverse WHOIS
+    try:
+        domains.update(_viewdns_reverse_whois(org_name))
+    except Exception as exc:
+        logger.warning('ViewDNS reverse WHOIS failed for %s: %s', org_name, exc)
+
+    # Source 2: Google CT Transparency (org name search via crt.sh)
+    # This is handled separately by ct_log_enum.search_by_org
+
+    logger.info('Reverse WHOIS for "%s" found %d domains', org_name, len(domains))
+    return sorted(domains)
+
+
+def _viewdns_reverse_whois(org_name: str) -> set[str]:
+    """Query ViewDNS.info reverse WHOIS API (free tier, HTML response)."""
+    try:
+        import requests
+    except ImportError:
+        return set()
+
+    url = 'https://viewdns.info/reversewhois/'
+    params = {'q': org_name}
+
+    try:
+        resp = requests.get(url, params=params, timeout=15, headers={
+            'User-Agent': 'Mozilla/5.0 (compatible; SafeWeb-AI Security Scanner)',
+        })
+        resp.raise_for_status()
+
+        # Parse domain names from HTML table
+        domains = set()
+        # ViewDNS returns domains in a table; extract them with regex
+        # Pattern: domain names in table cells
+        domain_pattern = re.compile(
+            r'<td>([a-zA-Z0-9](?:[a-zA-Z0-9\-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,})</td>'
+        )
+        for match in domain_pattern.finditer(resp.text):
+            domain = match.group(1).lower().strip()
+            if '.' in domain and len(domain) < 253:
+                domains.add(domain)
+
+        return domains
+
+    except Exception as exc:
+        logger.debug('ViewDNS reverse WHOIS request failed: %s', exc)
+        return set()
+

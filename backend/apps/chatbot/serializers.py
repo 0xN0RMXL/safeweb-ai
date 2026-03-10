@@ -5,17 +5,18 @@ from .models import ChatSession, ChatMessage
 class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
-        fields = ['id', 'role', 'content', 'tokens_used', 'created_at']
+        fields = ['id', 'role', 'content', 'tokens_used', 'feedback', 'action_data', 'created_at']
         read_only_fields = fields
 
 
 class ChatSessionSerializer(serializers.ModelSerializer):
     messages = ChatMessageSerializer(many=True, read_only=True)
     message_count = serializers.SerializerMethodField()
+    scan_id = serializers.UUIDField(source='scan_id', read_only=True, allow_null=True)
 
     class Meta:
         model = ChatSession
-        fields = ['id', 'title', 'message_count', 'messages', 'created_at', 'updated_at']
+        fields = ['id', 'title', 'scan_id', 'context_type', 'message_count', 'messages', 'created_at', 'updated_at']
         read_only_fields = fields
 
     def get_message_count(self, obj):

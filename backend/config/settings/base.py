@@ -187,6 +187,8 @@ X_FRAME_OPTIONS = 'DENY'
 
 # AI API
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
+OPENROUTER_MODEL = os.getenv('OPENROUTER_MODEL', 'google/gemini-2.0-flash-001')
 
 # Phase 23: OSINT API Keys
 SHODAN_API_KEY = os.getenv('SHODAN_API_KEY', '')

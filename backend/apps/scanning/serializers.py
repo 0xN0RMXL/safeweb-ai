@@ -22,20 +22,55 @@ class VulnerabilitySerializer(serializers.ModelSerializer):
 
 
 class ScanCreateSerializer(serializers.Serializer):
-    """Serializer for creating a new website scan."""
-    url = serializers.URLField()
+    """Serializer for creating a new scan with scope type support."""
+    target = serializers.CharField(max_length=500)
+    scope_type = serializers.ChoiceField(
+        choices=['single_domain', 'wildcard', 'wide_scope'],
+        default='single_domain',
+    )
+    seed_domains = serializers.ListField(
+        child=serializers.CharField(max_length=253),
+        required=False, default=list,
+    )
     scan_depth = serializers.ChoiceField(
         choices=['shallow', 'medium', 'deep'],
         default='medium',
     )
-    include_subdomains = serializers.BooleanField(default=False)
     check_ssl = serializers.BooleanField(default=True)
     follow_redirects = serializers.BooleanField(default=True)
 
+    def validate(self, attrs):
+        scope_type = attrs.get('scope_type', 'single_domain')
+        target = attrs.get('target', '').strip()
 
-class ScanURLCreateSerializer(serializers.Serializer):
-    """Serializer for URL phishing scan."""
-    url = serializers.URLField()
+        if scope_type == 'single_domain':
+            # Must be a valid URL
+            if not target.startswith(('http://', 'https://')):
+                target = f'https://{target}'
+                attrs['target'] = target
+            from django.core.validators import URLValidator
+            try:
+                URLValidator()(target)
+            except Exception:
+                raise serializers.ValidationError({'target': 'Please enter a valid URL for single domain scans.'})
+
+        elif scope_type == 'wildcard':
+            # Must contain wildcard pattern like *.example.com
+            if not target.startswith('*.'):
+                raise serializers.ValidationError({'target': 'Wildcard scope requires a pattern like *.example.com'})
+
+        elif scope_type == 'wide_scope':
+            # Must have a non-empty company/org name
+            if len(target) < 2:
+                raise serializers.ValidationError({'target': 'Please enter a company or organization name.'})
+
+        return attrs
+
+
+# DEACTIVATED: URL phishing scan serializer — code preserved
+# class ScanURLCreateSerializer(serializers.Serializer):
+#     """Serializer for URL phishing scan."""
+#     url = serializers.URLField()
 
 
 class ScanDetailSerializer(serializers.ModelSerializer):
@@ -47,14 +82,17 @@ class ScanDetailSerializer(serializers.ModelSerializer):
     vulnerabilities = VulnerabilitySerializer(many=True, read_only=True)
     scan_options = serializers.SerializerMethodField()
     ml_result = serializers.SerializerMethodField()
+    child_scans = serializers.SerializerMethodField()
 
     class Meta:
         model = Scan
         fields = [
             'id', 'target', 'type', 'status', 'start_time', 'end_time',
             'duration', 'score', 'summary', 'vulnerabilities', 'scan_options',
-            'ml_result', 'progress', 'current_phase', 'total_requests',
-            'pages_crawled', 'recon_data', 'tester_results', 'mode',
+            'ml_result', 'progress', 'current_phase', 'current_tool', 'phase_timings',
+            'total_requests', 'pages_crawled', 'recon_data', 'tester_results', 'mode',
+            'scope_type', 'seed_domains', 'discovered_domains', 'child_scans',
+            'data_version',
         ]
 
     def get_summary(self, obj):
@@ -67,17 +105,35 @@ class ScanDetailSerializer(serializers.ModelSerializer):
             'checkSsl': obj.check_ssl,
         }
 
+    def get_child_scans(self, obj):
+        """Return child scan summaries for wildcard/wide_scope parent scans."""
+        children = obj.child_scans.all()
+        if not children.exists():
+            return []
+        return [
+            {
+                'id': str(child.id),
+                'target': child.target,
+                'status': child.status,
+                'score': child.score,
+                'vulnerabilitySummary': child.vulnerability_summary,
+            }
+            for child in children.order_by('created_at')
+        ]
+
     def get_ml_result(self, obj):
-        try:
-            result = obj.ml_predictions.order_by('-created_at').first()
-            if result:
-                return {
-                    'prediction': result.prediction,
-                    'confidence': result.confidence,
-                    'modelUsed': result.model.name if result.model else 'rule-based',
-                }
-        except Exception:
-            pass
+        # DEACTIVATED: ML file/URL predictions disabled — returning None
+        # Original code preserved below:
+        # try:
+        #     result = obj.ml_predictions.order_by('-created_at').first()
+        #     if result:
+        #         return {
+        #             'prediction': result.prediction,
+        #             'confidence': result.confidence,
+        #             'modelUsed': result.model.name if result.model else 'rule-based',
+        #         }
+        # except Exception:
+        #     pass
         return None
 
 
@@ -91,7 +147,7 @@ class ScanListSerializer(serializers.ModelSerializer):
         model = Scan
         fields = [
             'id', 'target', 'type', 'status', 'date',
-            'duration', 'score', 'vulnerabilities',
+            'duration', 'score', 'vulnerabilities', 'scope_type',
         ]
 
     def get_vulnerabilities(self, obj):
@@ -102,11 +158,18 @@ class ScanListSerializer(serializers.ModelSerializer):
 
 class ScanFullCreateSerializer(serializers.Serializer):
     """Full-config scan creation — extends base with profile, auth, scope."""
-    url = serializers.URLField()
+    target = serializers.CharField(max_length=500)
+    scope_type = serializers.ChoiceField(
+        choices=['single_domain', 'wildcard', 'wide_scope'],
+        default='single_domain',
+    )
+    seed_domains = serializers.ListField(
+        child=serializers.CharField(max_length=253),
+        required=False, default=list,
+    )
     scan_depth = serializers.ChoiceField(
         choices=['shallow', 'medium', 'deep'], default='medium',
     )
-    include_subdomains = serializers.BooleanField(default=False)
     check_ssl = serializers.BooleanField(default=True)
     follow_redirects = serializers.BooleanField(default=True)
     profile = serializers.CharField(max_length=64, required=False, allow_blank=True, default='')

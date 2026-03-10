@@ -5,7 +5,7 @@ import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
 import Badge from '@components/ui/Badge';
 import Button from '@components/ui/Button';
-import { adminAPI, nucleiAPI, scheduledScanAPI } from '@services/api';
+import { adminAPI, nucleiAPI, scheduledScanAPI, chatAPI } from '@services/api';
 
 interface DashboardData {
     stats: { label: string; value: string; change: string; trend: string }[];
@@ -28,6 +28,12 @@ export default function AdminDashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [nucleiCount, setNucleiCount] = useState(0);
     const [scheduledCount, setScheduledCount] = useState(0);
+    const [chatStats, setChatStats] = useState<{
+        totalSessions: number; totalMessages: number; uniqueUsers: number;
+        feedback: { positive: number; negative: number; total: number; satisfactionRate: number };
+        tokens: { total: number; llmMessages: number; avgPerMessage: number };
+        topTopics: { topic: string; count: number }[];
+    } | null>(null);
 
     useEffect(() => {
         setIsLoading(true);
@@ -44,6 +50,10 @@ export default function AdminDashboard() {
         scheduledScanAPI.getAll().then(({ data: d }) => {
             const arr = Array.isArray(d) ? d : d.results ?? [];
             setScheduledCount(arr.filter((s: { isActive: boolean }) => s.isActive).length);
+        }).catch(() => {});
+
+        chatAPI.getAnalytics(timeRange).then(({ data: d }) => {
+            setChatStats(d);
         }).catch(() => {});
     }, [timeRange]);
 
@@ -219,6 +229,71 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     </Card>
+
+                    {/* Chat Analytics */}
+                    {chatStats && (
+                    <Card className="p-6 mb-8">
+                        <h2 className="text-lg font-heading font-semibold text-text-primary mb-4">AI Chat Analytics</h2>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+                            <div className="text-center">
+                                <p className="text-3xl font-bold text-accent-green">{chatStats.totalSessions}</p>
+                                <p className="text-sm text-text-tertiary mt-1">Chat Sessions</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-3xl font-bold text-text-primary">{chatStats.totalMessages}</p>
+                                <p className="text-sm text-text-tertiary mt-1">Total Messages</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-3xl font-bold text-text-primary">{chatStats.uniqueUsers}</p>
+                                <p className="text-sm text-text-tertiary mt-1">Unique Users</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-3xl font-bold text-accent-blue">{chatStats.tokens.total.toLocaleString()}</p>
+                                <p className="text-sm text-text-tertiary mt-1">Tokens Used</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Feedback stats */}
+                            <div className="p-4 rounded-lg bg-bg-secondary border border-border-primary">
+                                <h3 className="text-sm font-semibold text-text-primary mb-3">User Feedback</h3>
+                                {chatStats.feedback.total > 0 ? (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-text-secondary">Satisfaction Rate</span>
+                                            <span className="text-lg font-bold text-accent-green">{chatStats.feedback.satisfactionRate}%</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-bg-primary rounded-full overflow-hidden">
+                                            <div className="h-full bg-accent-green rounded-full transition-all" style={{ width: `${chatStats.feedback.satisfactionRate}%` }} />
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs text-text-tertiary">
+                                            <span>👍 {chatStats.feedback.positive}</span>
+                                            <span>👎 {chatStats.feedback.negative}</span>
+                                            <span>{chatStats.feedback.total} total</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-text-tertiary">No feedback collected yet.</p>
+                                )}
+                            </div>
+                            {/* Top topics */}
+                            <div className="p-4 rounded-lg bg-bg-secondary border border-border-primary">
+                                <h3 className="text-sm font-semibold text-text-primary mb-3">Top Topics</h3>
+                                {chatStats.topTopics.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {chatStats.topTopics.slice(0, 5).map((t, i) => (
+                                            <div key={i} className="flex items-center justify-between">
+                                                <span className="text-sm text-text-secondary truncate flex-1">{t.topic}</span>
+                                                <span className="text-xs font-mono text-text-tertiary ml-2">{t.count}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-text-tertiary">No conversations yet.</p>
+                                )}
+                            </div>
+                        </div>
+                    </Card>
+                    )}
 
                     {/* Recent Users */}
                     <Card className="p-6">

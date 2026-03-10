@@ -114,6 +114,8 @@ class ScanOrchestrator:
         """Main entry point (sync) — called by Celery task.
 
         Creates an event loop and delegates to the async implementation.
+        Supports scope-aware scanning: single_domain runs the full pipeline,
+        wildcard/wide_scope resolve domains first, then create child scans.
         """
         from apps.scanning.models import Scan
         scan = Scan.objects.get(id=scan_id)
@@ -121,17 +123,28 @@ class ScanOrchestrator:
         scan.started_at = timezone.now()
         scan.save(update_fields=['status', 'started_at'])
 
-        logger.info(f'Scan orchestrator started: {scan.id} ({scan.scan_type}) → {scan.target}')
+        logger.info(f'Scan orchestrator started: {scan.id} ({scan.scan_type}, scope={scan.scope_type}) → {scan.target}')
 
         try:
             if scan.scan_type == 'website':
                 # Allow sync ORM calls inside asyncio.run() — safe in Celery worker context
                 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-                asyncio.run(self._scan_website_async(scan))
-            elif scan.scan_type == 'file':
-                self._scan_file(scan)
-            elif scan.scan_type == 'url':
-                self._scan_url(scan)
+
+                if scan.scope_type in ('wildcard', 'wide_scope') and not scan.parent_scan:
+                    # Multi-domain scope: resolve → create child scans
+                    asyncio.run(self._resolve_and_dispatch_children(scan))
+                    return  # Parent scan completion handled by aggregation task
+                else:
+                    # Single domain (or child of wildcard/wide_scope): full pipeline
+                    asyncio.run(self._scan_website_async(scan))
+
+            elif scan.scan_type in ('file', 'url'):
+                # DEACTIVATED: File/URL threat detection is disabled.
+                # Original _scan_file() and _scan_url() methods are preserved below.
+                scan.status = 'failed'
+                scan.error_message = 'File/URL threat detection is currently disabled. This app focuses on web application penetration testing.'
+                scan.save(update_fields=['status', 'error_message'])
+                return
 
             scan.status = 'completed'
             scan.score = self._calculate_security_score(scan)
@@ -153,11 +166,78 @@ class ScanOrchestrator:
                 scan.duration = int((scan.completed_at - scan.started_at).total_seconds())
             scan.save()
 
-    def _update_progress(self, scan, progress: int, phase: str):
-        """Update scan progress percentage and current phase name."""
+    def _update_progress(self, scan, progress: int, phase: str, tool: str = ''):
+        """Update scan progress percentage, current phase name, and optionally current tool."""
         scan.progress = progress
         scan.current_phase = phase
-        scan.save(update_fields=['progress', 'current_phase'])
+        fields = ['progress', 'current_phase']
+        if tool:
+            scan.current_tool = tool
+            fields.append('current_tool')
+        scan.save(update_fields=fields)
+
+    def _set_current_tool(self, scan, tool: str):
+        """Update only the current_tool field for fine-grained live UI display."""
+        scan.current_tool = tool
+        scan.save(update_fields=['current_tool'])
+
+    async def _resolve_and_dispatch_children(self, scan):
+        """Resolve wildcard/wide_scope into domains, create child scans, dispatch.
+
+        For wildcard: resolve matching domains via CT logs, DNS brute, passive.
+        For wide_scope: resolve company domains via reverse WHOIS, ASN, CT org search.
+        """
+        from apps.scanning.engine.scope import ScopeResolver
+        from apps.scanning.tasks import execute_scan_task, check_parent_scan_completion
+
+        self._update_progress(scan, 5, 'Scope Resolution')
+        logger.info(f'Resolving scope for {scan.id} (type={scan.scope_type}, target={scan.target})')
+
+        resolver = ScopeResolver()
+        try:
+            domains = await resolver.resolve(
+                scan.scope_type, scan.target, scan.seed_domains,
+            )
+        except Exception as exc:
+            logger.error(f'Scope resolution failed for {scan.id}: {exc}')
+            scan.status = 'failed'
+            scan.error_message = f'Scope resolution failed: {str(exc)}'
+            scan.save(update_fields=['status', 'error_message'])
+            return
+
+        if not domains:
+            scan.status = 'completed'
+            scan.score = 100
+            scan.error_message = 'No live domains found during scope resolution.'
+            scan.discovered_domains = []
+            scan.save(update_fields=['status', 'score', 'error_message', 'discovered_domains'])
+            return
+
+        scan.discovered_domains = domains
+        self._update_progress(scan, 10, f'Dispatching {len(domains)} child scans')
+        scan.save(update_fields=['discovered_domains'])
+
+        logger.info(f'Scope resolved for {scan.id}: {len(domains)} domains. Creating child scans.')
+
+        from apps.scanning.models import Scan as ScanModel
+        for domain in domains:
+            child = ScanModel.objects.create(
+                user=scan.user,
+                scan_type='website',
+                target=domain,
+                depth=scan.depth,
+                include_subdomains=True,
+                check_ssl=scan.check_ssl,
+                follow_redirects=scan.follow_redirects,
+                scope_type='single_domain',
+                parent_scan=scan,
+                status='pending',
+            )
+            execute_scan_task.delay(str(child.id))
+
+        scan.current_phase = f'Scanning {len(domains)} domains'
+        scan.save(update_fields=['current_phase'])
+        logger.info(f'Dispatched {len(domains)} child scans for parent {scan.id}')
 
     async def _run_verification_async(self, scan, vulns: list) -> list:
         """Re-confirm high/critical findings with a secondary payload before saving.
@@ -233,7 +313,7 @@ class ScanOrchestrator:
         # ══════════════════════════════════════════════════════════════════════
         # Phase 0-pre: Tool Health Check + SecLists + Scan Memory Recall
         # ══════════════════════════════════════════════════════════════════════
-        self._update_progress(scan, 1, 'pre_scan_checks')
+        self._update_progress(scan, 1, 'pre_scan_checks', tool='Tool Health Check')
         _scan_memory_hints: dict = {}
 
         # SecLists payload availability — auto-install in background if missing
@@ -270,14 +350,18 @@ class ScanOrchestrator:
                 pass
 
         def _create_vuln(vuln_data):
-            """Create a Vulnerability record with deduplication."""
+            """Create a Vulnerability record with deduplication.
+
+            Strips internal tracking keys (prefixed with _) before DB insert.
+            """
             sig = hashlib.md5(
                 f'{vuln_data.get("name")}:{vuln_data.get("affected_url", "")}'.encode()
             ).hexdigest()
             if sig in seen_signatures:
                 return False
             seen_signatures.add(sig)
-            Vulnerability.objects.create(scan=scan, **vuln_data)
+            clean = {k: v for k, v in vuln_data.items() if not k.startswith('_')}
+            Vulnerability.objects.create(scan=scan, **clean)
             return True
 
         _phase_stats = {}
@@ -494,7 +578,7 @@ class ScanOrchestrator:
                 logger.debug(f'LLM strategy generation skipped: {exc}')
 
         # Phase 2-4: Analyzers (run in parallel via async)
-        self._update_progress(scan, 40, 'analyzing')
+        self._update_progress(scan, 40, 'analyzing', tool='Header / SSL / Cookie Analyzers')
         _p2_start = _time.monotonic()
         logger.info('Phase 2-4: Running analyzers')
         analyzer_runner = AsyncTaskRunner(max_concurrency=3, default_timeout=60.0)
@@ -511,7 +595,8 @@ class ScanOrchestrator:
         _phase_stats['analysis'] = round(_time.monotonic() - _p2_start, 2)
 
         # Phase 5: Test each page for vulnerabilities (with recon intelligence)
-        self._update_progress(scan, 55, 'testing')
+        self._update_progress(scan, 55, 'testing', tool='Vulnerability Testers')
+        all_verified_vulns: list = []  # accumulates verified findings from all sub-phases
         _p5_start = _time.monotonic()
         testers = get_all_testers()
 
@@ -551,8 +636,45 @@ class ScanOrchestrator:
 
         logger.info(f'Phase 5: Running {len(testers)} vulnerability testers on {len(pages)} pages')
 
+        # ── Debounced per-tester progress save ────────────────────────────────
+        # Accumulates _tester_agg entries and saves tester_results to DB every
+        # 5 completed tasks or 3 seconds so TesterBreakdownTab populates live.
+        _tester_agg_live: dict[str, dict] = {}
+        _tester_live_count = 0
+        _tester_last_save = _time.monotonic()
+
+        def _on_tester_done(task_result) -> None:
+            nonlocal _tester_live_count, _tester_last_save
+            tname = task_tester_map.get(task_result.key, task_result.key)
+            if tname not in _tester_agg_live:
+                _tester_agg_live[tname] = {'findingsCount': 0, 'durationMs': 0, 'status': 'passed'}
+            entry = _tester_agg_live[tname]
+            entry['findingsCount'] += len(task_result.result) if task_result.result else 0
+            entry['durationMs'] += int(task_result.duration * 1000)
+            from apps.scanning.engine.async_engine import TaskStatus
+            if task_result.status in (TaskStatus.FAILED, TaskStatus.TIMEOUT):
+                entry['status'] = 'failed'
+            elif task_result.status == TaskStatus.CANCELLED and entry['status'] != 'failed':
+                entry['status'] = 'skipped'
+
+            _tester_live_count += 1
+            now = _time.monotonic()
+            if _tester_live_count % 5 == 0 or (now - _tester_last_save) >= 3.0:
+                scan.tester_results = [
+                    {'testerName': tn, 'findingsCount': v['findingsCount'],
+                     'durationMs': v['durationMs'], 'status': v['status']}
+                    for tn, v in _tester_agg_live.items()
+                ]
+                scan.data_version = (scan.data_version or 0) + 1
+                scan.save(update_fields=['tester_results', 'data_version'])
+                _tester_last_save = now
+
         # Run testers with bounded concurrency: each (page, tester) pair is a task
-        tester_runner = AsyncTaskRunner(max_concurrency=_RECON_WORKERS, default_timeout=30.0)
+        tester_runner = AsyncTaskRunner(
+            max_concurrency=_RECON_WORKERS,
+            default_timeout=30.0,
+            on_progress=_on_tester_done,
+        )
         task_tester_map: dict[str, str] = {}  # task_key -> tester name
         task_idx = 0
         for page in pages:
@@ -568,14 +690,18 @@ class ScanOrchestrator:
                 task_idx += 1
 
         tester_results = await tester_runner.run()
-        raw_vulns = []
+        # Inject tool_name from task_tester_map so each finding is identifiable in the UI
+        phase5_raw = []
         for key, result in tester_results.items():
             if result.result:
+                tname = task_tester_map.get(key, key)
                 for vuln_data in result.result:
-                    raw_vulns.append(vuln_data)
+                    vuln_data.setdefault('tool_name', tname)
+                    phase5_raw.append(vuln_data)
 
-        # Aggregate per-tester breakdown and persist to scan.tester_results
-        _tester_agg: dict[str, dict] = {}
+        # Aggregate per-tester breakdown — use the live dict already built by _on_tester_done
+        # (re-iterate tester_results to catch any final tasks that debounce may have missed)
+        _tester_agg: dict[str, dict] = dict(_tester_agg_live)
         for task_key, task_result in tester_results.items():
             tname = task_tester_map.get(task_key, task_key)
             if tname not in _tester_agg:
@@ -600,23 +726,42 @@ class ScanOrchestrator:
         logger.info(f'Phase 5 complete: {tester_runner.completed_count} tester runs succeeded, '
                      f'{tester_runner.failed_count} failed')
 
+        # Verify and save Phase 5 tester findings immediately so they appear in the UI
+        if phase5_raw:
+            self._set_current_tool(scan, f'Verifying {len(phase5_raw)} tester findings')
+            _p5v_start = _time.monotonic()
+            phase5_verified = await self._run_verification_async(scan, phase5_raw)
+            for v in phase5_verified:
+                _create_vuln(v)
+            all_verified_vulns.extend(phase5_verified)
+            _phase_stats['testing_verification'] = round(_time.monotonic() - _p5v_start, 2)
+            logger.info(f'Phase 5: Verified and saved {len(phase5_verified)} tester finding(s)')
+
         # Phase 5.1: OOB Callback Polling — collect blind vulnerability confirmations
         if oob_active and oob_manager.tracked_count > 0:
-            self._update_progress(scan, 70, 'oob_polling')
+            self._update_progress(scan, 70, 'oob_polling', tool='OOB Callback Polling')
             _p51_start = _time.monotonic()
             logger.info(f'Phase 5.1: Polling OOB callbacks ({oob_manager.tracked_count} tracked)')
             oob_findings = await asyncio.to_thread(oob_manager.poll_and_correlate)
+            oob_raw = []
             if oob_findings:
-                oob_vulns = oob_manager.findings_to_vulns(oob_findings)
-                for vuln_data in oob_vulns:
-                    raw_vulns.append(vuln_data)
+                oob_vulns_list = oob_manager.findings_to_vulns(oob_findings)
+                for vuln_data in oob_vulns_list:
+                    oob_raw.append(vuln_data)
                 logger.info(f'OOB polling: {len(oob_findings)} blind vulnerability(ies) confirmed')
+            if oob_raw:
+                self._set_current_tool(scan, f'Verifying {len(oob_raw)} OOB findings')
+                oob_verified = await self._run_verification_async(scan, oob_raw)
+                for v in oob_verified:
+                    _create_vuln(v)
+                all_verified_vulns.extend(oob_verified)
             _phase_stats['oob_polling'] = round(_time.monotonic() - _p51_start, 2)
 
         # Phase 5b: Nuclei Template Engine — run community templates for additional coverage
         #           Primary:  Nuclei CLI binary (all protocol types; -t templates_dir/)
         #           Fallback: Python Template Engine (HTTP-only, no binary required)
-        self._update_progress(scan, 72, 'nuclei_templates')
+        self._update_progress(scan, 72, 'nuclei_templates', tool='Nuclei Template Engine')
+        nuclei_raw = []  # collected before per-phase verify+save
         _p5b_start = _time.monotonic()
         try:
             from .nuclei import TemplateManager, TemplateParser, TemplateRunner
@@ -677,7 +822,7 @@ class ScanOrchestrator:
                         lambda: _cli.run(_target, **_cli_kwargs)
                     )
                     for _r in _cli_results:
-                        raw_vulns.append({
+                        nuclei_raw.append({
                             'name': f'[Nuclei] {_r.title}',
                             'severity': str(_r.severity),
                             'category': _r.category or 'Nuclei',
@@ -722,7 +867,7 @@ class ScanOrchestrator:
                         logger.info('Phase 5b (Python): Running %d templates', len(nuclei_templates))
                         nuclei_vulns = await runner.run_templates(nuclei_templates, _target)
                         for vuln_data in nuclei_vulns:
-                            raw_vulns.append(vuln_data)
+                            nuclei_raw.append(vuln_data)
                         logger.info('Phase 5b (Python): %d finding(s)', len(nuclei_vulns))
                     else:
                         logger.info('Phase 5b: No applicable nuclei templates found')
@@ -734,9 +879,17 @@ class ScanOrchestrator:
         except Exception as exc:
             logger.warning(f'Phase 5b nuclei templates skipped: {exc}')
         _phase_stats['nuclei_templates'] = round(_time.monotonic() - _p5b_start, 2)
+        if nuclei_raw:
+            self._set_current_tool(scan, f'Verifying {len(nuclei_raw)} Nuclei findings')
+            nuclei_verified = await self._run_verification_async(scan, nuclei_raw)
+            for v in nuclei_verified:
+                _create_vuln(v)
+            all_verified_vulns.extend(nuclei_verified)
+            logger.info(f'Phase 5b: Verified and saved {len(nuclei_verified)} Nuclei finding(s)')
 
         # Phase 5c: Secret Scanner — detect leaked secrets, API keys, credentials
-        self._update_progress(scan, 74, 'secret_scanning')
+        self._update_progress(scan, 74, 'secret_scanning', tool='Secret Scanner')
+        secrets_raw = []  # collected before per-phase verify+save
         _p5c_start = _time.monotonic()
         try:
             from .secrets.secret_scanner import SecretScanner
@@ -748,7 +901,7 @@ class ScanOrchestrator:
             if secret_result.findings:
                 secret_vulns = secret_scanner.findings_to_vulns(secret_result, scan.target_url)
                 for vuln_data in secret_vulns:
-                    raw_vulns.append(vuln_data)
+                    secrets_raw.append(vuln_data)
                 logger.info(f'Phase 5c: Secret scanner found {len(secret_result.findings)} secret(s) '
                             f'across {secret_result.pages_scanned} pages')
 
@@ -758,17 +911,24 @@ class ScanOrchestrator:
             if git_result.is_exposed:
                 git_vulns = git_dumper.findings_to_vulns(git_result, scan.target_url)
                 for vuln_data in git_vulns:
-                    raw_vulns.append(vuln_data)
+                    secrets_raw.append(vuln_data)
                 logger.info(f'Phase 5c: Exposed .git detected with '
                             f'{len(git_result.extracted_secrets)} secret(s)')
         except Exception as exc:
             logger.warning(f'Phase 5c secret scanning skipped: {exc}')
         _phase_stats['secret_scanning'] = round(_time.monotonic() - _p5c_start, 2)
+        if secrets_raw:
+            self._set_current_tool(scan, f'Verifying {len(secrets_raw)} secret findings')
+            secrets_verified = await self._run_verification_async(scan, secrets_raw)
+            for v in secrets_verified:
+                _create_vuln(v)
+            all_verified_vulns.extend(secrets_verified)
+            logger.info(f'Phase 5c: Verified and saved {len(secrets_verified)} secret finding(s)')
 
         # Phase 5d: Integrated vulnerability scanners — VULN_SCAN tool wrappers
-        # Runs sqlmap, dalfox, nikto, testssl, subjack, etc. and feeds findings
-        # into raw_vulns so they appear in the Findings tab alongside tester results.
-        self._update_progress(scan, 76, 'integrated_scanners')
+        # Runs sqlmap, dalfox, nikto, testssl, subjack, etc.
+        self._update_progress(scan, 76, 'integrated_scanners', tool='Integrated Scanners (sqlmap, dalfox…)')
+        integrated_raw = []  # collected before per-phase verify+save
         _p5d_start = _time.monotonic()
         try:
             from .tools.registry import ToolRegistry
@@ -804,7 +964,10 @@ class ScanOrchestrator:
                 for _tk, _tr in _tool_scan_results.items():
                     if _tr.result:
                         for _tool_r in _tr.result:
-                            raw_vulns.append(tool_result_to_vuln(_tool_r))
+                            _tv = tool_result_to_vuln(_tool_r)
+                            # Ensure tool_name is set — use the tool key as fallback
+                            _tv.setdefault('tool_name', _tk.replace('tool_', '', 1))
+                            integrated_raw.append(_tv)
                             _tool_vuln_count += 1
 
                 logger.info('Phase 5d: %d finding(s) from integrated scanners', _tool_vuln_count)
@@ -813,33 +976,43 @@ class ScanOrchestrator:
         except Exception as _exc:
             logger.warning('Phase 5d integrated scanners skipped: %s', _exc)
         _phase_stats['integrated_scanners'] = round(_time.monotonic() - _p5d_start, 2)
+        if integrated_raw:
+            self._set_current_tool(scan, f'Verifying {len(integrated_raw)} scanner findings')
+            integrated_verified = await self._run_verification_async(scan, integrated_raw)
+            for v in integrated_verified:
+                _create_vuln(v)
+            all_verified_vulns.extend(integrated_verified)
+            logger.info(f'Phase 5d: Verified and saved {len(integrated_verified)} scanner finding(s)')
 
-        # Phase 5.5: Verification — re-confirm high/critical findings
-        self._update_progress(scan, 75, 'verification')
+        # Phase 5.5: All per-phase verifications done — run evidence verifier pass
+        self._update_progress(scan, 80, 'verification', tool='Evidence Verifier')
         _p55_start = _time.monotonic()
-        logger.info('Phase 5.5: Verifying high/critical findings')
-        verified_vulns = await self._run_verification_async(scan, raw_vulns)
 
         # Phase 5.5b: Evidence Verifier — active re-verification via replay/differential
         if self._evidence_verifier:
             try:
-                high_crit = [v for v in verified_vulns
+                high_crit = [v for v in all_verified_vulns
                              if v.get('severity') in ('critical', 'high')]
                 if high_crit:
                     ev_results = await asyncio.to_thread(
                         self._evidence_verifier.verify_batch, high_crit
                     )
-                    # Update vulns with evidence verifier results
                     ev_map = {r.vuln_id: r for r in ev_results if r}
-                    for vuln in verified_vulns:
+                    for vuln in all_verified_vulns:
                         vid = vuln.get('_id', '')
                         ev = ev_map.get(vid)
                         if ev and ev.confirmed:
                             vuln['verified'] = True
-                            vuln['evidence'] = (
+                            new_ev = (
                                 (vuln.get('evidence', '') or '') +
                                 f'\n[EvidenceVerifier] {ev.method}: confidence={ev.confidence:.0%}'
                             ).strip()
+                            vuln['evidence'] = new_ev
+                            # Update the already-saved DB record
+                            scan.vulnerabilities.filter(
+                                name=vuln.get('name', ''),
+                                affected_url=vuln.get('affected_url', ''),
+                            ).update(verified=True, evidence=new_ev)
                     logger.info(f'Evidence verifier: {len(ev_results)} finding(s) re-verified')
             except Exception as exc:
                 logger.debug(f'Evidence verifier skipped: {exc}')
@@ -848,7 +1021,7 @@ class ScanOrchestrator:
         _p57_start = _time.monotonic()
         exploit_count = 0
         exploitable_vulns = [
-            v for v in verified_vulns
+            v for v in all_verified_vulns
             if v.get('severity') in ('critical', 'high')
             and v.get('verified', True)
         ]
@@ -891,10 +1064,16 @@ class ScanOrchestrator:
                             report = await asyncio.to_thread(
                                 report_gen.generate_report, vuln, exploit_result
                             )
-                            vuln['exploit_data'] = {
+                            exploit_data = {
                                 'exploit': exploit_result,
                                 'report': report,
                             }
+                            vuln['exploit_data'] = exploit_data
+                            # Update the already-saved DB record with exploit proof
+                            scan.vulnerabilities.filter(
+                                name=vuln.get('name', ''),
+                                affected_url=vuln.get('affected_url', ''),
+                            ).update(exploit_data=exploit_data)
                             exploit_count += 1
                     except Exception as exc:
                         logger.debug(f'Exploit gen failed for {vuln.get("name")}: {exc}')
@@ -908,12 +1087,10 @@ class ScanOrchestrator:
                 logger.debug(f'Phase 5.7 exploit generation skipped: {exc}')
         _phase_stats['exploit_gen'] = round(_time.monotonic() - _p57_start, 2)
 
-        for vuln_data in verified_vulns:
-            _create_vuln(vuln_data)
         _phase_stats['verification'] = round(_time.monotonic() - _p55_start, 2)
 
         # Phase 6: Vulnerability correlation
-        self._update_progress(scan, 82, 'correlation')
+        self._update_progress(scan, 82, 'correlation', tool='Attack Chain Correlation')
         _p6_start = _time.monotonic()
         logger.info('Phase 6: Correlating vulnerabilities')
         self._correlate_vulnerabilities(scan)
@@ -923,7 +1100,7 @@ class ScanOrchestrator:
         if self._chain_detector:
             try:
                 _p61_start = _time.monotonic()
-                self._chain_detector.ingest_findings(verified_vulns)
+                self._chain_detector.ingest_findings(all_verified_vulns)
                 chains = self._chain_detector.detect_chains()
                 if chains:
                     chain_summary = self._chain_detector.summary()
@@ -941,11 +1118,17 @@ class ScanOrchestrator:
             try:
                 _p65_start = _time.monotonic()
                 fp_reduced = 0
-                for vuln in verified_vulns:
+                for vuln in all_verified_vulns:
                     if vuln.get('severity') in ('critical', 'high', 'medium'):
                         result = self._fp_reducer.analyze(vuln)
                         if result and result.get('is_false_positive', False):
-                            vuln['false_positive_score'] = result.get('confidence', 0.9)
+                            fp_score = result.get('confidence', 0.9)
+                            vuln['false_positive_score'] = fp_score
+                            # Update the already-saved DB record
+                            scan.vulnerabilities.filter(
+                                name=vuln.get('name', ''),
+                                affected_url=vuln.get('affected_url', ''),
+                            ).update(false_positive_score=fp_score)
                             fp_reduced += 1
                 if fp_reduced:
                     logger.info(f'Phase 6.5: FP reducer flagged {fp_reduced} likely false positive(s)')
@@ -953,15 +1136,15 @@ class ScanOrchestrator:
             except Exception as exc:
                 logger.debug(f'FP reducer skipped: {exc}')
 
-        # Save recon data with phase stats
-        self._update_progress(scan, 92, 'saving')
-        # Remove non-serializable objects before saving recon_data
+        # Save recon data and phase timings for historical ETA
+        self._update_progress(scan, 92, 'saving', tool='Saving results')
         recon_data.pop('_oob_manager', None)
         recon_data.pop('_auth_manager', None)
         recon_data.pop('_headless_auth', None)
         recon_data['_stats'] = _phase_stats
         scan.recon_data = recon_data
-        scan.save(update_fields=['recon_data'])
+        scan.phase_timings = _phase_stats  # store for ETA on future scans
+        scan.save(update_fields=['recon_data', 'phase_timings'])
 
         # Phase 7: Learning — record outcomes to Scan Memory + Knowledge Updater
         try:
@@ -974,7 +1157,7 @@ class ScanOrchestrator:
                 ]
                 # Record each vuln category
                 vuln_categories = set()
-                for v in verified_vulns:
+                for v in all_verified_vulns:
                     cat = v.get('category', '')
                     sev = v.get('severity', 'info')
                     if cat and sev in ('critical', 'high', 'medium'):
@@ -998,7 +1181,7 @@ class ScanOrchestrator:
                     for t in recon_data.get('technologies', {}).get('technologies', [])
                 ]
                 added = self._knowledge_updater.add_from_scan_findings(
-                    verified_vulns, tech_stack=tech_list
+                    all_verified_vulns, tech_stack=tech_list
                 )
                 if added:
                     logger.info(f'Phase 7: Knowledge updater ingested {added} confirmed finding(s)')
@@ -1060,6 +1243,17 @@ class ScanOrchestrator:
                 else:
                     logger.warning(f'Recon module [{key}] returned no data in {label}')
 
+        def _save_recon_snapshot():
+            """Persist current recon_data to DB (stripping internal _-prefixed keys).
+
+            Called after each wave so the Recon tab is populated progressively.
+            Increments data_version so the SSE stream can emit a data_update signal.
+            """
+            db_snapshot = {k: v for k, v in recon_data.items() if not k.startswith('_')}
+            scan.recon_data = db_snapshot
+            scan.data_version = (scan.data_version or 0) + 1
+            scan.save(update_fields=['recon_data', 'data_version'])
+
         # ══════════════════════════════════════════════════════════════════════
         # Wave 0a — independent probes (target-only, no dependencies)
         # ══════════════════════════════════════════════════════════════════════
@@ -1116,6 +1310,7 @@ class ScanOrchestrator:
                 pass
 
         await _run_wave(wave_0a, 'wave_0a')
+        _save_recon_snapshot()  # recon tab: DNS/WHOIS/certs/WAF visible now
 
         # Log wave 0a results
         if 'dns' in recon_data:
@@ -1253,6 +1448,7 @@ class ScanOrchestrator:
                 pass
 
         await _run_wave(wave_0b, 'wave_0b')
+        _save_recon_snapshot()  # recon tab: tech/headers/cookies/URLs visible now
 
         # Log wave 0b results
         if 'technologies' in recon_data:
@@ -1435,6 +1631,7 @@ class ScanOrchestrator:
                     pass
 
             await _run_wave(wave_0c, 'wave_0c')
+            _save_recon_snapshot()  # recon tab: emails/secrets/subdomains/etc visible now
 
         # ══════════════════════════════════════════════════════════════════════
         # Wave 0d — analytics (full recon_data blob)
@@ -1479,6 +1676,7 @@ class ScanOrchestrator:
                 pass
 
             await _run_wave(wave_0d, 'wave_0d')
+            _save_recon_snapshot()  # recon tab: risk score/attack surface/threat intel visible now
 
             if 'risk_score' in recon_data:
                 logger.info(
