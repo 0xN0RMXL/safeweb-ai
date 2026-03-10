@@ -213,3 +213,4 @@ class PhishingDetector:
             )
         except Exception as e:
             logger.error(f'Failed to save prediction: {e}')
+# contribution by Mohammed Mostafa
