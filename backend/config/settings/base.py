@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
+import dj_database_url
 
 load_dotenv(Path(__file__).resolve().parent.parent.parent / '.env')
 
@@ -12,6 +13,11 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-safeweb-dev-key')
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+# Auto-allow Railway's public domain
+_RAILWAY_PUBLIC = os.getenv('RAILWAY_PUBLIC_DOMAIN', '')
+if _RAILWAY_PUBLIC and _RAILWAY_PUBLIC not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_RAILWAY_PUBLIC)
 
 # Application definition
 INSTALLED_APPS = [
@@ -68,12 +74,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database
+# Database — use DATABASE_URL in production (Railway provides this), fall back to SQLite for local dev
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 # Custom user model
@@ -111,14 +118,27 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS Configuration
+# CORS Configuration — local dev + production Vercel domain
+_FRONTEND_URL = os.getenv('FRONTEND_URL', '')  # e.g. https://safeweb-ai.vercel.app
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
 ]
+if _FRONTEND_URL:
+    CORS_ALLOWED_ORIGINS.append(_FRONTEND_URL)
 CORS_ALLOW_CREDENTIALS = True
+
+# CSRF Configuration — trust Vercel and Railway origins
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+]
+if _FRONTEND_URL:
+    CSRF_TRUSTED_ORIGINS.append(_FRONTEND_URL)
+if _RAILWAY_PUBLIC:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{_RAILWAY_PUBLIC}')
 
 # REST Framework
 REST_FRAMEWORK = {
@@ -184,6 +204,11 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = int(os.getenv('MAX_FILE_SIZE_MB', 50)) * 1024 * 10
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # AI API
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
