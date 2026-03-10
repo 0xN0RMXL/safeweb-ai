@@ -5,7 +5,7 @@ import {
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import ProtectedRoute from '@components/ProtectedRoute';
-
+ 
 // ── Page chunks — each is downloaded only when the user navigates to it ──────
 const Home             = lazy(() => import('@pages/Home'));
 const Login            = lazy(() => import('@pages/Login'));
