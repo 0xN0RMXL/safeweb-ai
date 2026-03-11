@@ -1,5 +1,4 @@
 ```markdown
-```markdown
 # SafeWeb AI
 ## AI-Powered Web Application Vulnerability Scanner & Penetration Testing Platform
 ### Technical System Documentation
@@ -846,8 +845,5 @@ All secrets stored in **Azure Key Vault**, referenced via App Service configurat
 ---
 
 # End of Technical System Documentation
-```
-
-
 ```
 
