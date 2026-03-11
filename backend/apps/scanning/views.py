@@ -28,13 +28,18 @@ logger = logging.getLogger(__name__)
 
 
 def _dispatch_scan_task(scan_id: str):
-    """Dispatch scan task. In dev mode (eager), uses a background thread
-    so the HTTP response returns immediately instead of blocking."""
+    """Dispatch scan task via Celery if available, otherwise fall back to a
+    background thread so the HTTP response returns immediately."""
     if getattr(django_settings, 'CELERY_TASK_ALWAYS_EAGER', False):
         t = threading.Thread(target=execute_scan_task, args=(scan_id,), daemon=True)
         t.start()
     else:
-        execute_scan_task.delay(scan_id)
+        try:
+            execute_scan_task.delay(scan_id)
+        except Exception:
+            logger.warning('Celery broker unavailable, running scan in background thread')
+            t = threading.Thread(target=execute_scan_task, args=(scan_id,), daemon=True)
+            t.start()
 
 
 class WebsiteScanCreateView(views.APIView):
