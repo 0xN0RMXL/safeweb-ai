@@ -2,18 +2,20 @@
 
 # 🛡️ SafeWeb AI
 
-### Enterprise-Grade Web Application Vulnerability Scanner
+### Enterprise-Grade AI-Powered Web Application Vulnerability Scanner
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Django](https://img.shields.io/badge/Django-5.0+-092E20?style=for-the-badge&logo=django&logoColor=white)](https://djangoproject.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Azure](https://img.shields.io/badge/Microsoft_Azure-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)](https://azure.microsoft.com)
 [![License](https://img.shields.io/badge/License-University_Project-orange?style=for-the-badge)]()
 
-**A professional cybersecurity SaaS platform that combines 60+ security tools, 87+ vulnerability testers, 37 reconnaissance modules, and AI-powered analysis into a unified scanning engine with real-time results.**
+**A professional cybersecurity SaaS platform that combines 62+ security tools, 85+ vulnerability testers, 40+ reconnaissance modules, and AI-powered analysis into a unified scanning engine — deployed on Microsoft Azure with PostgreSQL, Redis, and a full CI/CD pipeline.**
 
-[Features](#-features) • [Architecture](#-architecture) • [Installation](#-installation) • [API Reference](#-api-reference) • [Scanning Engine](#-scanning-engine) • [Screenshots](#-screenshots)
+[Features](#-features) • [Architecture](#-architecture) • [Tech Stack](#-tech-stack) • [Installation](#-installation) • [Scanning Engine](#-scanning-engine) • [AI Chatbot](#-ai-chatbot-assistant) • [API Reference](#-api-reference) • [Azure Deployment](#-azure-deployment) • [Database Design](#-database-design) • [Roadmap](#-roadmap)
 
 </div>
 
@@ -29,11 +31,12 @@
 - [Scanning Engine](#-scanning-engine)
 - [AI Chatbot Assistant](#-ai-chatbot-assistant)
 - [API Reference](#-api-reference)
+- [Azure Deployment](#-azure-deployment)
+- [Database Design](#-database-design)
+- [Performance Engineering](#-performance-engineering)
 - [Frontend Pages](#-frontend-pages)
-- [Component Library](#-component-library)
 - [Security Tools](#-security-tools)
-- [Deployment](#-deployment)
-- [Design System](#-design-system)
+- [Roadmap](#-roadmap)
 - [Team](#-team)
 
 ---
@@ -73,33 +76,38 @@
 ## 🏗 Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    FRONTEND (React 18)                   │
-│  Vite + TypeScript + TailwindCSS + React Router v6      │
-│  28 pages · 30+ components · SSE streaming · JWT auth   │
-├─────────────────────────────────────────────────────────┤
-│                         ↕ REST API (Axios)              │
-├─────────────────────────────────────────────────────────┤
-│                  BACKEND (Django 5 + DRF)                │
-│  6 Django apps · JWT auth · Rate limiting · CORS        │
-├──────────┬──────────┬───────────┬───────────┬───────────┤
-│ accounts │ scanning │  chatbot  │    ml     │   learn   │
-│  (auth)  │ (engine) │   (AI)    │ (models)  │ (articles)│
-├──────────┴──────────┴───────────┴───────────┴───────────┤
-│                    TASK QUEUE (Celery)                   │
-│  Redis broker · Async scan execution · Tool registry    │
-├─────────────────────────────────────────────────────────┤
-│               SCANNING ENGINE (7 Phases)                │
-│  37 recon modules → crawler → 87+ testers → ML verify  │
-│  60+ tool wrappers · SecLists payloads · Nuclei engine  │
-├─────────────────────────────────────────────────────────┤
-│                  AI / ML LAYER                          │
-│  OpenRouter LLM · scikit-learn · XGBoost · Function     │
-│  calling · Knowledge base · Action registry             │
-├─────────────────────────────────────────────────────────┤
-│              INFRASTRUCTURE                             │
-│  PostgreSQL (prod) · SQLite (dev) · Redis · Railway     │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│               FRONTEND (Azure Static Web Apps)                  │
+│  React 18 + TypeScript + Vite + TailwindCSS                     │
+│  35 routes · 74+ source files · SSE streaming · JWT auth        │
+│  Azure CDN (global edge) + Custom Domain + SSL                  │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ HTTPS
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│           BACKEND (Azure App Service — Linux P1v2)              │
+│  Django 5.0 + DRF + Gunicorn + WhiteNoise                       │
+│  6 Django apps · JWT auth · Rate limiting · CORS                │
+├──────────┬──────────┬───────────┬───────────┬───────────────────┤
+│ accounts │ scanning │  chatbot  │    ml     │ learn · admin     │
+│  (auth)  │ (engine) │   (AI)    │ (models)  │ (articles/panel)  │
+├──────────┴──────────┴───────────┴───────────┴───────────────────┤
+│              TASK QUEUE (Celery + Azure Redis)                   │
+│  Async scan execution · Tool registry · Rate-limit counters     │
+├─────────────────────────────────────────────────────────────────┤
+│               SCANNING ENGINE (7 Phases)                        │
+│  40+ recon modules → crawler → 85+ testers → ML verify         │
+│  62+ tool wrappers · SecLists payloads · Nuclei engine          │
+├─────────────────────────────────────────────────────────────────┤
+│                  AI / ML LAYER                                  │
+│  OpenRouter LLM (Gemini 2.0 Flash) · scikit-learn · XGBoost    │
+│  7 function-calling tools · Knowledge base · Ollama (optional)  │
+├─────────────────────────────────────────────────────────────────┤
+│              INFRASTRUCTURE (Microsoft Azure)                   │
+│  Azure PostgreSQL Flexible Server · Azure Redis Cache           │
+│  Azure Blob Storage · Azure Key Vault · App Insights            │
+│  Azure Container Instances (tools sidecar)                      │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -136,13 +144,21 @@
 | **remark-gfm** | GitHub Flavored Markdown |
 | **rehype-highlight** | Code syntax highlighting |
 
-### DevOps
+### DevOps & Cloud
 | Technology | Purpose |
 |:-----------|:--------|
-| **Railway** | Backend hosting |
-| **Vercel** | Frontend hosting |
-| **Nixpacks** | Backend build system |
-| **GitHub Actions** | CI/CD |
+| **Microsoft Azure** | Full cloud deployment platform |
+| **Azure App Service** | Backend hosting (Linux P1v2) |
+| **Azure Static Web Apps** | Frontend hosting + CDN |
+| **Azure PostgreSQL Flexible Server** | Production database (v16) |
+| **Azure Cache for Redis** | Task broker + cache |
+| **Azure Blob Storage** | Scan reports, exports, ML models |
+| **Azure Key Vault** | Secrets management |
+| **Azure Monitor + App Insights** | APM, logging, alerting |
+| **Azure Container Instances** | Scanning tools sidecar |
+| **Azure Front Door + CDN** | WAF, DDoS protection, edge caching |
+| **GitHub Actions** | CI/CD pipeline |
+| **Bicep** | Infrastructure as Code |
 
 ---
 
@@ -222,7 +238,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 
 ### Environment Variables
 
-Create a `.env` file in `backend/`:
+Create a `.env` file in `backend/` for local development:
 
 ```env
 SECRET_KEY=your-django-secret-key
@@ -234,6 +250,20 @@ OPENROUTER_MODEL=google/gemini-2.0-flash-001
 EMAIL_HOST_USER=your-email@gmail.com
 EMAIL_HOST_PASSWORD=your-app-password
 ```
+
+In production (Azure), all secrets are stored in **Azure Key Vault** and referenced via App Service configuration:
+
+| Variable | Source | Description |
+|:---------|:-------|:------------|
+| `SECRET_KEY` | Key Vault | Django secret key |
+| `DATABASE_URL` | Key Vault | PostgreSQL connection string |
+| `REDIS_URL` | Key Vault | Redis TLS connection (port 6380) |
+| `OPENROUTER_API_KEY` | Key Vault | LLM API key |
+| `AZURE_STORAGE_CONNECTION_STRING` | Key Vault | Blob storage |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | App Setting | Monitoring |
+| `DJANGO_SETTINGS_MODULE` | App Setting | `config.settings.production` |
+| `ALLOWED_HOSTS` | App Setting | `.azurewebsites.net,safeweb-ai.com` |
+| `FRONTEND_URL` | App Setting | Static Web App URL (CORS) |
 
 ---
 
@@ -307,9 +337,10 @@ safeweb-ai/
 │   └── install-tools.ps1            # Bug bounty tool installer
 ├── vite.config.ts                    # Vite configuration
 ├── tailwind.config.js                # Tailwind theme config
-├── railway.toml                      # Railway deployment config
-├── nixpacks.toml                     # Build system config
-└── vercel.json                       # Vercel frontend config
+├── staticwebapp.config.json          # Azure Static Web Apps routing
+└── infra/
+    ├── main.bicep                    # Azure infrastructure definition
+    └── parameters.json               # Environment-specific values
 ```
 
 ---
@@ -493,66 +524,227 @@ A context-aware AI assistant powered by OpenRouter LLM (Gemini 2.0 Flash) with f
 
 ---
 
-## 🖥 Frontend Pages
+## � Azure Deployment
 
-(omitted here for brevity — see top sections for full list)
+SafeWeb AI is deployed on **Microsoft Azure** with a full production-grade architecture.
+
+### Azure Resource Group
+
+```
+safeweb-ai-rg/
+├── safeweb-ai-api          Azure App Service (Linux P1v2)
+├── safeweb-ai-frontend     Azure Static Web App
+├── safeweb-ai-db           Azure PostgreSQL Flexible Server (v16)
+├── safeweb-ai-redis        Azure Cache for Redis
+├── safeweb-ai-storage      Azure Blob Storage
+├── safeweb-ai-kv           Azure Key Vault
+├── safeweb-ai-insights     Application Insights
+├── safeweb-ai-log          Log Analytics Workspace
+├── safeweb-ai-tools-aci    Azure Container Instances (scanning tools)
+└── safeweb-ai-cdn          Azure Front Door + CDN
+```
+
+### Backend — Azure App Service
+
+| Setting | Value |
+|:--------|:------|
+| **Runtime** | Python 3.11 |
+| **WSGI** | Gunicorn (4 workers, 120s timeout) |
+| **Static Files** | WhiteNoise (compressed manifest) |
+| **Auto-scale** | 1–4 instances (CPU > 70% trigger) |
+| **Deployment Slots** | `staging` slot for blue/green deploys |
+| **Managed Identity** | System-assigned → Key Vault, Blob, PostgreSQL |
+| **Health Check** | `/api/health/` (HTTP 200) |
+
+**Startup command:**
+```bash
+cd backend && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
+```
+
+### Frontend — Azure Static Web Apps
+
+- **Build**: `npm run build` → `dist/`
+- **Routing**: SPA fallback via `staticwebapp.config.json`
+- **API Proxy**: Routes `/api/*` to backend App Service
+- **CDN**: Global edge distribution with Brotli/gzip compression
+- **SSL**: Auto-managed certificate
+
+### Database — Azure PostgreSQL Flexible Server
+
+| Setting | Dev | Production |
+|:--------|:----|:-----------|
+| **Version** | PostgreSQL 16 | PostgreSQL 16 |
+| **SKU** | Burstable B1ms | General Purpose D2s_v3 |
+| **Storage** | 32 GB | 32 GB (auto-grow, max 1 TB) |
+| **Backup** | 7-day retention | 35-day retention |
+| **HA** | — | Zone-redundant |
+| **Connection** | SSL enforced | SSL + Private endpoint |
+
+### CI/CD — GitHub Actions
+
+```
+Push to main → Lint + Test (pytest) → Build artifacts → Deploy to staging → Smoke tests → Slot swap → Production
+```
+
+All infrastructure is defined in **Bicep** templates (`infra/main.bicep`) for reproducible, version-controlled deployments.
+
+### Disaster Recovery
+
+| Metric | Target |
+|:-------|:-------|
+| **RPO** | 1 hour (PostgreSQL PITR) |
+| **RTO** | 15 minutes (slot swap from healthy instance) |
+| **Backup** | Daily automated, 35-day retention, geo-redundant storage |
+
+---
+
+## 🗃 Database Design
+
+### Entity-Relationship Overview
+
+```
+User (UUID)
+  ├── has_many → Scan → has_many → Vulnerability
+  ├── has_many → APIKey
+  ├── has_many → UserSession
+  ├── has_many → ChatSession → has_many → ChatMessage
+  ├── has_many → ScheduledScan
+  ├── has_many → Webhook → has_many → WebhookDelivery
+  └── has_many → ScopeDefinition
+```
+
+### Key Tables
+
+| Table | Key Columns | Notes |
+|:------|:------------|:------|
+| `accounts_user` | UUID PK, email (unique), password, role, plan, 2FA fields, Google OAuth | EMAIL as USERNAME_FIELD |
+| `accounts_apikey` | UUID PK, `sk_live_` prefix key, usage_count, last_used | Programmatic API access |
+| `accounts_usersession` | UUID PK, jti, ip_address, user_agent | Security session tracking |
+| `scanning_scan` | UUID PK, target, status, depth, scope_type, `recon_data` JSONB, `tester_results` JSONB, score, `phase_timings` JSONB, data_version | Core scan record |
+| `scanning_vulnerability` | UUID PK, name, severity, CWE, CVSS, affected_url, evidence, `exploit_data` JSONB, false_positive_score | GIN indexes on JSONB |
+| `chatbot_chatsession` | UUID PK, user FK, scan FK (nullable), title | Scan-context chats |
+| `chatbot_chatmessage` | UUID PK, role, content, tokens_used, feedback, `action_data` JSONB | Token tracking per message |
+| `scanning_scheduledscan` | cron_expr, `scan_config` JSONB, next_run, last_run, is_active | Automated recurring scans |
+| `scanning_webhook` | url, events JSONB, secret, is_active | Event notifications |
+| `scanning_webhookdelivery` | event, payload JSONB, status_code, response_time | Delivery audit trail |
+| `admin_panel_systemalert` | title, message, severity, is_resolved | System-wide alerts |
+| `learn_article` | title, slug (unique), content, category (9 types) | Learning center |
+
+### PostgreSQL Optimizations
+
+- **UUID primary keys** — `gen_random_uuid()`, no sequential ID exposure
+- **JSONB + GIN indexes** — Fast `@>` queries on `recon_data`, `tester_results`, `exploit_data`
+- **Connection pooling** — PgBouncer in transaction mode (20 pool size)
+- **Indexing** — B-tree on FKs, composite `(user_id, status)`, hash on `target`
+- **Partitioning roadmap** — Monthly range partition on `scanning_scan.created_at` (when > 100K rows)
+- **Performance monitoring** — `pg_stat_statements`, autovacuum tuned for heavy-write tables
+
+---
+
+## ⚡ Performance Engineering
+
+### Backend
+- **Gunicorn**: `2 × vCPU + 1` workers on P1v2 (2 vCPU)
+- **DB optimization**: `select_related()` / `prefetch_related()` on Scan→Vulnerability joins
+- **Bulk operations**: `bulk_create()` for vulnerability batch insertion (50–200 per scan)
+- **Redis caching**: Completed scan data cached (TTL 1 hour)
+- **SSE streaming**: Generator yields progress without blocking workers
+
+### Frontend
+- **Code splitting**: Lazy-loaded routes via `React.lazy()` (35 pages)
+- **Bundle targets**: < 200 KB initial JS, < 50 KB per lazy chunk
+- **Compression**: Brotli + gzip via Azure CDN
+- **Cache**: Immutable hashed assets (1-year cache), HTML no-cache
+
+### Monitoring & Alerting
+
+| Metric | Threshold | Action |
+|:-------|:----------|:-------|
+| HTTP 5xx rate | > 5% (5min) | Alert (email/PagerDuty) |
+| P95 response time | > 5 seconds | Warning |
+| Celery queue depth | > 50 tasks | Scale workers |
+| PostgreSQL connections | > 80% capacity | Investigate |
+| CPU (App Service) | > 70% sustained | Auto-scale out |
+| Disk (PostgreSQL) | > 80% | Auto-grow or cleanup |
+
+---
+
+## �🖥 Frontend Pages
+
+35 routes across public, authenticated, and admin sections — all lazy loaded with per-page error boundaries.
+
+| Section | Count | Examples |
+|:--------|:------|:--------|
+| **Public** | 16 | Home, Login, Register, Learn, Documentation, About, Contact, Services, Careers, Legal pages |
+| **Auth-Protected** | 10 | Dashboard, ScanWebsite, ScanResults, ScanHistory, Profile, ScheduledScans, ScopeManagement, AssetInventory, WebhookSettings, ScanComparison |
+| **Admin** | 7 | AdminDashboard, AdminUsers, AdminScans, AdminML, AdminSettings, AdminContacts, AdminApplications |
 
 ---
 
 ## 🔧 Security Tools
 
-(omitted here for brevity — full tool catalog available in top sections)
+**62+ integrated external tools** organized by function:
+
+| Category | Tools |
+|:---------|:------|
+| **Subdomain/DNS** | subfinder, amass, assetfinder, findomain, chaos, dnsx, puredns, massdns, dnsrecon |
+| **Port Scan** | nmap, naabu, rustscan, masscan |
+| **Web Crawl/Fuzz** | ffuf, feroxbuster, gobuster, dirsearch, katana, gospider, hakrawler |
+| **Vuln Scan** | nuclei, sqlmap, ghauri, dalfox, xsstrike, tplmap, commix, crlfuzz, nikto |
+| **CMS** | wpscan, joomscan, whatweb, wappalyzer |
+| **SSL/TLS** | testssl, sslyze, tlsx |
+| **JS/Links** | getjs, linkfinder, secretfinder, gf, qsreplace |
+| **URLs** | gau, waybackurls, paramspider, arjun, x8 |
+| **Secrets** | trufflehog, gitleaks |
+| **Cloud** | cloudenum, s3scanner, awsbucketdump |
+| **HTTP** | httpx, httprobe |
+| **OOB** | interactsh |
 
 ---
 
-## 🚀 Deployment
+## 🗺 Roadmap
 
-### Railway (Backend)
+### Phase 1 — Platform Hardening
+- [ ] Google OAuth complete flow
+- [ ] WebSocket upgrade (replace SSE)
+- [ ] Professional PDF report redesign with charts
+- [ ] Full SMTP email integration (Azure Communication Services)
+- [ ] Dark/light theme toggle
 
-The backend deploys to Railway using Nixpacks:
+### Phase 2 — Scanning Enhancement
+- [ ] Distributed scanning workers (ACI auto-scaled)
+- [ ] Scan queue management with priority per plan tier
+- [ ] Authenticated scanning UI (cookie/bearer/form configs)
+- [ ] Custom Nuclei template editor
+- [ ] Scan diffing visual timeline
+- [ ] Compliance mapping (PCI DSS, SOC 2, ISO 27001)
 
-**`railway.toml`:**
-```toml
-[build]
-builder = "nixpacks"
+### Phase 3 — AI & ML Expansion
+- [ ] RAG-powered chatbot with scan data retrieval
+- [ ] AI-generated code patches for vulnerabilities
+- [ ] Smart scan scheduling (ML-predicted optimal frequency)
+- [ ] Real-time threat intelligence feed (NVD, ExploitDB)
+- [ ] Re-enable phishing URL + malware file scanning
 
-[deploy]
-startCommand = "cd backend && python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
-```
+### Phase 4 — Enterprise Features
+- [ ] Team workspaces with shared scans and RBAC
+- [ ] SSO integration (SAML/OIDC via Azure AD / Okta)
+- [ ] Immutable audit logging
+- [ ] Plan-based API rate limiting with usage dashboard
+- [ ] White-label support for MSSPs
 
-**`nixpacks.toml`:**
-Configures Python with system packages (libmagic, nmap, etc.)
+### Phase 5 — Cloud & Infrastructure
+- [ ] Kubernetes migration (AKS + Helm)
+- [ ] Multi-region deployment (Azure Front Door)
+- [ ] Serverless functions for report generation
+- [ ] Data Lake analytics (Azure Data Explorer)
 
-### Vercel (Frontend)
-
-**`vercel.json`:**
-```json
-{
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
-```
-
-### Build Commands
-
-```bash
-# Frontend production build
-npm run build
-
-# Backend static files
-cd backend && python manage.py collectstatic --noinput
-```
-
----
-
-## 🎨 Design System
-
-
-
----
-
-## 🔐 Security Features
-
-
+### Phase 6 — Community & Ecosystem
+- [ ] Public REST API with OpenAPI 3.0 docs + Python/JS SDK
+- [ ] Plugin marketplace (community testers/modules)
+- [ ] Bug bounty platform integration (HackerOne/Bugcrowd)
+- [ ] Slack/Discord bot for scan notifications
+- [ ] React Native mobile companion app
 
 ---
 
@@ -561,8 +753,15 @@ cd backend && python manage.py collectstatic --noinput
 **SafeWeb AI** — University Graduation Project
 
 ---
----
+
 <div align="center">
+
+**Built with ❤️ for cybersecurity**
+
+[![Azure](https://img.shields.io/badge/Deployed_on-Microsoft_Azure-0078D4?style=flat-square&logo=microsoftazure)](https://azure.microsoft.com)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL_16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://postgresql.org)
+
+</div>
 
 Built with 🛡️ for web security
 
