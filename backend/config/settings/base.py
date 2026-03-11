@@ -205,7 +205,8 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    # Railway/Render/etc handle HTTPS termination at the load balancer;
+    # do NOT enable SECURE_SSL_REDIRECT — it breaks internal healthchecks.
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
