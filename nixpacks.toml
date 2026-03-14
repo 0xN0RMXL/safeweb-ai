@@ -11,6 +11,7 @@ cmds = ["pip install --break-system-packages -r backend/requirements.txt"]
 cmds = [
   "cd backend && DJANGO_SETTINGS_MODULE=config.settings.base python manage.py collectstatic --no-input",
   "cd backend && DJANGO_SETTINGS_MODULE=config.settings.base python manage.py migrate",
+  "cd backend && DJANGO_SETTINGS_MODULE=config.settings.base python manage.py bootstrap_learning_center",
   "cd backend && DJANGO_SETTINGS_MODULE=config.settings.base python create_admin.py"
 ]
 
