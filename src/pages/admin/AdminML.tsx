@@ -62,6 +62,7 @@ export default function AdminML() {
             .finally(() => setIsLoading(false));
     };
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { fetchML(); }, []);
 
     const handleTrain = async (modelType?: string) => {

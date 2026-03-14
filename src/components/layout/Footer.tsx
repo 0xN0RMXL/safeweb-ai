@@ -18,8 +18,8 @@ export default function Footer() {
             title: 'Resources',
             links: [
                 { name: 'Learn', path: '/learn' },
-                { name: 'Blog', path: '/learn?category=blog' },
-                { name: 'Tutorials', path: '/learn?category=tutorials' },
+                { name: 'Injection', path: '/learn?category=injection' },
+                { name: 'API Security', path: '/learn?category=api_security' },
                 { name: 'Security Best Practices', path: '/learn?category=best_practices' },
             ],
         },

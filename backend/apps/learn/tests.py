@@ -3,8 +3,7 @@ from django.urls import reverse
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 
-from apps.accounts.models import User
-from apps.learn.models import Article
+from apps.learn.models import Article, Category, Tag
 
 
 class ArticleModelTest(TestCase):
@@ -55,11 +54,6 @@ class ArticleAPITest(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.user = User.objects.create_user(
-            email="test@example.com",
-            password="TestPass123!",
-            name="Test User",
-        )
 
         self.article1 = Article.objects.create(
             title="SQL Injection Guide",
@@ -71,6 +65,10 @@ class ArticleAPITest(APITestCase):
             read_time=8,
             is_published=True,
         )
+        self.category_injection = Category.objects.create(slug='injection', label='Injection Attacks')
+        self.tag_sqli = Tag.objects.create(slug='sqli', label='SQL Injection', tag_type='vuln')
+        self.article1.categories.add(self.category_injection)
+        self.article1.tags.add(self.tag_sqli)
 
         self.article2 = Article.objects.create(
             title="XSS Patterns",
@@ -80,6 +78,23 @@ class ArticleAPITest(APITestCase):
             category="xss",
             author="Security Team",
             read_time=10,
+            difficulty_level='foundation',
+            is_published=True,
+        )
+        self.category_xss = Category.objects.create(slug='xss-and-client-side', label='XSS and Client-Side Attacks')
+        self.tag_xss = Tag.objects.create(slug='xss', label='Cross-Site Scripting', tag_type='vuln')
+        self.article2.categories.add(self.category_xss)
+        self.article2.tags.add(self.tag_xss)
+
+        self.review_article = Article.objects.create(
+            title="Review Pending Article",
+            slug="review-pending-article",
+            excerpt="Review workflow test",
+            content="Content under review",
+            category="best_practices",
+            author="Security Team",
+            read_time=6,
+            status='review',
             is_published=True,
         )
 
@@ -92,6 +107,18 @@ class ArticleAPITest(APITestCase):
             author="Security Team",
             read_time=5,
             is_published=False,
+        )
+
+        self.specialist_article = Article.objects.create(
+            title="Specialist Security Design",
+            slug="specialist-security-design",
+            excerpt="Advanced content",
+            content="Specialist depth content...",
+            category="best_practices",
+            author="Security Team",
+            read_time=14,
+            difficulty_level='specialist',
+            is_published=True,
         )
 
     def test_list_articles_unauthenticated(self):
@@ -132,12 +159,70 @@ class ArticleAPITest(APITestCase):
         self.assertEqual(len(articles), 1)
         self.assertEqual(articles[0]["slug"], "xss-patterns")
 
+    def test_list_articles_filter_by_legacy_category_label(self):
+        """Legacy category label should resolve to the legacy category value."""
+        response = self.client.get(
+            reverse("article-list"), {"category": "Injection Attacks"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data
+        articles = data.get("articles", data.get("results", []))
+        self.assertEqual(len(articles), 1)
+        self.assertEqual(articles[0]["slug"], "sql-injection-guide")
+
+    def test_list_articles_filter_by_taxonomy_category_slug(self):
+        """Taxonomy category slug should filter via many-to-many relation."""
+        response = self.client.get(
+            reverse("article-list"), {"category": "xss-and-client-side"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data
+        articles = data.get("articles", data.get("results", []))
+        self.assertEqual(len(articles), 1)
+        self.assertEqual(articles[0]["slug"], "xss-patterns")
+
+    def test_list_articles_filter_by_tag_slug(self):
+        """Tag slug should filter via many-to-many relation."""
+        response = self.client.get(reverse("article-list"), {"tag": "sqli"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data
+        articles = data.get("articles", data.get("results", []))
+        self.assertEqual(len(articles), 1)
+        self.assertEqual(articles[0]["slug"], "sql-injection-guide")
+
+    def test_list_articles_filter_by_difficulty(self):
+        """Difficulty filter should return matching difficulty levels only."""
+        response = self.client.get(reverse("article-list"), {"difficulty": "specialist"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data
+        articles = data.get("articles", data.get("results", []))
+        self.assertEqual(len(articles), 1)
+        self.assertEqual(articles[0]["slug"], "specialist-security-design")
+
+    def test_list_articles_excludes_non_published_status(self):
+        """Only status=published should be returned in list endpoint."""
+        response = self.client.get(reverse("article-list"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data
+        articles = data.get("articles", data.get("results", []))
+        slugs = [a["slug"] for a in articles]
+        self.assertNotIn("review-pending-article", slugs)
+
     def test_list_articles_returns_categories(self):
         """Article list should include available categories."""
         response = self.client.get(reverse("article-list"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.data
         self.assertIn("categories", data)
+
+    def test_list_articles_includes_pagination_metadata(self):
+        """List endpoint should include pagination metadata for large datasets."""
+        response = self.client.get(reverse("article-list"), {"page": 1, "page_size": 1})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("page", response.data)
+        self.assertIn("page_size", response.data)
+        self.assertIn("total_pages", response.data)
+        self.assertIn("has_next", response.data)
 
     def test_article_detail_by_slug(self):
         """Should retrieve article by slug."""
@@ -147,6 +232,8 @@ class ArticleAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["title"], "SQL Injection Guide")
         self.assertIn("content", response.data)
+        self.assertIn("categories", response.data)
+        self.assertIn("tags", response.data)
 
     def test_article_detail_not_found(self):
         """Should return 404 for non-existent article."""
@@ -161,3 +248,15 @@ class ArticleAPITest(APITestCase):
             reverse("article-detail", kwargs={"slug": "draft-article"})
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_category_list_endpoint(self):
+        """Category endpoint should return active categories."""
+        response = self.client.get(reverse("article-categories"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("categories", response.data)
+
+    def test_tag_list_endpoint(self):
+        """Tag endpoint should return active tags."""
+        response = self.client.get(reverse("article-tags"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("tags", response.data)

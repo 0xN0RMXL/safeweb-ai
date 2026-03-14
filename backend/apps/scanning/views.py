@@ -567,6 +567,7 @@ class ScanCreateFullView(views.APIView):
     def post(self, request):
         serializer = ScanFullCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        assert serializer.validated_data is not None
         data = serializer.validated_data
 
         scan = Scan.objects.create(
@@ -919,7 +920,7 @@ class ScanStreamView(views.APIView):
       finding  — emitted when new vulnerabilities are saved (totalFindings, newCount, phase)
       completed — final status + score
     """
-    authentication_classes = []  # Auth handled manually via query-param token
+    authentication_classes = []  # Header auth is accepted via request.user; token fallback for EventSource.
     permission_classes = []
 
     def perform_content_negotiation(self, request, force=False):
@@ -934,16 +935,19 @@ class ScanStreamView(views.APIView):
         from rest_framework_simplejwt.tokens import AccessToken
         from django.contrib.auth import get_user_model
 
-        # Authenticate via query-param token (EventSource can't set headers)
-        token_str = request.GET.get('token', '')
-        if not token_str:
-            return Response({'detail': 'Authentication token required.'}, status=status.HTTP_401_UNAUTHORIZED)
-        try:
-            validated = AccessToken(token_str)
-            User = get_user_model()
-            user = User.objects.get(id=validated['user_id'])
-        except Exception:
-            return Response({'detail': 'Invalid or expired token.'}, status=status.HTTP_401_UNAUTHORIZED)
+        # Support both normal authenticated requests (tests/clients that send
+        # Authorization header) and EventSource token query parameter fallback.
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            token_str = request.GET.get('token', '')
+            if not token_str:
+                return Response({'detail': 'Authentication token required.'}, status=status.HTTP_401_UNAUTHORIZED)
+            try:
+                validated = AccessToken(token_str)
+                User = get_user_model()
+                user = User.objects.get(id=validated['user_id'])
+            except Exception:
+                return Response({'detail': 'Invalid or expired token.'}, status=status.HTTP_401_UNAUTHORIZED)
 
         try:
             scan_obj = Scan.objects.get(id=id, user=user)

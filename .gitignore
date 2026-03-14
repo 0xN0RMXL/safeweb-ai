@@ -87,3 +87,5 @@ srv_out.txt
 __pycache__/
 *.py[cod]
 *$py.class
+.vercel
+.env*.local

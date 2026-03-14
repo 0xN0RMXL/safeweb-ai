@@ -219,7 +219,7 @@ export default function Login() {
 
                         {/* Sign Up Link */}
                         <p className="text-center text-sm text-text-tertiary mt-6">
-                            Don't have an account?{' '}
+                            Don&apos;t have an account?{' '}
                             <Link to="/register" className="text-accent-green hover:text-accent-green-hover font-medium transition-colors">
                                 Sign up for free
                             </Link>

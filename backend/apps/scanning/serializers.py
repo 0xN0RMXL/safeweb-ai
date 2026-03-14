@@ -158,7 +158,10 @@ class ScanListSerializer(serializers.ModelSerializer):
 
 class ScanFullCreateSerializer(serializers.Serializer):
     """Full-config scan creation — extends base with profile, auth, scope."""
-    target = serializers.CharField(max_length=500)
+    # Backward-compatible aliasing: frontend/tests commonly send `url`, while
+    # some internal callers still use `target`.
+    url = serializers.URLField(required=False)
+    target = serializers.CharField(max_length=500, required=False)
     scope_type = serializers.ChoiceField(
         choices=['single_domain', 'wildcard', 'wide_scope'],
         default='single_domain',
@@ -167,6 +170,7 @@ class ScanFullCreateSerializer(serializers.Serializer):
         child=serializers.CharField(max_length=253),
         required=False, default=list,
     )
+    include_subdomains = serializers.BooleanField(default=True)
     scan_depth = serializers.ChoiceField(
         choices=['shallow', 'medium', 'deep'], default='medium',
     )
@@ -180,6 +184,17 @@ class ScanFullCreateSerializer(serializers.Serializer):
     scan_mode = serializers.ChoiceField(
         choices=['standard', 'continuous', 'hunting'], default='standard',
     )
+
+    def validate(self, attrs):
+        url = attrs.get('url')
+        target = attrs.get('target')
+        if not url and not target:
+            raise serializers.ValidationError({'url': 'This field is required.'})
+
+        normalized = url or target
+        attrs['url'] = normalized
+        attrs['target'] = normalized
+        return attrs
 
 
 class FindingFilterSerializer(serializers.Serializer):

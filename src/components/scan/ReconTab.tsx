@@ -566,6 +566,7 @@ export default function ReconTab({ reconData }: ReconTabProps) {
             {reconData.subdomains && (reconData.subdomains.subdomains ?? []).length > 0 && (
                 <Section title={`Active Subdomains — Enumeration (${(reconData.subdomains.subdomains as unknown[]).length})`} icon={iconGlobe} defaultOpen={false}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         {(reconData.subdomains.subdomains as unknown[]).map((sub: any, i: number) => (
                             <code key={i} className="text-sm text-accent-green font-mono bg-bg-secondary px-3 py-1.5 rounded">{typeof sub === 'string' ? sub : sub?.name ? `${sub.name}${sub.ip ? ` (${sub.ip})` : ''}` : str(sub)}</code>
                         ))}
@@ -577,6 +578,7 @@ export default function ReconTab({ reconData }: ReconTabProps) {
             {reconData.ct_logs && (reconData.ct_logs.subdomains ?? []).length > 0 && (
                 <Section title={`Certificate Transparency Subdomains (${(reconData.ct_logs.subdomains as unknown[]).length})`} icon={iconLock} defaultOpen={false}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         {(reconData.ct_logs.subdomains as unknown[]).map((sub: any, i: number) => (
                             <code key={i} className="text-sm text-text-secondary font-mono bg-bg-secondary px-3 py-1.5 rounded">{typeof sub === 'string' ? sub : sub?.name ? `${sub.name}${sub.ip ? ` (${sub.ip})` : ''}` : str(sub)}</code>
                         ))}
@@ -588,6 +590,7 @@ export default function ReconTab({ reconData }: ReconTabProps) {
             {reconData.subdomain_brute && (reconData.subdomain_brute.new_subdomains ?? reconData.subdomain_brute.subdomains ?? []).length > 0 && (
                 <Section title={`Brute-forced Subdomains (${((reconData.subdomain_brute.new_subdomains ?? reconData.subdomain_brute.subdomains) as unknown[]).length})`} icon={iconGlobe} defaultOpen={false}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         {((reconData.subdomain_brute.new_subdomains ?? reconData.subdomain_brute.subdomains) as unknown[]).map((sub: any, i: number) => (
                             <code key={i} className="text-sm text-text-secondary font-mono bg-bg-secondary px-3 py-1.5 rounded">{typeof sub === 'string' ? sub : sub?.name ? `${sub.name}${sub.ip ? ` (${sub.ip})` : ''}` : str(sub)}</code>
                         ))}

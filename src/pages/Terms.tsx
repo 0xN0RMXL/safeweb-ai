@@ -18,7 +18,7 @@ export default function Terms() {
                                     1. Acceptance of Terms
                                 </h2>
                                 <p className="text-text-secondary leading-relaxed mb-4">
-                                    By accessing and using SafeWeb AI ("the Service"), you accept and agree to be
+                                    By accessing and using SafeWeb AI (&quot;the Service&quot;), you accept and agree to be
                                     bound by the terms and provision of this agreement. If you do not agree to these
                                     terms, please do not use the Service.
                                 </p>

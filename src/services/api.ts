@@ -415,11 +415,17 @@ export const adminAPI = {
 
 // ── Learn endpoints ─────────────────────────────────────────────────
 export const learnAPI = {
-    getArticles: (params?: Record<string, string>) =>
+    getArticles: (params?: Record<string, string | number>) =>
         api.get('/learn/articles/', { params }),
 
     getArticle: (slug: string) =>
         api.get(`/learn/articles/${slug}/`),
+
+    getCategories: () =>
+        api.get('/learn/categories/'),
+
+    getTags: () =>
+        api.get('/learn/tags/'),
 };
 
 // ── Contact endpoints ───────────────────────────────────────────────

@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 import Layout from '@components/layout/Layout';
 import Container from '@components/ui/Container';
 import Card from '@components/ui/Card';
@@ -128,8 +131,11 @@ export default function ArticleDetail() {
                                             prose-pre:bg-bg-secondary prose-pre:border prose-pre:border-border-primary
                                             prose-li:text-text-secondary
                                             prose-blockquote:border-accent-green prose-blockquote:text-text-secondary"
-                                        dangerouslySetInnerHTML={{ __html: article.content }}
-                                    />
+                                    >
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                                            {article.content}
+                                        </ReactMarkdown>
+                                    </div>
                                 </Card>
 
                                 {/* Navigation */}

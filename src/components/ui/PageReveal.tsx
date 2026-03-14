@@ -32,8 +32,10 @@ function renderChild(child: React.ReactNode, index: number, style?: React.CSSPro
     if (isValidElement(child)) {
         return cloneElement(child as ReactElement, {
             key: index,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             className: `animate-page-enter ${(child.props as any).className || ''}`,
             style: {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ...((child.props as any).style || {}),
                 ...style,
             },

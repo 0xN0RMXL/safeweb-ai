@@ -87,7 +87,7 @@ export default function Partners() {
                                 Become a Partner
                             </h2>
                             <p className="text-text-secondary mb-6 max-w-lg mx-auto">
-                                Interested in partnering with us? Reach out to our partnerships team and we'll get back to you within 48 hours.
+                                Interested in partnering with us? Reach out to our partnerships team and we&apos;ll get back to you within 48 hours.
                             </p>
                             <Button
                                 variant="primary"

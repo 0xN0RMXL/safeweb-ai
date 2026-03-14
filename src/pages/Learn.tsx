@@ -9,48 +9,105 @@ import ScrollReveal from '@components/ui/ScrollReveal';
 import { formatDate } from '@utils/date';
 import { learnAPI } from '@/services/api';
 
+type CategoryFilter = {
+    value: string;
+    label: string;
+};
+
+type LearnArticle = {
+    id: string;
+    title: string;
+    slug: string;
+    excerpt: string;
+    category: string;
+    categoryDisplay: string;
+    categoryValue: string;
+    author: string;
+    date: Date;
+    readTime: number;
+    image: string | null;
+};
+
 export default function Learn() {
     const [searchParams] = useSearchParams();
+    const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
     const [isLoading, setIsLoading] = useState(true);
-    const [articles, setArticles] = useState<{
-        id: string; title: string; slug: string; excerpt: string;
-        category: string; categoryDisplay: string; author: string;
-        date: Date; readTime: number; image: string | null;
-    }[]>([]);
-
-    const [categories, setCategories] = useState<string[]>([
-        'All Articles',
+    const [articles, setArticles] = useState<LearnArticle[]>([]);
+    const [categories, setCategories] = useState<CategoryFilter[]>([
+        { value: 'all', label: 'All Articles' },
     ]);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [total, setTotal] = useState(0);
 
     useEffect(() => {
+        const timeout = window.setTimeout(() => {
+            setSearchQuery(searchInput.trim());
+            setPage(1);
+        }, 350);
+
+        return () => window.clearTimeout(timeout);
+    }, [searchInput]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [selectedCategory]);
+
+    useEffect(() => {
+        setIsLoading(true);
         const params: Record<string, string> = {};
         if (searchQuery) params.search = searchQuery;
         if (selectedCategory) params.category = selectedCategory;
+        params.page = String(page);
+        params.pageSize = '20';
 
         learnAPI.getArticles(params)
             .then(({ data }) => {
                 const items = data.articles || data.results || data || [];
                 setArticles(items.map((a: Record<string, unknown>) => ({
-                    id: a.id,
-                    title: a.title,
-                    slug: a.slug,
-                    excerpt: a.excerpt,
-                    category: a.category || '',
-                    categoryDisplay: a.categoryDisplay || a.category || '',
-                    author: a.author,
-                    date: new Date(a.createdAt as string || a.date as string),
-                    readTime: a.readTime || 5,
-                    image: a.image || null,
+                    id: String(a.id),
+                    title: String(a.title || ''),
+                    slug: String(a.slug || ''),
+                    excerpt: String(a.excerpt || ''),
+                    category: String(a.category || ''),
+                    categoryDisplay: String(
+                        (a.primaryCategory as { label?: string } | undefined)?.label
+                        || a.categoryDisplay
+                        || a.category
+                        || ''
+                    ),
+                    categoryValue: String(
+                        (a.primaryCategory as { slug?: string } | undefined)?.slug
+                        || a.categoryValue
+                        || ''
+                    ),
+                    author: String(a.author || 'Security Team'),
+                    date: new Date(String(a.createdAt || a.date || new Date().toISOString())),
+                    readTime: Number(a.readTime || 5),
+                    image: (a.image as string) || null,
                 })));
+                setTotal(Number(data.total || 0));
+                setTotalPages(Number(data.totalPages || data.total_pages || 1));
                 if (data.categories) {
-                    setCategories(['All Articles', ...data.categories.map((c: { label: string }) => c.label || c)]);
+                    const normalized = (data.categories as Array<{ value?: string; label?: string } | string>)
+                        .map((c) => {
+                            if (typeof c === 'string') {
+                                const normalizedValue = c === 'All Articles' ? 'all' : c;
+                                return { value: normalizedValue, label: c };
+                            }
+                            return {
+                                value: c.value || c.label || 'all',
+                                label: c.label || c.value || 'All Articles',
+                            };
+                        });
+                    setCategories(normalized);
                 }
             })
             .catch(() => {})
             .finally(() => setIsLoading(false));
-    }, [searchQuery, selectedCategory]);
+    }, [searchQuery, selectedCategory, page]);
 
     return (
         <Layout>
@@ -73,8 +130,8 @@ export default function Learn() {
                         <Input
                             type="text"
                             placeholder="Search articles..."
-                            value={searchQuery}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                            value={searchInput}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchInput(e.target.value)}
                             leftIcon={
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -87,15 +144,15 @@ export default function Learn() {
                     <div className="flex flex-wrap items-center justify-center gap-3 mb-12">
                         {categories.map((category) => (
                             <button
-                                key={category}
-                                onClick={() => setSelectedCategory(category === 'All Articles' ? '' : category)}
+                                key={category.value}
+                                onClick={() => setSelectedCategory(category.value === 'all' ? '' : category.value)}
                                 className={`px-4 py-2 rounded-lg border text-sm transition-all duration-200 ${
-                                    (category === 'All Articles' && !selectedCategory) || category === selectedCategory
+                                    (category.value === 'all' && !selectedCategory) || category.value === selectedCategory
                                         ? 'bg-accent-green/10 border-accent-green text-accent-green'
                                         : 'bg-bg-card border-border-primary text-text-secondary hover:text-accent-green hover:border-accent-green'
                                 }`}
                             >
-                                {category}
+                                {category.label}
                             </button>
                         ))}
                     </div>
@@ -125,7 +182,7 @@ export default function Learn() {
                     <Card className="p-8 mb-12 hover:shadow-card-hover transition-all duration-300">
                         <div className="flex items-start gap-3 mb-3">
                             <Badge variant="info" size="sm">Featured</Badge>
-                            <Badge variant="default" size="sm">{articles[0].category}</Badge>
+                            <Badge variant="default" size="sm">{articles[0].categoryDisplay}</Badge>
                         </div>
                         <Link to={`/learn/${articles[0].slug || articles[0].id}`}>
                             <h2 className="text-3xl font-heading font-bold text-text-primary mb-4 hover:text-accent-green transition-colors">
@@ -150,7 +207,7 @@ export default function Learn() {
                         {(articles.length > 1 ? articles.slice(1) : []).map((article) => (
                             <Card key={article.id} hover className="p-6 flex flex-col">
                                 <div className="mb-3">
-                                    <Badge variant="default" size="sm">{article.category}</Badge>
+                                    <Badge variant="default" size="sm">{article.categoryDisplay}</Badge>
                                 </div>
                                 <Link to={`/learn/${article.slug || article.id}`}>
                                     <h3 className="text-xl font-heading font-semibold text-text-primary mb-3 hover:text-accent-green transition-colors">
@@ -170,13 +227,40 @@ export default function Learn() {
                     </>
                     )}
 
+                    {/* Pagination */}
+                    {!isLoading && totalPages > 1 && (
+                        <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <p className="text-sm text-text-secondary">
+                                Showing page {page} of {totalPages} ({total} total articles)
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    disabled={page <= 1}
+                                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                                    className="px-4 py-2 rounded-lg border border-border-primary text-sm text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed hover:text-accent-green hover:border-accent-green transition-colors"
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={page >= totalPages}
+                                    onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                                    className="px-4 py-2 rounded-lg border border-border-primary text-sm text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed hover:text-accent-green hover:border-accent-green transition-colors"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* CTA */}
                     <Card className="mt-12 p-8 bg-gradient-to-br from-accent-green/5 to-accent-blue/5 border-accent-green/20 text-center">
                         <h3 className="text-2xl font-heading font-bold text-text-primary mb-3">
                             Want to Contribute?
                         </h3>
                         <p className="text-text-secondary mb-6 max-w-2xl mx-auto">
-                            Share your security knowledge with the community. We're always looking for quality content.
+                            Share your security knowledge with the community. We&apos;re always looking for quality content.
                         </p>
                         <Link to="/contact">
                             <button className="px-6 py-3 rounded-lg bg-accent-green text-bg-primary font-medium hover:bg-accent-green-hover transition-colors">

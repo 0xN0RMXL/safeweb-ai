@@ -104,7 +104,7 @@ export default function Careers() {
                                 Careers at SafeWeb AI
                             </h1>
                             <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-                                Join our mission to make the internet safer. We're building AI-powered security tools that protect millions of websites worldwide.
+                                Join our mission to make the internet safer. We&apos;re building AI-powered security tools that protect millions of websites worldwide.
                             </p>
                         </div>
 
@@ -227,10 +227,10 @@ export default function Careers() {
                         {/* General Application */}
                         <Card className="mt-10 p-8 text-center bg-gradient-to-br from-accent-green/5 to-accent-blue/5 border-accent-green/20">
                             <h2 className="text-2xl font-heading font-semibold text-text-primary mb-3">
-                                Don't see a match?
+                                Don&apos;t see a match?
                             </h2>
                             <p className="text-text-secondary mb-6 max-w-lg mx-auto">
-                                We're always looking for talented people. Send your résumé and a brief intro — we'd love to hear from you.
+                                We&apos;re always looking for talented people. Send your résumé and a brief intro — we&apos;d love to hear from you.
                             </p>
                             <Button
                                 variant="primary"

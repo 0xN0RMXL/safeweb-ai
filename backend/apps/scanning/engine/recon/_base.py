@@ -140,7 +140,7 @@ def extract_root_domain(hostname: str) -> str:
         ext = tldextract.extract(hostname)
         if ext.domain and ext.suffix:
             return f'{ext.domain}.{ext.suffix}'
-    except ImportError:
+    except Exception:
         pass
     # Fallback — simple last-two-labels
     parts = hostname.split('.')

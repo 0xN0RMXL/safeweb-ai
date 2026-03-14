@@ -18,7 +18,7 @@ export default function Privacy() {
                                     1. Introduction
                                 </h2>
                                 <p className="text-text-secondary leading-relaxed mb-4">
-                                    SafeWeb AI ("we", "our", or "us") is committed to protecting your privacy. This
+                                    SafeWeb AI (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is committed to protecting your privacy. This
                                     Privacy Policy explains how we collect, use, disclose, and safeguard your
                                     information when you use our web application vulnerability scanning service.
                                 </p>
@@ -175,7 +175,7 @@ export default function Privacy() {
 
                             <section>
                                 <h2 className="text-2xl font-heading font-semibold text-text-primary mb-4">
-                                    10. Children's Privacy
+                                    10. Children&apos;s Privacy
                                 </h2>
                                 <p className="text-text-secondary leading-relaxed mb-4">
                                     Our service is not intended for children under 13 years of age. We do not
@@ -201,8 +201,8 @@ export default function Privacy() {
                                 </h2>
                                 <p className="text-text-secondary leading-relaxed mb-4">
                                     We may update this Privacy Policy from time to time. We will notify you of any
-                                    material changes by posting the new policy on this page and updating the "Last
-                                    updated" date.
+                                    material changes by posting the new policy on this page and updating the &quot;Last
+                                    updated&quot; date.
                                 </p>
                             </section>
 

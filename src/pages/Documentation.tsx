@@ -453,7 +453,7 @@ pipeline {
                             "$SAFEWEB_URL/api/scan/website/ " +
                             "-H 'Authorization: Bearer $SAFEWEB_API_KEY' " +
                             "-H 'Content-Type: application/json' " +
-                            "-d '{\"url\": \"$DEPLOY_URL\", \"scan_depth\": \"medium\"}'",
+                            "-d '{"url": "$DEPLOY_URL", "scan_depth": "medium"}'",
                         returnStdout: true
                     ).trim()
                     def scanId = readJSON(text: response).id
@@ -529,7 +529,7 @@ BASE_URL="https://your-safeweb-instance"
 SCAN_ID=$(curl -s -X POST $BASE_URL/api/scan/website/ \\
   -H "Authorization: Bearer $API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d "{\"url\": \"$TARGET_URL\", \"scan_depth\": \"shallow\"}" | jq -r '.id')
+  -d "{"url": "$TARGET_URL", "scan_depth": "shallow"}" | jq -r '.id')
 
 # Poll until done
 for i in $(seq 1 60); do
@@ -868,7 +868,7 @@ If you discover a security vulnerability in SafeWeb AI itself, please report it 
                                     Need Help?
                                 </h3>
                                 <p className="text-text-secondary mb-6">
-                                    Can't find what you're looking for? Our support team is here to help.
+                                    Can&apos;t find what you&apos;re looking for? Our support team is here to help.
                                 </p>
                                 <div className="flex flex-wrap gap-3">
                                     <Link

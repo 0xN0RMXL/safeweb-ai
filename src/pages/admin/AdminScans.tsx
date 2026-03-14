@@ -61,11 +61,13 @@ export default function AdminScans() {
             .finally(() => setIsLoading(false));
     };
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { fetchScans(); }, [page, filterStatus]);
     useEffect(() => { setPage(1); }, [filterStatus]);
     useEffect(() => {
         const t = setTimeout(fetchScans, 400);
         return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchQuery]);
 
     const handleToggleTesters = async (id: string) => {

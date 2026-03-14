@@ -512,8 +512,10 @@ A context-aware AI assistant powered by OpenRouter LLM (Gemini 2.0 Flash) with f
 
 | Method | Endpoint | Description | Auth |
 |:-------|:---------|:------------|:-----|
-| GET | `/learn/articles/` | List articles (9 categories) | — |
+| GET | `/learn/articles/` | Paginated article list with search/category/tag/difficulty filters | — |
 | GET | `/learn/articles/<slug>/` | Article detail | — |
+| GET | `/learn/categories/` | Active taxonomy categories | — |
+| GET | `/learn/tags/` | Active taxonomy tags | — |
 
 ### Other
 
@@ -628,7 +630,39 @@ User (UUID)
 | `scanning_webhook` | url, events JSONB, secret, is_active | Event notifications |
 | `scanning_webhookdelivery` | event, payload JSONB, status_code, response_time | Delivery audit trail |
 | `admin_panel_systemalert` | title, message, severity, is_resolved | System-wide alerts |
-| `learn_article` | title, slug (unique), content, category (9 types) | Learning center |
+| `learn_article` | title, slug (unique), content, legacy category + status/difficulty/references metadata | Learning center core content |
+| `learn_category` | slug, label, parent, depth, sort_order, is_active | Learning center taxonomy hierarchy |
+| `learn_tag` | slug, label, tag_type, is_active | Cross-cutting filtering and mapping |
+
+### Learning Center Content Operations
+
+Run these commands from the repository root:
+
+```powershell
+# 1) Apply schema updates
+"D:/My Files/Graduation Project/safeweb-ai/.venv/Scripts/python.exe" backend/manage.py migrate
+
+# 2) Seed taxonomy data (categories + tags)
+"D:/My Files/Graduation Project/safeweb-ai/.venv/Scripts/python.exe" backend/manage.py seed_learning_taxonomy
+
+# 3) Generate draft article payload from outlines
+"D:/My Files/Graduation Project/safeweb-ai/.venv/Scripts/python.exe" backend/manage.py generate_article_drafts \
+  --outlines backend/apps/learn/data/article_batches/outlines_foundation_batch_a.json \
+  --output backend/apps/learn/data/article_batches/generated_foundation_batch_a.json
+
+# 4) Validate article quality gates
+"D:/My Files/Graduation Project/safeweb-ai/.venv/Scripts/python.exe" backend/manage.py validate_articles \
+  --source backend/apps/learn/data/article_batches/generated_foundation_batch_a.json \
+  --strict --min-score 75
+
+# 5) Bulk load validated batch
+"D:/My Files/Graduation Project/safeweb-ai/.venv/Scripts/python.exe" backend/manage.py bulk_load_articles \
+  --source backend/apps/learn/data/article_batches/generated_foundation_batch_a.json
+
+# 6) Promote workflow state (draft/review/published)
+"D:/My Files/Graduation Project/safeweb-ai/.venv/Scripts/python.exe" backend/manage.py publish_articles \
+  --slug your-article-slug --status published --touch-reviewed-at --min-quality-score 75
+```
 
 ### PostgreSQL Optimizations
 
