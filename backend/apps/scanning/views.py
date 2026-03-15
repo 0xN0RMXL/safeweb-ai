@@ -66,6 +66,7 @@ class WebsiteScanCreateView(views.APIView):
             include_subdomains=True,  # Always true for all scope types
             check_ssl=data.get('check_ssl', True),
             follow_redirects=data.get('follow_redirects', True),
+            control_external_tools=data.get('control_external_tools', True),
             scope_type=scope_type,
             seed_domains=seed_domains,
             status=initial_status,
@@ -82,6 +83,7 @@ class WebsiteScanCreateView(views.APIView):
             'target': scan.target,
             'type': 'website',
             'scopeType': scope_type,
+            'controlExternalTools': scan.control_external_tools,
             'status': initial_status,
             'startTime': timezone.now().isoformat(),
             'message': 'Scan initiated. Use GET /api/scan/{id} to check progress.' if scope_type != 'wide_scope' else 'Wide scope scan created. Confirm discovered domains to start scanning.',
@@ -177,6 +179,7 @@ class ConfirmWideScopeView(views.APIView):
                 include_subdomains=True,
                 check_ssl=scan.check_ssl,
                 follow_redirects=scan.follow_redirects,
+                control_external_tools=scan.control_external_tools,
                 scope_type='single_domain',
                 parent_scan=scan,
                 status='pending',
@@ -307,6 +310,7 @@ class RescanView(views.APIView):
             include_subdomains=original.include_subdomains,
             check_ssl=original.check_ssl,
             follow_redirects=original.follow_redirects,
+            control_external_tools=original.control_external_tools,
             status='pending',
         )
 
@@ -578,6 +582,7 @@ class ScanCreateFullView(views.APIView):
             include_subdomains=data['include_subdomains'],
             check_ssl=data['check_ssl'],
             follow_redirects=data['follow_redirects'],
+            control_external_tools=data.get('control_external_tools', True),
             mode=data.get('scan_mode', 'standard'),
             status='pending',
             recon_data={
@@ -605,6 +610,7 @@ class ScanCreateFullView(views.APIView):
             'target': scan.target,
             'type': 'website',
             'status': 'pending',
+            'controlExternalTools': scan.control_external_tools,
             'mode': scan.mode,
             'profile': data.get('profile', ''),
             'startTime': timezone.now().isoformat(),
@@ -680,6 +686,7 @@ class RescanFindingView(views.APIView):
             include_subdomains=False,
             check_ssl=scan.check_ssl,
             follow_redirects=scan.follow_redirects,
+            control_external_tools=scan.control_external_tools,
             mode='standard',
             status='pending',
             recon_data={'rescan_finding': str(finding.id), 'parent_scan': str(scan.id)},
@@ -871,21 +878,27 @@ class ScanExportFormatView(views.APIView):
         return resp
 
 
-def _get_historical_phase_averages(depth: str = 'medium') -> dict:
+def _get_historical_phase_averages(depth: str = 'medium', control_external_tools: bool = True) -> dict:
     """Return average seconds per phase from the last 10 completed scans.
 
     Used by ScanStreamView to compute estimated remaining time.
     Falls back to depth-based preset defaults if no history is available.
     """
-    defaults = {
-        'shallow':  {'recon': 30, 'crawling': 60, 'analysis': 20, 'testing': 90,  'testing_verification': 30, 'nuclei_templates': 30, 'secret_scanning': 15, 'integrated_scanners': 30, 'verification': 30, 'correlation': 10},
-        'medium':   {'recon': 90, 'crawling': 180, 'analysis': 40, 'testing': 300, 'testing_verification': 60, 'nuclei_templates': 60, 'secret_scanning': 30, 'integrated_scanners': 60, 'verification': 60, 'correlation': 20},
-        'deep':     {'recon': 300, 'crawling': 600, 'analysis': 60, 'testing': 900, 'testing_verification': 120, 'nuclei_templates': 180, 'secret_scanning': 60, 'integrated_scanners': 120, 'verification': 120, 'correlation': 30},
+    defaults_with_tools = {
+        'shallow':  {'recon': 90,  'crawling': 120, 'analysis': 35, 'testing': 240,  'testing_verification': 60,  'nuclei_templates': 120, 'secret_scanning': 45,  'integrated_scanners': 180, 'verification': 90,  'correlation': 20},
+        'medium':   {'recon': 240, 'crawling': 360, 'analysis': 60, 'testing': 900,  'testing_verification': 180, 'nuclei_templates': 360, 'secret_scanning': 90,  'integrated_scanners': 420, 'verification': 180, 'correlation': 30},
+        'deep':     {'recon': 600, 'crawling': 960, 'analysis': 90, 'testing': 2100, 'testing_verification': 360, 'nuclei_templates': 900, 'secret_scanning': 150, 'integrated_scanners': 900, 'verification': 300, 'correlation': 45},
     }
+    defaults_without_tools = {
+        'shallow':  {'recon': 35,  'crawling': 70,  'analysis': 20, 'testing': 120, 'testing_verification': 30,  'nuclei_templates': 0, 'secret_scanning': 30,  'integrated_scanners': 0, 'verification': 45,  'correlation': 10},
+        'medium':   {'recon': 80,  'crawling': 180, 'analysis': 35, 'testing': 420, 'testing_verification': 90,  'nuclei_templates': 0, 'secret_scanning': 60,  'integrated_scanners': 0, 'verification': 90,  'correlation': 15},
+        'deep':     {'recon': 180, 'crawling': 420, 'analysis': 50, 'testing': 900, 'testing_verification': 180, 'nuclei_templates': 0, 'secret_scanning': 120, 'integrated_scanners': 0, 'verification': 180, 'correlation': 20},
+    }
+    defaults = defaults_with_tools if control_external_tools else defaults_without_tools
     fallback = defaults.get(depth, defaults['medium'])
     try:
         recent = Scan.objects.filter(
-            status='completed', depth=depth,
+            status='completed', depth=depth, control_external_tools=control_external_tools,
         ).exclude(phase_timings={}).order_by('-created_at')[:10]
         if not recent:
             return fallback
@@ -958,7 +971,7 @@ class ScanStreamView(views.APIView):
         scan_depth = scan_obj.depth
 
         # Pre-compute historical phase averages once per connection
-        hist_avgs = _get_historical_phase_averages(scan_depth)
+        hist_avgs = _get_historical_phase_averages(scan_depth, scan_obj.control_external_tools)
 
         def event_stream():
             _TERMINAL = {'completed', 'failed', 'error', 'cancelled'}

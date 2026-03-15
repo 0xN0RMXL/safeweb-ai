@@ -24,6 +24,7 @@ export interface ScanCreatePayload {
     scanDepth: string;
     checkSsl: boolean;
     followRedirects: boolean;
+    controlExternalTools: boolean;
     scanMode?: string;
     wafEvasion?: boolean;
     authConfig?: {
@@ -128,9 +129,10 @@ export interface ScanResult {
     };
     score: number; // 0-100, where 100 is most secure
     scanOptions?: {
-        depth?: number;
+        depth?: string | number;
         includeSubdomains?: boolean;
         checkSsl?: boolean;
+        controlExternalTools?: boolean;
     };
     // Advanced fields
     progress?: number;       // 0–100 during active scan

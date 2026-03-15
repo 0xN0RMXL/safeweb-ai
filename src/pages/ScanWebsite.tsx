@@ -32,6 +32,7 @@ export default function ScanWebsite() {
         scanDepth: 'medium',
         checkSsl: true,
         followRedirects: true,
+        controlExternalTools: true,
         scanMode: 'normal',
         wafEvasion: false,
         authUrl: '',
@@ -44,10 +45,22 @@ export default function ScanWebsite() {
     const [isScanning, setIsScanning] = useState(false);
     const [isResolving, setIsResolving] = useState(false);
 
+    const depthEstimates = formData.controlExternalTools
+        ? {
+            shallow: '12-18 minutes',
+            medium: '35-55 minutes',
+            deep: '80-130 minutes',
+        }
+        : {
+            shallow: '3-6 minutes',
+            medium: '10-18 minutes',
+            deep: '28-45 minutes',
+        };
+
     const scanDepthOptions = [
-        { value: 'shallow', label: 'Shallow (Fast - 5-10 minutes)' },
-        { value: 'medium', label: 'Medium (Recommended - 15-30 minutes)' },
-        { value: 'deep', label: 'Deep (Thorough - 45-60 minutes)' },
+        { value: 'shallow', label: `Shallow (Fast - ${depthEstimates.shallow})` },
+        { value: 'medium', label: `Medium (Recommended - ${depthEstimates.medium})` },
+        { value: 'deep', label: `Deep (Thorough - ${depthEstimates.deep})` },
     ];
 
     const scanModeOptions = [
@@ -146,6 +159,7 @@ export default function ScanWebsite() {
                 scanDepth: formData.scanDepth,
                 checkSsl: formData.checkSsl,
                 followRedirects: formData.followRedirects,
+                controlExternalTools: formData.controlExternalTools,
                 scanMode: formData.scanMode,
                 wafEvasion: formData.wafEvasion,
             };
@@ -464,13 +478,55 @@ export default function ScanWebsite() {
                                 )}
 
                                 {/* Scan Depth */}
+                                <div className="space-y-3">
+                                    <label className="text-sm font-medium text-text-secondary block">
+                                        Control External Tools
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData((prev) => ({
+                                            ...prev,
+                                            controlExternalTools: !prev.controlExternalTools,
+                                        }))}
+                                        className={`w-full rounded-lg border px-4 py-3 text-left transition-colors ${
+                                            formData.controlExternalTools
+                                                ? 'border-accent-green/50 bg-accent-green/10'
+                                                : 'border-border-primary bg-bg-secondary hover:bg-bg-hover'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-semibold text-text-primary">Control External Tools</p>
+                                                <p className="text-xs text-text-tertiary mt-1">
+                                                    {formData.controlExternalTools
+                                                        ? 'Active: Runs external recon/scanner integrations, including Nuclei.'
+                                                        : 'Deactivated: Runs built-in SafeWeb modules only (no external recon/scanner tools).'}
+                                                </p>
+                                            </div>
+                                            <span
+                                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                                                    formData.controlExternalTools
+                                                        ? 'bg-accent-green/20 text-accent-green'
+                                                        : 'bg-text-tertiary/20 text-text-tertiary'
+                                                }`}
+                                            >
+                                                {formData.controlExternalTools ? 'Active' : 'Deactivated'}
+                                            </span>
+                                        </div>
+                                    </button>
+                                </div>
+
                                 <Select
                                     name="scanDepth"
                                     label="Scan Depth"
                                     options={scanDepthOptions}
                                     value={formData.scanDepth}
                                     onChange={handleChange}
-                                    helperText="Deeper scans provide more comprehensive results but take longer"
+                                    helperText={
+                                        formData.controlExternalTools
+                                            ? 'Expected times include external recon/scanner tools and Nuclei coverage.'
+                                            : 'Expected times are for built-in SafeWeb modules only.'
+                                    }
                                 />
 
                                 {/* Options */}

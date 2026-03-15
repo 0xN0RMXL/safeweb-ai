@@ -119,6 +119,15 @@ class ScanOrchestrator:
         """
         from apps.scanning.models import Scan
         scan = Scan.objects.get(id=scan_id)
+        _external_tools_token = None
+        try:
+            from .tools.base import set_external_tools_enabled
+            _external_tools_token = set_external_tools_enabled(
+                getattr(scan, 'control_external_tools', True)
+            )
+        except Exception:
+            _external_tools_token = None
+
         scan.status = 'scanning'
         scan.started_at = timezone.now()
         scan.save(update_fields=['status', 'started_at'])
@@ -161,6 +170,12 @@ class ScanOrchestrator:
             logger.error(f'Scan failed: {scan.id} — {e}', exc_info=True)
 
         finally:
+            if _external_tools_token is not None:
+                try:
+                    from .tools.base import reset_external_tools_enabled
+                    reset_external_tools_enabled(_external_tools_token)
+                except Exception:
+                    pass
             scan.completed_at = timezone.now()
             if scan.started_at:
                 scan.duration = int((scan.completed_at - scan.started_at).total_seconds())
@@ -229,6 +244,7 @@ class ScanOrchestrator:
                 include_subdomains=True,
                 check_ssl=scan.check_ssl,
                 follow_redirects=scan.follow_redirects,
+                control_external_tools=getattr(scan, 'control_external_tools', True),
                 scope_type='single_domain',
                 parent_scan=scan,
                 status='pending',
@@ -478,13 +494,27 @@ class ScanOrchestrator:
             # Historical URLs from URL intelligence / Wayback
             for _hist_url in recon_data.get('url_intelligence', {}).get('urls', [])[:50]:
                 _recon_seeds.append(_hist_url)
-            # Deduplicate preserving order
-            _seen_s: set = set()
+            # Deduplicate preserving order; normalize non-string seed shapes first.
+            _seen_s: set[str] = set()
             _deduped: list[str] = []
             for _s in _recon_seeds:
-                if _s and _s not in _seen_s:
-                    _seen_s.add(_s)
-                    _deduped.append(_s)
+                _seed = ''
+                if isinstance(_s, str):
+                    _seed = _s
+                elif isinstance(_s, dict):
+                    _seed = (
+                        _s.get('url')
+                        or _s.get('endpoint')
+                        or _s.get('value')
+                        or _s.get('path')
+                        or ''
+                    )
+                elif _s is not None:
+                    _seed = str(_s)
+
+                if _seed and _seed not in _seen_s:
+                    _seen_s.add(_seed)
+                    _deduped.append(_seed)
             _recon_seeds = _deduped
             if _recon_seeds:
                 logger.info('Phase 0.9: %d recon-discovered seeds queued for crawler', len(_recon_seeds))
@@ -763,121 +793,124 @@ class ScanOrchestrator:
         self._update_progress(scan, 72, 'nuclei_templates', tool='Nuclei Template Engine')
         nuclei_raw = []  # collected before per-phase verify+save
         _p5b_start = _time.monotonic()
-        try:
-            from .nuclei import TemplateManager, TemplateParser, TemplateRunner
+        if getattr(scan, 'control_external_tools', True):
+            try:
+                from .nuclei import TemplateManager, TemplateParser, TemplateRunner
 
-            # Scale template limits and tag/severity filters by scan depth
-            _depth = getattr(scan, 'depth', 'medium')
-            if _depth == 'shallow':
-                _nuclei_tags = ['critical', 'high']
-                _nuclei_sevs = ['critical', 'high']
-                _max_tpl = 200
-            elif _depth == 'deep':
-                _nuclei_tags = None   # all tags — no filter
-                _nuclei_sevs = None   # all severities — no filter
-                _max_tpl = 5000
-            else:  # medium (default)
-                _nuclei_tags = ['cve', 'critical', 'high', 'medium', 'misconfig', 'exposure']
-                _nuclei_sevs = ['critical', 'high', 'medium']
-                _max_tpl = 500
+                # Scale template limits and tag/severity filters by scan depth
+                _depth = getattr(scan, 'depth', 'medium')
+                if _depth == 'shallow':
+                    _nuclei_tags = ['critical', 'high']
+                    _nuclei_sevs = ['critical', 'high']
+                    _max_tpl = 200
+                elif _depth == 'deep':
+                    _nuclei_tags = None   # all tags — no filter
+                    _nuclei_sevs = None   # all severities — no filter
+                    _max_tpl = 5000
+                else:  # medium (default)
+                    _nuclei_tags = ['cve', 'critical', 'high', 'medium', 'misconfig', 'exposure']
+                    _nuclei_sevs = ['critical', 'high', 'medium']
+                    _max_tpl = 500
 
-            nuclei_mgr = TemplateManager()
-            # setup(clone=True) → clones on first run, git-pulls when index is stale (24 h TTL)
-            _tpl_ready = nuclei_mgr.setup(clone=True)
+                nuclei_mgr = TemplateManager()
+                # setup(clone=True) → clones on first run, git-pulls when index is stale (24 h TTL)
+                _tpl_ready = nuclei_mgr.setup(clone=True)
 
-            if _tpl_ready:
-                _nb_stats = nuclei_mgr.get_stats()
-                logger.info(
-                    'Phase 5b: %d nuclei templates indexed (depth=%s)',
-                    _nb_stats.get('total', 0), _depth,
-                )
-
-                # Resolve the scan target URL (property or field)
-                _target = getattr(scan, 'target_url', scan.target)
-
-                # ── Primary: Nuclei CLI binary ──────────────────────────────
-                from .tools.wrappers.nuclei_cli_wrapper import NucleiCLITool
-                _cli = NucleiCLITool()
-
-                if _cli.is_available():
-                    _cli_kwargs: dict = dict(
-                        templates_dir=nuclei_mgr.templates_dir,
-                        rate_limit=50,
-                        concurrency=25,
-                        req_timeout=10,
-                        follow_redirects=getattr(scan, 'follow_redirects', True),
-                    )
-                    if _nuclei_sevs:
-                        _cli_kwargs['severity'] = ','.join(_nuclei_sevs)
-                    if _nuclei_tags:
-                        _cli_kwargs['tags'] = ','.join(_nuclei_tags)
-
+                if _tpl_ready:
+                    _nb_stats = nuclei_mgr.get_stats()
                     logger.info(
-                        'Phase 5b (CLI): nuclei -t %s sev=%s tags=%s',
-                        nuclei_mgr.templates_dir,
-                        _cli_kwargs.get('severity', '*'),
-                        _cli_kwargs.get('tags', '*'),
+                        'Phase 5b: %d nuclei templates indexed (depth=%s)',
+                        _nb_stats.get('total', 0), _depth,
                     )
-                    _cli_results = await asyncio.to_thread(
-                        lambda: _cli.run(_target, **_cli_kwargs)
-                    )
-                    for _r in _cli_results:
-                        nuclei_raw.append({
-                            'name': f'[Nuclei] {_r.title}',
-                            'severity': str(_r.severity),
-                            'category': _r.category or 'Nuclei',
-                            'description': _r.description or f'Detected by nuclei: {_r.title}',
-                            'impact': f'Vulnerability found: {_r.title} ({_r.severity})',
-                            'remediation': (
-                                f'Review nuclei finding for {_r.title}. CWE: {_r.cwe}'
-                                if _r.cwe
-                                else f'Review nuclei finding for {_r.title}.'
-                            ),
-                            'cwe': _r.cwe or '',
-                            'cvss': _r.cvss or 0.0,
-                            'affected_url': _r.url or '',
-                            'evidence': str(_r.evidence or ''),
-                            'tool_name': 'nuclei',
-                        })
-                    logger.info('Phase 5b (CLI): %d finding(s)', len(_cli_results))
+
+                    # Resolve the scan target URL (property or field)
+                    _target = getattr(scan, 'target_url', scan.target)
+
+                    # ── Primary: Nuclei CLI binary ──────────────────────────────
+                    from .tools.wrappers.nuclei_cli_wrapper import NucleiCLITool
+                    _cli = NucleiCLITool()
+
+                    if _cli.is_available():
+                        _cli_kwargs: dict = dict(
+                            templates_dir=nuclei_mgr.templates_dir,
+                            rate_limit=50,
+                            concurrency=25,
+                            req_timeout=10,
+                            follow_redirects=getattr(scan, 'follow_redirects', True),
+                        )
+                        if _nuclei_sevs:
+                            _cli_kwargs['severity'] = ','.join(_nuclei_sevs)
+                        if _nuclei_tags:
+                            _cli_kwargs['tags'] = ','.join(_nuclei_tags)
+
+                        logger.info(
+                            'Phase 5b (CLI): nuclei -t %s sev=%s tags=%s',
+                            nuclei_mgr.templates_dir,
+                            _cli_kwargs.get('severity', '*'),
+                            _cli_kwargs.get('tags', '*'),
+                        )
+                        _cli_results = await asyncio.to_thread(
+                            lambda: _cli.run(_target, **_cli_kwargs)
+                        )
+                        for _r in _cli_results:
+                            nuclei_raw.append({
+                                'name': f'[Nuclei] {_r.title}',
+                                'severity': str(_r.severity),
+                                'category': _r.category or 'Nuclei',
+                                'description': _r.description or f'Detected by nuclei: {_r.title}',
+                                'impact': f'Vulnerability found: {_r.title} ({_r.severity})',
+                                'remediation': (
+                                    f'Review nuclei finding for {_r.title}. CWE: {_r.cwe}'
+                                    if _r.cwe
+                                    else f'Review nuclei finding for {_r.title}.'
+                                ),
+                                'cwe': _r.cwe or '',
+                                'cvss': _r.cvss or 0.0,
+                                'affected_url': _r.url or '',
+                                'evidence': str(_r.evidence or ''),
+                                'tool_name': 'nuclei',
+                            })
+                        logger.info('Phase 5b (CLI): %d finding(s)', len(_cli_results))
+
+                    else:
+                        # ── Fallback: Python Template Engine (HTTP-only) ────────
+                        logger.info(
+                            'Phase 5b: Nuclei binary not available — using Python engine (HTTP only)'
+                        )
+                        parser = TemplateParser()
+                        runner = TemplateRunner(
+                            rate_limiter=self._rate_limiter,
+                            max_concurrent=50,
+                        )
+                        _filter_kwargs: dict = {'template_type': 'http', 'max_templates': _max_tpl}
+                        if _nuclei_tags:
+                            _filter_kwargs['tags'] = _nuclei_tags
+                        if _nuclei_sevs:
+                            _filter_kwargs['severities'] = _nuclei_sevs
+                        template_paths = nuclei_mgr.get_filtered_templates(**_filter_kwargs)
+                        nuclei_templates = []
+                        for tpath in template_paths:
+                            parsed = parser.parse_file(tpath)
+                            if parsed and parsed.is_valid:
+                                nuclei_templates.append(parsed)
+
+                        if nuclei_templates:
+                            logger.info('Phase 5b (Python): Running %d templates', len(nuclei_templates))
+                            nuclei_vulns = await runner.run_templates(nuclei_templates, _target)
+                            for vuln_data in nuclei_vulns:
+                                nuclei_raw.append(vuln_data)
+                            logger.info('Phase 5b (Python): %d finding(s)', len(nuclei_vulns))
+                        else:
+                            logger.info('Phase 5b: No applicable nuclei templates found')
 
                 else:
-                    # ── Fallback: Python Template Engine (HTTP-only) ────────
                     logger.info(
-                        'Phase 5b: Nuclei binary not available — using Python engine (HTTP only)'
+                        'Phase 5b: Templates not ready — run: python manage.py setup_nuclei_templates'
                     )
-                    parser = TemplateParser()
-                    runner = TemplateRunner(
-                        rate_limiter=self._rate_limiter,
-                        max_concurrent=50,
-                    )
-                    _filter_kwargs: dict = {'template_type': 'http', 'max_templates': _max_tpl}
-                    if _nuclei_tags:
-                        _filter_kwargs['tags'] = _nuclei_tags
-                    if _nuclei_sevs:
-                        _filter_kwargs['severities'] = _nuclei_sevs
-                    template_paths = nuclei_mgr.get_filtered_templates(**_filter_kwargs)
-                    nuclei_templates = []
-                    for tpath in template_paths:
-                        parsed = parser.parse_file(tpath)
-                        if parsed and parsed.is_valid:
-                            nuclei_templates.append(parsed)
-
-                    if nuclei_templates:
-                        logger.info('Phase 5b (Python): Running %d templates', len(nuclei_templates))
-                        nuclei_vulns = await runner.run_templates(nuclei_templates, _target)
-                        for vuln_data in nuclei_vulns:
-                            nuclei_raw.append(vuln_data)
-                        logger.info('Phase 5b (Python): %d finding(s)', len(nuclei_vulns))
-                    else:
-                        logger.info('Phase 5b: No applicable nuclei templates found')
-
-            else:
-                logger.info(
-                    'Phase 5b: Templates not ready — run: python manage.py setup_nuclei_templates'
-                )
-        except Exception as exc:
-            logger.warning(f'Phase 5b nuclei templates skipped: {exc}')
+            except Exception as exc:
+                logger.warning(f'Phase 5b nuclei templates skipped: {exc}')
+        else:
+            logger.info('Phase 5b skipped: external tools disabled for this scan')
         _phase_stats['nuclei_templates'] = round(_time.monotonic() - _p5b_start, 2)
         if nuclei_raw:
             self._set_current_tool(scan, f'Verifying {len(nuclei_raw)} Nuclei findings')
@@ -930,51 +963,54 @@ class ScanOrchestrator:
         self._update_progress(scan, 76, 'integrated_scanners', tool='Integrated Scanners (sqlmap, dalfox…)')
         integrated_raw = []  # collected before per-phase verify+save
         _p5d_start = _time.monotonic()
-        try:
-            from .tools.registry import ToolRegistry
-            from .tools.result import tool_result_to_vuln
-            from .tools.base import ToolCapability as _ToolCap
-            _tool_registry = ToolRegistry()
-            _vuln_tools = _tool_registry.get_by_capability(_ToolCap.VULN_SCAN)
-            if _vuln_tools:
-                _scan_target = getattr(scan, 'target_url', scan.target)
-                # Injectable URLs — pages that have parameters or forms
-                _injectable_urls = [
-                    p.url for p in pages
-                    if (p.parameters or p.forms)
-                ][:20] or [_scan_target]
+        if getattr(scan, 'control_external_tools', True):
+            try:
+                from .tools.registry import ToolRegistry
+                from .tools.result import tool_result_to_vuln
+                from .tools.base import ToolCapability as _ToolCap
+                _tool_registry = ToolRegistry()
+                _vuln_tools = _tool_registry.get_by_capability(_ToolCap.VULN_SCAN)
+                if _vuln_tools:
+                    _scan_target = getattr(scan, 'target_url', scan.target)
+                    # Injectable URLs — pages that have parameters or forms
+                    _injectable_urls = [
+                        p.url for p in pages
+                        if (p.parameters or p.forms)
+                    ][:20] or [_scan_target]
 
-                logger.info('Phase 5d: Running %d VULN_SCAN tool(s)', len(_vuln_tools))
-                _tool_runner = AsyncTaskRunner(max_concurrency=5, default_timeout=300.0)
+                    logger.info('Phase 5d: Running %d VULN_SCAN tool(s)', len(_vuln_tools))
+                    _tool_runner = AsyncTaskRunner(max_concurrency=5, default_timeout=300.0)
 
-                _INJECTABLE_TOOLS = frozenset({
-                    'sqlmap', 'ghauri', 'dalfox', 'xsstrike', 'tplmap',
-                    'commix', 'crlfuzz',
-                })
-                for _vt in _vuln_tools:
-                    _vt_target = _injectable_urls[0] if _vt.name in _INJECTABLE_TOOLS else _scan_target
-                    _tool_runner.add(
-                        f'tool_{_vt.name}',
-                        _vt.run,
-                        args=(_vt_target,),
-                    )
+                    _INJECTABLE_TOOLS = frozenset({
+                        'sqlmap', 'ghauri', 'dalfox', 'xsstrike', 'tplmap',
+                        'commix', 'crlfuzz',
+                    })
+                    for _vt in _vuln_tools:
+                        _vt_target = _injectable_urls[0] if _vt.name in _INJECTABLE_TOOLS else _scan_target
+                        _tool_runner.add(
+                            f'tool_{_vt.name}',
+                            _vt.run,
+                            args=(_vt_target,),
+                        )
 
-                _tool_scan_results = await _tool_runner.run()
-                _tool_vuln_count = 0
-                for _tk, _tr in _tool_scan_results.items():
-                    if _tr.result:
-                        for _tool_r in _tr.result:
-                            _tv = tool_result_to_vuln(_tool_r)
-                            # Ensure tool_name is set — use the tool key as fallback
-                            _tv.setdefault('tool_name', _tk.replace('tool_', '', 1))
-                            integrated_raw.append(_tv)
-                            _tool_vuln_count += 1
+                    _tool_scan_results = await _tool_runner.run()
+                    _tool_vuln_count = 0
+                    for _tk, _tr in _tool_scan_results.items():
+                        if _tr.result:
+                            for _tool_r in _tr.result:
+                                _tv = tool_result_to_vuln(_tool_r)
+                                # Ensure tool_name is set — use the tool key as fallback
+                                _tv.setdefault('tool_name', _tk.replace('tool_', '', 1))
+                                integrated_raw.append(_tv)
+                                _tool_vuln_count += 1
 
-                logger.info('Phase 5d: %d finding(s) from integrated scanners', _tool_vuln_count)
-            else:
-                logger.info('Phase 5d: No VULN_SCAN tools available — install tools to enable')
-        except Exception as _exc:
-            logger.warning('Phase 5d integrated scanners skipped: %s', _exc)
+                    logger.info('Phase 5d: %d finding(s) from integrated scanners', _tool_vuln_count)
+                else:
+                    logger.info('Phase 5d: No VULN_SCAN tools available — install tools to enable')
+            except Exception as _exc:
+                logger.warning('Phase 5d integrated scanners skipped: %s', _exc)
+        else:
+            logger.info('Phase 5d skipped: external tools disabled for this scan')
         _phase_stats['integrated_scanners'] = round(_time.monotonic() - _p5d_start, 2)
         if integrated_raw:
             self._set_current_tool(scan, f'Verifying {len(integrated_raw)} scanner findings')

@@ -139,6 +139,7 @@ export const scanAPI = {
         scanDepth: string;
         checkSsl: boolean;
         followRedirects: boolean;
+        controlExternalTools: boolean;
         scanMode?: string;
         wafEvasion?: boolean;
         authConfig?: Record<string, string>;

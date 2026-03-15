@@ -54,6 +54,7 @@ class Scan(models.Model):
 
     check_ssl = models.BooleanField(default=True)
     follow_redirects = models.BooleanField(default=True)
+    control_external_tools = models.BooleanField(default=True)
     score = models.IntegerField(default=0)  # 0-100 security score
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)

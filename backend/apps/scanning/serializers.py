@@ -38,6 +38,7 @@ class ScanCreateSerializer(serializers.Serializer):
     )
     check_ssl = serializers.BooleanField(default=True)
     follow_redirects = serializers.BooleanField(default=True)
+    control_external_tools = serializers.BooleanField(default=True)
 
     def validate(self, attrs):
         scope_type = attrs.get('scope_type', 'single_domain')
@@ -103,6 +104,7 @@ class ScanDetailSerializer(serializers.ModelSerializer):
             'depth': obj.depth,
             'includeSubdomains': obj.include_subdomains,
             'checkSsl': obj.check_ssl,
+            'controlExternalTools': obj.control_external_tools,
         }
 
     def get_child_scans(self, obj):
@@ -176,6 +178,7 @@ class ScanFullCreateSerializer(serializers.Serializer):
     )
     check_ssl = serializers.BooleanField(default=True)
     follow_redirects = serializers.BooleanField(default=True)
+    control_external_tools = serializers.BooleanField(default=True)
     profile = serializers.CharField(max_length=64, required=False, allow_blank=True, default='')
     auth_config = serializers.DictField(required=False, default=dict)
     scope = serializers.ListField(

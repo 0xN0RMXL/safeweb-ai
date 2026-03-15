@@ -20,6 +20,7 @@ import logging
 import shutil
 import subprocess
 import time
+from contextvars import ContextVar, Token
 from abc import ABC, abstractmethod
 from typing import Any, Sequence
 
@@ -29,6 +30,22 @@ logger = logging.getLogger(__name__)
 
 # Maximum output size to capture (5 MB)
 _MAX_OUTPUT_BYTES = 5 * 1024 * 1024
+_EXTERNAL_TOOLS_ENABLED: ContextVar[bool] = ContextVar('external_tools_enabled', default=True)
+
+
+def set_external_tools_enabled(enabled: bool) -> Token:
+    """Set external tool execution mode for the current scan context."""
+    return _EXTERNAL_TOOLS_ENABLED.set(bool(enabled))
+
+
+def reset_external_tools_enabled(token: Token) -> None:
+    """Reset external tool execution mode to the previous context state."""
+    _EXTERNAL_TOOLS_ENABLED.reset(token)
+
+
+def external_tools_enabled() -> bool:
+    """Return whether external CLI tool wrappers are enabled in this context."""
+    return bool(_EXTERNAL_TOOLS_ENABLED.get())
 
 
 class ToolCapability(str, enum.Enum):
@@ -67,6 +84,9 @@ class ExternalTool(ABC):
 
     def is_available(self) -> bool:
         """Check whether the tool binary is installed and reachable."""
+        if not external_tools_enabled():
+            logger.info('%s: disabled by scan setting (control_external_tools=false)', self.name)
+            return False
         if self._available is not None:
             return self._available
         self._available = shutil.which(self.binary) is not None
@@ -78,6 +98,9 @@ class ExternalTool(ABC):
 
     def _exec(self, args: Sequence[str], timeout: int | None = None) -> str:
         """Run a subprocess, return stdout.  Raises on non-zero exit."""
+        if not external_tools_enabled():
+            logger.info('%s: skipped external execution (disabled by scan setting)', self.name)
+            return ''
         timeout = timeout or self.timeout
         cmd_display = ' '.join(args[:4]) + (' ...' if len(args) > 4 else '')
         logger.info('%s: executing %s (timeout=%ds)', self.name, cmd_display, timeout)
@@ -108,6 +131,9 @@ class ExternalTool(ABC):
 
     async def _exec_async(self, args: Sequence[str], timeout: int | None = None) -> str:
         """Async subprocess execution."""
+        if not external_tools_enabled():
+            logger.info('%s: skipped async external execution (disabled by scan setting)', self.name)
+            return ''
         timeout = timeout or self.timeout
         cmd_display = ' '.join(args[:4]) + (' ...' if len(args) > 4 else '')
         logger.info('%s: async exec %s (timeout=%ds)', self.name, cmd_display, timeout)

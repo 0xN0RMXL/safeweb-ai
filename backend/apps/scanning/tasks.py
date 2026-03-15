@@ -38,6 +38,7 @@ def execute_scheduled_scan_task(self, scheduled_scan_id: str):
             target=config.get('target', ''),
             depth=config.get('depth', 'medium'),
             include_subdomains=config.get('include_subdomains', False),
+            control_external_tools=config.get('control_external_tools', True),
             status='pending',
         )
 
