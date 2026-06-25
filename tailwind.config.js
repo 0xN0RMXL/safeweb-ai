@@ -45,7 +45,7 @@ export default {
                 // Text colors
                 'text-primary': '#FFFFFF',
                 'text-secondary': '#B0B8C1',
-                'text-tertiary': '#6B7280',
+                'text-tertiary': '#8B949E',
                 'text-muted': '#4B5563',
 
                 // Border colors

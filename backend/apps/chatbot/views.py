@@ -153,8 +153,11 @@ class ChatView(APIView):
         """Build user profile context for the LLM."""
         try:
             from apps.scanning.models import Scan
+            from apps.accounts.middleware import get_current_organization
 
-            plan = getattr(user, 'plan', 'free')
+            org = get_current_organization()
+            plan = org.plan_tier if org else 'free'
+            
             total_scans = Scan.objects.filter(user=user).count()
 
             month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -162,7 +165,7 @@ class ChatView(APIView):
 
             parts = [
                 f'Name: {getattr(user, "name", "") or user.email}',
-                f'Plan: {plan}',
+                f'Active Org Plan: {plan}',
                 f'Total scans: {total_scans}',
                 f'Scans this month: {monthly_scans}',
             ]

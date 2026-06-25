@@ -3,6 +3,46 @@ from django.db import models
 from django.conf import settings
 
 
+class OrganizationManager(models.Manager):
+    def get_queryset(self):
+        qs = super().get_queryset()
+        try:
+            from apps.accounts.middleware import get_current_organization
+            org = get_current_organization()
+            if org:
+                return qs.filter(organization=org)
+        except ImportError:
+            pass
+        return qs
+
+class Target(models.Model):
+    """Web property target to be scanned."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        'accounts.Organization',
+        on_delete=models.CASCADE,
+        related_name='targets'
+    )
+    domain = models.CharField(max_length=255)
+    display_name = models.CharField(max_length=255)
+    tags = models.JSONField(default=list, blank=True)
+    is_dns_verified = models.BooleanField(default=False)
+    consent_timestamp = models.DateTimeField(null=True, blank=True)
+    consent_user_id = models.UUIDField(null=True, blank=True)
+    current_score = models.IntegerField(default=0)
+    last_scanned_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = OrganizationManager()
+
+    class Meta:
+        db_table = 'targets'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.display_name} ({self.domain})'
+
+
 class Scan(models.Model):
     """Scan job model — tracks a security scan request and its results."""
     SCAN_TYPES = [
@@ -18,7 +58,7 @@ class Scan(models.Model):
         ('completed', 'Completed'),
         ('failed', 'Failed'),
     ]
-    SCAN_DEPTHS = [('shallow', 'Shallow'), ('medium', 'Medium'), ('deep', 'Deep')]
+    SCAN_DEPTHS = [('shallow', 'Shallow'), ('medium', 'Medium'), ('deep', 'Deep'), ('custom', 'Custom')]
 
     SCOPE_TYPES = [
         ('single_domain', 'Single Domain'),
@@ -34,11 +74,24 @@ class Scan(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        'accounts.Organization',
+        on_delete=models.CASCADE,
+        related_name='scans',
+        null=True,
+    )
+    target_entity = models.ForeignKey(
+        Target,
+        on_delete=models.CASCADE,
+        related_name='scans',
+        null=True,
+    )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='scans',
     )
+    selected_categories = models.JSONField(default=list, blank=True)
     scan_type = models.CharField(max_length=20, choices=SCAN_TYPES)
     target = models.TextField()  # URL, wildcard pattern, or company name
     status = models.CharField(max_length=20, choices=SCAN_STATUSES, default='pending')
@@ -92,6 +145,8 @@ class Scan(models.Model):
     # Incremental-update counter: incremented each time recon_data or tester_results
     # are saved mid-scan so the SSE stream can emit a data_update signal.
     data_version = models.IntegerField(default=0)
+
+    objects = OrganizationManager()
 
     class Meta:
         db_table = 'scans'
@@ -171,6 +226,8 @@ class Vulnerability(models.Model):
     description = models.TextField()
     impact = models.TextField()
     remediation = models.TextField()
+    ai_explanation = models.TextField(blank=True, default='')
+    ai_remediation = models.TextField(blank=True, default='')
     cwe = models.CharField(max_length=64, blank=True, default='')
     cvss = models.FloatField(default=0.0)
     affected_url = models.CharField(max_length=2048, blank=True, default='')
@@ -330,6 +387,23 @@ class ScanReport(models.Model):
 
     def __str__(self):
         return f'{self.format.upper()} report for {self.scan.target}'
+
+
+class SharedReport(models.Model):
+    """Public read-only link for a scan report (Phase C/F08)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    scan = models.ForeignKey(Scan, on_delete=models.CASCADE, related_name='shared_reports')
+    access_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    password_hash = models.CharField(max_length=128, blank=True, default='', help_text="Optional password protection")
+    expires_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'shared_reports'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Shared Report for {self.scan.target} ({self.id})'
 
 
 # ── Phase 44: API-First Architecture ─────────────────────────────────────────

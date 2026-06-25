@@ -32,7 +32,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'name', 'email', 'plan', 'status', 'scans', 'joined', 'last_active', 'role']
+        fields = ['id', 'name', 'email', 'status', 'scans', 'joined', 'last_active', 'role']
 
     def get_scans(self, obj):
         return obj.scans.count()

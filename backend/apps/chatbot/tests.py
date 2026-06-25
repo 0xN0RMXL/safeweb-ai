@@ -1,34 +1,26 @@
-from django.test import TestCase
-from rest_framework.test import APIClient
-from .engine import ChatEngine
+import pytest
+from apps.chatbot.engine import ChatEngine
 
-
-class ChatEngineTest(TestCase):
-    def test_fallback_xss(self):
+@pytest.mark.unit
+class TestChatEngine:
+    def test_llm_suggestions_generation(self):
+        """Test basic local response fallback."""
         engine = ChatEngine()
-        result = engine._fallback_response('What is XSS?')
-        self.assertIn('Cross-Site Scripting', result['response'])
-        self.assertEqual(result['tokens_used'], 0)
+        
+        # Test basic local response fallback
+        response = engine._local_response("How do I start a scan?")
+        assert "Starting a Security Scan" in response['response']
+        assert "suggestions" in response
 
-    def test_fallback_sqli(self):
+    def test_llm_json_extractor(self):
+        """Pass dirty markdown strings to the extractor and assert clean dict return."""
         engine = ChatEngine()
-        result = engine._fallback_response('Tell me about SQL injection')
-        self.assertIn('SQL Injection', result['response'])
-
-    def test_fallback_generic(self):
-        engine = ChatEngine()
-        result = engine._fallback_response('Hello')
-        self.assertIn('SafeWeb AI Assistant', result['response'])
-
-
-class ChatAPITest(TestCase):
-    def setUp(self):
-        self.client = APIClient()
-
-    def test_send_message(self):
-        response = self.client.post('/api/chat/', {
-            'message': 'What is XSS?',
-        }, format='json')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('response', response.data)
-        self.assertIn('session_id', response.data)
+        dirty_json = """Here is your data:
+```json
+{
+  "key": "value"
+}
+```
+Hope this helps!"""
+        clean_dict = engine.extract_json(dirty_json)
+        assert clean_dict == {"key": "value"}

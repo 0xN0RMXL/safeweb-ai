@@ -837,6 +837,30 @@ class ChatEngine:
     def _has_llm_key(self):
         return bool(getattr(settings, 'OPENROUTER_API_KEY', ''))
 
+    def extract_json(self, text: str) -> dict:
+        """Extract clean JSON dictionary from dirty markdown LLM outputs."""
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+            
+        import re
+        match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(1))
+            except json.JSONDecodeError:
+                pass
+                
+        match = re.search(r'\{.*?\}', text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                pass
+                
+        return {}
+
     def _get_client(self):
         if self._client is None and self._has_llm_key():
             try:

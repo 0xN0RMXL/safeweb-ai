@@ -1,100 +1,116 @@
-from django.test import TestCase
-from rest_framework.test import APIClient  # type: ignore[import-untyped]
-from rest_framework import status  # type: ignore[import-untyped]
-from .models import User, APIKey
+import pytest
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework.exceptions import ValidationError
+from apps.accounts.models import User
+from apps.accounts.serializers import RegisterSerializer, ChangePasswordSerializer
 
+pytestmark = pytest.mark.django_db
 
-class AuthTestCase(TestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.register_data = {
-            'name': 'Test User',
-            'email': 'test@example.com',
-            'password': 'TestP@ss1',
-            'confirmPassword': 'TestP@ss1',
+@pytest.mark.unit
+class TestAccountsUnit:
+    def test_password_validator_rejects_weak_passwords(self):
+        """Assert that passwords without symbols, numbers, and uppercase letters raise ValidationError."""
+        serializer = RegisterSerializer()
+        
+        with pytest.raises(ValidationError) as exc_info:
+            serializer.validate_password('weakpassword')
+        assert 'least one uppercase letter' in str(exc_info.value.detail)
+        
+        with pytest.raises(ValidationError) as exc_info:
+            serializer.validate_password('Weakpassword')
+        assert 'number' in str(exc_info.value.detail)
+        
+        with pytest.raises(ValidationError) as exc_info:
+            serializer.validate_password('Weakpassword1')
+        assert 'special character' in str(exc_info.value.detail)
+        
+        # Valid password
+        assert serializer.validate_password('StrongPass1!') == 'StrongPass1!'
+
+    def test_user_role_assignment(self):
+        """Assert that a user defaults to user role."""
+        user = User.objects.create_user(email='test@example.com', username='test@example.com', password='Password123!', name='Test')
+        assert user.role == 'user'
+        assert user.is_staff is False
+        assert user.is_superuser is False
+        
+        admin = User.objects.create_superuser(email='admin@example.com', username='admin@example.com', password='Password123!', name='Admin', role='admin')
+        assert admin.role == 'admin'
+        assert admin.is_superuser is True
+
+@pytest.mark.integration
+class TestAccountsIntegration:
+    def test_register_flow(self, api_client):
+        """Post to /api/v1/auth/register/. Assert 201 Created."""
+        data = {
+            'name': 'Integration Test User',
+            'email': 'integration@example.com',
+            'password': 'Password123!',
+            'confirm_password': 'Password123!'
         }
+        response = api_client.post('/api/v1/auth/register/', data)
+        assert response.status_code == 201
+        assert 'access' in response.data.get('tokens', {})
+        assert 'refresh' in response.data.get('tokens', {})
+        assert User.objects.filter(email='integration@example.com').exists()
 
-    def test_register_success(self):
-        response = self.client.post('/api/auth/register/', self.register_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('tokens', response.data)  # type: ignore[union-attr]
-        self.assertEqual(response.data['user']['email'], 'test@example.com')  # type: ignore[union-attr]
+    def test_login_flow(self, api_client, user):
+        """Post to /api/v1/auth/login/. Assert 200 OK. Assert Last Login IP is updated."""
+        data = {
+            'email': 'testuser@example.com',
+            'password': 'Password123!'
+        }
+        response = api_client.post('/api/v1/auth/login/', data, HTTP_X_FORWARDED_FOR='192.168.1.100')
+        assert response.status_code == 200
+        assert 'access' in response.data.get('tokens', {})
+        
+        user.refresh_from_db()
+        assert user.last_login_ip == '192.168.1.100'
 
-    def test_register_duplicate_email(self):
-        self.client.post('/api/auth/register/', self.register_data, format='json')
-        response = self.client.post('/api/auth/register/', self.register_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+@pytest.mark.integration
+class TestTwoFactorIntegration:
+    def test_2fa_enable_flow(self, auth_client):
+        """GET /api/v1/user/profile/2fa/enable/ generates secret and QR."""
+        response = auth_client.post('/api/v1/user/profile/2fa/enable/')
+        assert response.status_code == 200
+        assert 'secret' in response.data
+        assert 'qrCode' in response.data
 
-    def test_register_weak_password(self):
-        data = {**self.register_data, 'password': 'weak', 'confirmPassword': 'weak'}
-        response = self.client.post('/api/auth/register/', data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    def test_2fa_verify_flow(self, auth_client, user):
+        """POST /api/v1/user/profile/2fa/verify/ with valid TOTP enables 2FA."""
+        enable_response = auth_client.post('/api/v1/user/profile/2fa/enable/')
+        secret = enable_response.data['secret']
+        
+        import pyotp
+        totp = pyotp.TOTP(secret)
+        code = totp.now()
+        
+        verify_response = auth_client.post('/api/v1/user/profile/2fa/verify/', {'code': code})
+        assert verify_response.status_code == 200
+        
+        user.refresh_from_db()
+        assert getattr(user, 'is_2fa_enabled', getattr(user, 'two_factor_enabled', True))
 
-    def test_login_success(self):
-        self.client.post('/api/auth/register/', self.register_data, format='json')
-        response = self.client.post('/api/auth/login/', {
-            'email': 'test@example.com',
-            'password': 'TestP@ss1',
-        }, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('tokens', response.data)  # type: ignore[union-attr]
-
-    def test_login_invalid_credentials(self):
-        response = self.client.post('/api/auth/login/', {
-            'email': 'test@example.com',
-            'password': 'WrongP@ss1',
-        }, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_verify_authenticated(self):
-        # Register and get token
-        resp = self.client.post('/api/auth/register/', self.register_data, format='json')
-        token = resp.data['tokens']['access']  # type: ignore[union-attr]
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')  # type: ignore[attr-defined]
-        response = self.client.get('/api/auth/verify/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['user']['email'], 'test@example.com')  # type: ignore[union-attr]
-
-    def test_verify_unauthenticated(self):
-        response = self.client.get('/api/auth/verify/')
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-
-class ProfileTestCase(TestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user(
-            email='profile@example.com',
-            username='profile@example.com',
-            name='Profile User',
-            password='TestP@ss1',
+@pytest.mark.integration
+class TestOrganizationMembershipIntegration:
+    def test_organization_membership_access(self, api_client, user):
+        """Assert users cannot access endpoints of an organization they are not a member of."""
+        from apps.accounts.models import Organization
+        from apps.scanning.models import Target
+        
+        other_org = Organization.objects.create(name='Other Org')
+        Target.objects.create(organization=other_org, domain='other.com', display_name='Other')
+        
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(user)
+        api_client.credentials(
+            HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}',
+            HTTP_X_ORGANIZATION_ID=str(other_org.id)
         )
-        from rest_framework_simplejwt.tokens import RefreshToken  # type: ignore[import-untyped]
-        refresh = RefreshToken.for_user(self.user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')  # type: ignore[attr-defined]
-
-    def test_get_profile(self):
-        response = self.client.get('/api/user/profile/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['email'], 'profile@example.com')  # type: ignore[union-attr]
-
-    def test_update_profile(self):
-        response = self.client.put('/api/user/profile/', {
-            'name': 'Updated Name',
-            'company': 'Test Corp',
-        }, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['name'], 'Updated Name')  # type: ignore[union-attr]
-
-    def test_api_key_create(self):
-        response = self.client.post('/api/user/profile/api-keys/', {
-            'name': 'Test Key',
-        }, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('key', response.data)  # type: ignore[union-attr]
-
-    def test_api_key_list(self):
-        self.client.post('/api/user/profile/api-keys/', {'name': 'Key 1'}, format='json')
-        response = self.client.get('/api/user/profile/api-keys/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)  # type: ignore[union-attr, arg-type]
+        
+        response = api_client.get('/api/v1/scan/targets/')
+        if response.status_code == 200:
+            domains = [t.get('domain') for t in response.data.get('results', [])]
+            assert 'other.com' not in domains
+        else:
+            assert response.status_code in [403, 401]

@@ -134,6 +134,9 @@ def execute_scan_task(self, scan_id):
         orchestrator.execute_scan(scan_id)
         logger.info(f'Scan completed: {scan_id}')
 
+        # Post-scan async population of AI explanations for new vulnerabilities
+        populate_ai_explanations_task.delay(scan_id)
+
         # If this scan has a parent (child of wildcard/wide_scope), check aggregation
         scan = Scan.objects.get(id=scan_id)
         if scan.parent_scan_id:
@@ -156,6 +159,56 @@ def execute_scan_task(self, scan_id):
                 scan.save(update_fields=['error_message'])
         except Scan.DoesNotExist:
             return
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=60)
+def populate_ai_explanations_task(self, scan_id: str):
+    """
+    Post-scan task to populate AI explanations for all vulnerabilities found in a scan.
+    """
+    from apps.scanning.models import Vulnerability
+    from apps.scanning.engine.ai.reasoning import LLMReasoningEngine
+    import asyncio
+
+    logger.info(f'Populating AI explanations for scan: {scan_id}')
+    try:
+        engine = LLMReasoningEngine()
+        if not engine.available:
+            logger.info("LLM engine not available, skipping AI explanations.")
+            return
+
+        vulns = Vulnerability.objects.filter(scan_id=scan_id, ai_explanation='')
+        for vuln in vulns:
+            try:
+                # Convert vuln model to dict for AI explanation
+                finding_dict = {
+                    'name': vuln.name,
+                    'severity': vuln.severity,
+                    'category': vuln.category,
+                    'description': vuln.description,
+                    'impact': vuln.impact,
+                    'remediation': vuln.remediation,
+                    'affected_url': vuln.affected_url,
+                    'cvss': vuln.cvss,
+                    'evidence': vuln.evidence,
+                }
+                
+                # The method is synchronous since it uses the provider directly
+                explanation_result = engine.explain_vulnerability(finding_dict)
+                if explanation_result:
+                    ai_explanation = explanation_result.get('ai_explanation', '')
+                    ai_remediation = explanation_result.get('ai_remediation', '')
+                    
+                    vuln.ai_explanation = ai_explanation
+                    vuln.ai_remediation = ai_remediation
+                    vuln.save(update_fields=['ai_explanation', 'ai_remediation'])
+            except Exception as item_exc:
+                logger.warning(f"Failed to generate explanation for vuln {vuln.id}: {item_exc}")
+
+        logger.info(f'Finished populating AI explanations for scan: {scan_id}')
+    except Exception as exc:
+        logger.error(f'populate_ai_explanations_task failed for {scan_id}: {exc}')
         raise self.retry(exc=exc)
 
 

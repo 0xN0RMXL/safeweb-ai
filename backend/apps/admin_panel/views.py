@@ -1,4 +1,4 @@
-﻿from django.utils import timezone
+from django.utils import timezone
 from django.db.models import Count, Q
 from rest_framework import status
 from rest_framework.views import APIView
@@ -26,8 +26,8 @@ class AdminDashboardView(APIView):
         # User stats
         total_users = User.objects.count()
         active_users = User.objects.filter(last_login__gte=since).count()
-        pro_users = User.objects.filter(plan='pro').count()
-        enterprise_users = User.objects.filter(plan='enterprise').count()
+        pro_users = 0
+        enterprise_users = 0
 
         # Scan stats
         total_scans = Scan.objects.filter(created_at__gte=since).count()
@@ -55,7 +55,7 @@ class AdminDashboardView(APIView):
                 'id': u.id,
                 'name': u.name or u.email,
                 'email': u.email,
-                'plan': u.plan.title(),
+                'plan': 'free',
                 'status': 'active' if u.is_active else 'suspended',
                 'joined': time_ago(u.date_joined),
             }
@@ -113,7 +113,7 @@ class AdminUsersView(APIView):
                 Q(name__icontains=search) | Q(email__icontains=search)
             )
         if plan != 'all':
-            queryset = queryset.filter(plan=plan)
+            pass # Removed due to migration to Organization plans
         if status_filter == 'active':
             queryset = queryset.filter(is_active=True, last_login__isnull=False)
         elif status_filter == 'suspended':
@@ -129,8 +129,8 @@ class AdminUsersView(APIView):
         summary = {
             'total_users': User.objects.count(),
             'active_users': User.objects.filter(is_active=True, last_login__isnull=False).count(),
-            'pro_users': User.objects.filter(plan='pro').count(),
-            'enterprise_users': User.objects.filter(plan='enterprise').count(),
+            'pro_users': 0,
+            'enterprise_users': 0,
         }
 
         return Response({
@@ -145,7 +145,6 @@ class AdminUsersView(APIView):
         name = data.get('name', '')
         email = data.get('email', '')
         password = data.get('password', '')
-        plan = data.get('plan', 'free')
         role = data.get('role', 'user')
 
         if not all([name, email, password]):
@@ -159,7 +158,6 @@ class AdminUsersView(APIView):
             email=email,
             password=password,
             name=name,
-            plan=plan,
             role=role,
         )
         if role == 'admin':
@@ -174,7 +172,7 @@ class AdminUserDetailView(APIView):
     permission_classes = [IsAdmin]
 
     def patch(self, request, user_id):
-        """Update user status, plan, or role."""
+        """Update user status or role."""
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
@@ -199,9 +197,6 @@ class AdminUserDetailView(APIView):
         if 'role' in request.data:
             if request.data['role'] in allowed_roles:
                 user.role = request.data['role']
-        if 'plan' in request.data:
-            if request.data['plan'] in allowed_plans:
-                user.plan = request.data['plan']
         if 'is_active' in request.data:
             user.is_active = bool(request.data['is_active'])
         user.save()

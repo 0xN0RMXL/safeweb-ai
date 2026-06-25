@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 
-from .models import Scan, Vulnerability, Webhook, WebhookDelivery, NucleiTemplate, ScopeDefinition, MultiTargetScan, DiscoveredAsset, ScheduledScan, AssetMonitorRecord, AuthConfig
+from .models import Scan, Vulnerability, Webhook, WebhookDelivery, NucleiTemplate, ScopeDefinition, MultiTargetScan, DiscoveredAsset, ScheduledScan, AssetMonitorRecord, AuthConfig, SharedReport
 from .serializers import (
     ScanCreateSerializer,
     # DEACTIVATED: ScanURLCreateSerializer,
@@ -20,6 +20,7 @@ from .serializers import (
     ScopeDefinitionSerializer, MultiTargetScanSerializer,
     DiscoveredAssetSerializer, ScopeImportSerializer, ScopeValidateSerializer,
     ScheduledScanSerializer, AssetMonitorRecordSerializer, AuthConfigSerializer,
+    SharedReportSerializer,
 )
 from .tasks import execute_scan_task
 from apps.accounts.utils import time_ago
@@ -27,24 +28,39 @@ from apps.accounts.utils import time_ago
 logger = logging.getLogger(__name__)
 
 
+from rest_framework.exceptions import APIException
+from rest_framework import status
+
+class ServiceUnavailable(APIException):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = 'Service temporarily unavailable, try again later.'
+    default_code = 'service_unavailable'
+
 def _dispatch_scan_task(scan_id: str):
-    """Dispatch scan task via Celery if available, otherwise fall back to a
-    background thread so the HTTP response returns immediately."""
+    """Dispatch scan task via Celery. If the broker is unavailable, raise 503."""
     if getattr(django_settings, 'CELERY_TASK_ALWAYS_EAGER', False):
         t = threading.Thread(target=execute_scan_task, args=(scan_id,), daemon=True)
         t.start()
     else:
         try:
             execute_scan_task.delay(scan_id)
-        except Exception:
-            logger.warning('Celery broker unavailable, running scan in background thread')
-            t = threading.Thread(target=execute_scan_task, args=(scan_id,), daemon=True)
-            t.start()
+        except Exception as e:
+            logger.error(f'Failed to dispatch Celery task for scan {scan_id}: {e}')
+            from apps.scanning.models import Scan
+            try:
+                scan = Scan.objects.get(id=scan_id)
+                scan.status = 'failed'
+                scan.error_message = 'Service temporarily unavailable. Background workers could not be reached.'
+                scan.save(update_fields=['status', 'error_message'])
+            except Exception:
+                pass
+            raise ServiceUnavailable(detail="The scanning queue is currently unavailable. Please try again later.")
 
 
 class WebsiteScanCreateView(views.APIView):
     """POST /api/scan/website — Create a new website scan."""
-    permission_classes = [IsAuthenticated]
+    from apps.accounts.permissions import CanStartScan
+    permission_classes = [IsAuthenticated, CanStartScan]
 
     def post(self, request):
         serializer = ScanCreateSerializer(data=request.data)
@@ -60,9 +76,11 @@ class WebsiteScanCreateView(views.APIView):
 
         scan = Scan.objects.create(
             user=request.user,
+            organization=request.organization,
             scan_type='website',
             target=data['target'],
             depth=data.get('scan_depth', 'medium'),
+            selected_categories=data.get('selected_categories', []),
             include_subdomains=True,  # Always true for all scope types
             check_ssl=data.get('check_ssl', True),
             follow_redirects=data.get('follow_redirects', True),
@@ -1768,3 +1786,109 @@ class DashboardTrendsView(views.APIView):
             pivot[d][row['severity']] = row['count']
 
         return Response(sorted(pivot.values(), key=lambda r: r['date']))
+
+# -- Target Management --------------------------------------------------------
+
+class TargetListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/scan/targets/
+    POST /api/scan/targets/
+    """
+    permission_classes = [IsAuthenticated]
+    from .serializers import TargetSerializer
+    serializer_class = TargetSerializer
+
+    def get_queryset(self):
+        from .models import Target
+        return Target.objects.filter(organization__memberships__user=self.request.user)
+
+    def perform_create(self, serializer):
+        from apps.accounts.middleware import get_current_organization
+        org = get_current_organization()
+        if not org:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("Organization context required.")
+
+        domain = serializer.validated_data.get('domain', '')
+        is_verified = False
+        if domain:
+            import socket
+            try:
+                # Remove scheme if provided
+                clean_domain = domain.replace('https://', '').replace('http://', '').split('/')[0]
+                socket.gethostbyname(clean_domain)
+                is_verified = True
+            except socket.gaierror:
+                is_verified = False
+
+        serializer.save(organization=org, is_dns_verified=is_verified)
+
+class TargetDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /api/scan/targets/<id>/
+    PATCH  /api/scan/targets/<id>/
+    DELETE /api/scan/targets/<id>/
+    """
+    permission_classes = [IsAuthenticated]
+    from .serializers import TargetSerializer
+    serializer_class = TargetSerializer
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        from .models import Target
+        return Target.objects.filter(organization__memberships__user=self.request.user)
+
+# -- Shared Reports -----------------------------------------------------------
+
+class SharedReportCreateView(generics.CreateAPIView):
+    """
+    POST /api/v1/scan/<scan_id>/share/
+    Create a new shared report link.
+    """
+    permission_classes = [IsAuthenticated]
+    from .serializers import SharedReportSerializer
+    serializer_class = SharedReportSerializer
+
+    def perform_create(self, serializer):
+        scan_id = self.kwargs.get('scan_id')
+        scan = generics.get_object_or_404(Scan, id=scan_id, user=self.request.user)
+        # Optional password hashing could be added here if we want real security,
+        # but for now we just save the raw or frontend-hashed password string.
+        serializer.save(scan=scan)
+
+
+class SharedReportDeleteView(generics.DestroyAPIView):
+    """
+    DELETE /api/v1/scan/share/<id>/
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return SharedReport.objects.filter(scan__user=self.request.user)
+
+
+class PublicReportView(views.APIView):
+    """
+    POST /api/v1/scan/public/<access_token>/
+    Returns scan details if token is valid and password (if any) matches.
+    """
+    permission_classes = []  # Publicly accessible
+
+    def post(self, request, access_token):
+        # We use POST to safely pass a password in the body if needed
+        report = generics.get_object_or_404(SharedReport, access_token=access_token)
+        
+        # Check expiry
+        if report.expires_at and report.expires_at < timezone.now():
+            return Response({'error': 'Report link has expired.'}, status=status.HTTP_410_GONE)
+
+        # Check password if configured
+        if report.password_hash:
+            pwd = request.data.get('password', '')
+            if pwd != report.password_hash:
+                return Response({'error': 'Invalid password.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Return scan details
+        from .serializers import ScanDetailSerializer
+        serializer = ScanDetailSerializer(report.scan)
+        return Response(serializer.data)

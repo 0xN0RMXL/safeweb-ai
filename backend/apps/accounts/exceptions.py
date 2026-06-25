@@ -11,29 +11,31 @@ def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
 
     if response is not None:
-        # Standardize error format
+        error_code = exc.__class__.__name__
+        message = 'An error occurred.'
+        details = {}
+
         if isinstance(response.data, dict):
-            if 'detail' not in response.data:
-                errors = {}
-                detail_msg = 'Validation error.'
-                for key, value in response.data.items():
-                    if isinstance(value, list):
-                        errors[key] = value
-                    else:
-                        errors[key] = [str(value)]
-                response.data = {
-                    'detail': detail_msg,
-                    'errors': errors,
-                }
+            if 'detail' in response.data:
+                message = str(response.data.pop('detail'))
+            details = response.data
         elif isinstance(response.data, list):
-            response.data = {
-                'detail': response.data[0] if response.data else 'An error occurred.',
-                'errors': {},
-            }
+            if response.data:
+                message = str(response.data[0])
+        
+        response.data = {
+            'error_code': getattr(exc, 'default_code', error_code).upper(),
+            'message': message,
+            'details': details,
+        }
     else:
         logger.exception('Unhandled exception', exc_info=exc)
         response = Response(
-            {'detail': 'An internal server error occurred.', 'errors': {}},
+            {
+                'error_code': 'INTERNAL_SERVER_ERROR',
+                'message': 'An internal server error occurred.',
+                'details': {}
+            },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 

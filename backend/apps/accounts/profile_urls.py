@@ -8,4 +8,5 @@ urlpatterns = [
     path('profile/sessions/', views.SessionListView.as_view(), name='sessions'),
     path('profile/2fa/enable/', views.TwoFactorEnableView.as_view(), name='2fa-enable'),
     path('profile/2fa/verify/', views.TwoFactorVerifyView.as_view(), name='2fa-verify'),
+    path('settings/', views.UserSettingsView.as_view(), name='settings'),
 ]

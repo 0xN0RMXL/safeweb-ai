@@ -2,8 +2,41 @@ from rest_framework import serializers
 from .models import (
     Scan, Vulnerability, ScanReport, Webhook, WebhookDelivery,
     NucleiTemplate, ScopeDefinition, MultiTargetScan, DiscoveredAsset,
-    ScheduledScan, AssetMonitorRecord, AuthConfig,
+    ScheduledScan, AssetMonitorRecord, AuthConfig, Target,
+    SharedReport,
 )
+
+class TargetSerializer(serializers.ModelSerializer):
+    """Serializer for web targets."""
+    class Meta:
+        model = Target
+        fields = [
+            'id', 'organization', 'domain', 'display_name', 'tags',
+            'is_dns_verified', 'consent_timestamp', 'current_score',
+            'last_scanned_at', 'created_at'
+        ]
+        read_only_fields = ['id', 'organization', 'is_dns_verified', 'consent_timestamp', 'current_score', 'last_scanned_at', 'created_at']
+
+    def validate_domain(self, value):
+        import ipaddress
+        from urllib.parse import urlparse
+        
+        domain = value.strip().lower()
+        if domain.startswith(('http://', 'https://')):
+            domain = urlparse(domain).netloc.split(':')[0]
+            
+        # Basic blocklist
+        if domain in ['localhost', '169.254.169.254', 'metadata.google.internal']:
+            raise serializers.ValidationError("Local or private network targets are not permitted.")
+            
+        try:
+            ip = ipaddress.ip_address(domain)
+            if ip.is_private or ip.is_loopback or ip.is_link_local:
+                raise serializers.ValidationError("Private IP addresses are not permitted.")
+        except ValueError:
+            pass
+            
+        return domain
 
 
 class VulnerabilitySerializer(serializers.ModelSerializer):
@@ -33,16 +66,25 @@ class ScanCreateSerializer(serializers.Serializer):
         required=False, default=list,
     )
     scan_depth = serializers.ChoiceField(
-        choices=['shallow', 'medium', 'deep'],
+        choices=['shallow', 'medium', 'deep', 'custom'],
         default='medium',
     )
     check_ssl = serializers.BooleanField(default=True)
     follow_redirects = serializers.BooleanField(default=True)
     control_external_tools = serializers.BooleanField(default=True)
+    selected_categories = serializers.ListField(
+        child=serializers.CharField(),
+        required=False, default=list,
+    )
 
     def validate(self, attrs):
         scope_type = attrs.get('scope_type', 'single_domain')
         target = attrs.get('target', '').strip()
+
+        # SSRF Protection
+        lower_target = target.lower()
+        if 'localhost' in lower_target or '169.254.169.254' in lower_target or 'metadata.google.internal' in lower_target or '127.0.0.1' in lower_target:
+            raise serializers.ValidationError({'target': 'Local or private network targets are not permitted.'})
 
         if scope_type == 'single_domain':
             # Must be a valid URL
@@ -139,6 +181,24 @@ class ScanDetailSerializer(serializers.ModelSerializer):
         return None
 
 
+class SharedReportSerializer(serializers.ModelSerializer):
+    """Serializer for SharedReport."""
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SharedReport
+        fields = ['id', 'scan', 'access_token', 'password_hash', 'expires_at', 'created_at', 'url']
+        read_only_fields = ['id', 'access_token', 'created_at', 'url']
+        extra_kwargs = {'password_hash': {'write_only': True}}
+
+    def get_url(self, obj):
+        request = self.context.get('request')
+        if request:
+            # Point to a potential frontend route or an API endpoint, here returning token
+            return request.build_absolute_uri(f'/public/report/{obj.access_token}/')
+        return f'/public/report/{obj.access_token}/'
+
+
 class ScanListSerializer(serializers.ModelSerializer):
     """Scan list item — matches ScanHistory.tsx structure."""
     type = serializers.CharField(source='get_scan_type_display')
@@ -174,11 +234,15 @@ class ScanFullCreateSerializer(serializers.Serializer):
     )
     include_subdomains = serializers.BooleanField(default=True)
     scan_depth = serializers.ChoiceField(
-        choices=['shallow', 'medium', 'deep'], default='medium',
+        choices=['shallow', 'medium', 'deep', 'custom'], default='medium',
     )
     check_ssl = serializers.BooleanField(default=True)
     follow_redirects = serializers.BooleanField(default=True)
     control_external_tools = serializers.BooleanField(default=True)
+    selected_categories = serializers.ListField(
+        child=serializers.CharField(),
+        required=False, default=list,
+    )
     profile = serializers.CharField(max_length=64, required=False, allow_blank=True, default='')
     auth_config = serializers.DictField(required=False, default=dict)
     scope = serializers.ListField(

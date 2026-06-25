@@ -5,13 +5,13 @@ from .models import User, APIKey, UserSession
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ['email', 'name', 'role', 'plan', 'is_active', 'created_at']
-    list_filter = ['role', 'plan', 'is_active', 'is_2fa_enabled']
+    list_display = ['email', 'name', 'role', 'is_active', 'created_at']
+    list_filter = ['role', 'is_active', 'is_2fa_enabled']
     search_fields = ['email', 'name']
     ordering = ['-created_at']
     fieldsets = BaseUserAdmin.fieldsets + (  # type: ignore[operator]
         ('SafeWeb Fields', {
-            'fields': ('name', 'role', 'company', 'job_title', 'plan',
+            'fields': ('name', 'role', 'company', 'job_title',
                        'is_2fa_enabled', 'last_login_ip'),
         }),
     )

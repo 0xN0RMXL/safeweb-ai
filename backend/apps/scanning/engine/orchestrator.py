@@ -314,6 +314,9 @@ class ScanOrchestrator:
     async def _scan_website_async(self, scan):
         """Execute a full website vulnerability scan with async recon."""
         import time as _time
+        # Limit concurrent active tool scans across all phases (e.g., maximum 5 tools globally per Orchestrator run)
+        self._tool_semaphore = asyncio.Semaphore(5)
+        
         from apps.scanning.models import Vulnerability
         from apps.scanning.engine.crawler import WebCrawler
         from apps.scanning.engine.analyzers.header_analyzer import HeaderAnalyzer
@@ -629,6 +632,18 @@ class ScanOrchestrator:
         all_verified_vulns: list = []  # accumulates verified findings from all sub-phases
         _p5_start = _time.monotonic()
         testers = get_all_testers()
+        if scan.depth == 'custom' and getattr(scan, 'selected_categories', None):
+            filtered = []
+            for t in testers:
+                tname = t.__class__.__name__.lower()
+                # Check if any selected category is a substring of the tester's class name
+                if any(cat.lower() in tname for cat in scan.selected_categories):
+                    filtered.append(t)
+            # Ensure we at least run something if categories were completely mismatched
+            if filtered:
+                testers = filtered
+                logger.info(f'Custom depth: filtered testers to {len(testers)} based on {scan.selected_categories}')
+
 
         # Inject auth session into each tester if authenticated
         if auth_manager:
@@ -849,9 +864,10 @@ class ScanOrchestrator:
                             _cli_kwargs.get('severity', '*'),
                             _cli_kwargs.get('tags', '*'),
                         )
-                        _cli_results = await asyncio.to_thread(
-                            lambda: _cli.run(_target, **_cli_kwargs)
-                        )
+                        async with self._tool_semaphore:
+                            _cli_results = await asyncio.to_thread(
+                                lambda: _cli.run(_target, **_cli_kwargs)
+                            )
                         for _r in _cli_results:
                             nuclei_raw.append({
                                 'name': f'[Nuclei] {_r.title}',

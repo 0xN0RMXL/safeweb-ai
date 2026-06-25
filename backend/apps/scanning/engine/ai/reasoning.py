@@ -16,62 +16,26 @@ import json
 import logging
 from typing import Any
 
-from .ollama_client import OllamaClient
+from .provider import LLMProvider
+import os
 
 logger = logging.getLogger(__name__)
 
-# ── System prompts ────────────────────────────────────────────────────────────
-
-_SYSTEM_PENTESTER = """You are an elite penetration tester with 15+ years of experience.
-You think methodically like a real human attacker: enumerate, hypothesize, test, verify.
-You always consider the full context: technology stack, WAF presence, authentication state,
-business logic, and attack surface. Be precise, technical, and actionable.
-Return only JSON unless explicitly told otherwise."""
-
-_SYSTEM_PAYLOAD_GEN = """You are an expert in crafting security test payloads.
-Given a context (technology, WAF, injection point, encoding), produce payloads that are:
-- Targeted to the specific technology and context
-- Designed to bypass common WAF rules
-- Varied in encoding and obfuscation
-- Both detection-oriented AND exploitation-oriented
-Return a JSON array of payload strings."""
-
-_SYSTEM_LOGIC_ANALYST = """You are a security researcher specializing in business logic vulnerabilities.
-Analyze application flows, API sequences, and state machines to identify:
-- Authorization bypasses (IDOR, privilege escalation)
-- Race conditions in critical operations
-- State manipulation attacks
-- Input validation gaps in business rules
-- Multi-step workflow abuse
-Return structured JSON analysis."""
-
-_SYSTEM_WAF_BYPASS = """You are a WAF bypass specialist. Given a WAF product and blocked payload,
-generate alternative payloads using techniques like:
-- Encoding variations (URL, double URL, Unicode, HTML entity, hex)
-- SQL comment injection, whitespace alternatives
-- Case alternation, string concatenation
-- Chunk transfer encoding exploits
-- Protocol-level bypasses
-Return a JSON array of bypass payloads."""
-
-_SYSTEM_TRIAGE = """You are a vulnerability triage specialist. Analyze findings and:
-- Remove duplicates and near-duplicates
-- Merge related findings into chains
-- Assess real-world exploitability (0.0-1.0)
-- Assign accurate severity (critical/high/medium/low/info)
-- Identify false positives with reasoning
-Return structured JSON."""
+# Load prompts registry
+_PROMPTS_FILE = os.path.join(os.path.dirname(__file__), 'prompts.json')
+with open(_PROMPTS_FILE, 'r') as f:
+    _PROMPTS = json.load(f)
 
 
 class LLMReasoningEngine:
-    """Human-like pentester reasoning powered by local LLM."""
+    """Human-like pentester reasoning powered by LLMProvider."""
 
-    def __init__(self, client: OllamaClient | None = None):
-        self.client = client or OllamaClient()
+    def __init__(self, provider: LLMProvider | None = None):
+        self.provider = provider or LLMProvider()
 
     @property
     def available(self) -> bool:
-        return self.client.is_available()
+        return self.provider.ollama.is_available() or bool(self.provider.openrouter_key)
 
     # ── 1. Attack Strategy ────────────────────────────────────────────────
 
@@ -110,7 +74,7 @@ Produce a JSON object with:
 4. "custom_payloads": list of {{vuln_type, payload, reasoning}} for this specific target
 5. "estimated_risk_areas": areas of highest risk based on the attack surface"""
 
-        return self.client.generate_json(prompt, system=_SYSTEM_PENTESTER)
+        return self.provider.generate_json(prompt, system=_PROMPTS["SYSTEM_PENTESTER"])
 
     # ── 2. Payload Generation ─────────────────────────────────────────────
 
@@ -146,7 +110,7 @@ Requirements:
 
 Return a JSON array of payload strings only."""
 
-        result = self.client.generate_json(prompt, system=_SYSTEM_PAYLOAD_GEN)
+        result = self.provider.generate_json(prompt, system=_PROMPTS["SYSTEM_PAYLOAD_GEN"])
         if isinstance(result, list):
             return [str(p) for p in result if p]
         return []
@@ -179,7 +143,7 @@ Analyze:
 Return JSON with: is_false_positive, fp_reasoning, exploitability_score,
 suggested_severity, exploitation_steps, business_impact"""
 
-        return self.client.generate_json(prompt, system=_SYSTEM_PENTESTER)
+        return self.provider.generate_json(prompt, system=_PROMPTS["SYSTEM_PENTESTER"])
 
     # ── 4. Business Logic Analysis ────────────────────────────────────────
 
@@ -213,7 +177,7 @@ For each finding, provide:
 
 Return JSON with "findings" array."""
 
-        return self.client.generate_json(prompt, system=_SYSTEM_LOGIC_ANALYST)
+        return self.provider.generate_json(prompt, system=_PROMPTS["SYSTEM_LOGIC_ANALYST"])
 
     # ── 5. WAF Bypass ─────────────────────────────────────────────────────
 
@@ -237,7 +201,7 @@ Generate 15 bypass variants using different techniques:
 
 Return a JSON array of bypass payload strings."""
 
-        result = self.client.generate_json(prompt, system=_SYSTEM_WAF_BYPASS)
+        result = self.provider.generate_json(prompt, system=_PROMPTS["SYSTEM_WAF_BYPASS"])
         if isinstance(result, list):
             return [str(p) for p in result if p]
         return []
@@ -265,7 +229,7 @@ For each chain, provide:
 
 Return JSON with "chains" array, ordered by severity."""
 
-        return self.client.generate_json(prompt, system=_SYSTEM_PENTESTER)
+        return self.provider.generate_json(prompt, system=_PROMPTS["SYSTEM_PENTESTER"])
 
     # ── 7. Triage & Dedup ─────────────────────────────────────────────────
 
@@ -290,8 +254,30 @@ Return JSON with:
 - "chains": array of {{name, finding_indices, combined_impact}}
 - "summary": {{total, unique, false_positives, critical, high, medium, low, info}}"""
 
-        return self.client.generate_json(prompt, system=_SYSTEM_TRIAGE,
+        return self.provider.generate_json(prompt, system=_PROMPTS["SYSTEM_TRIAGE"],
                                          temperature=0.1)
+
+    def explain_vulnerability(self, finding: dict) -> dict | None:
+        """Generate human-readable explanation and remediation for a finding.
+        
+        Returns JSON with:
+          - ai_explanation (str)
+          - ai_remediation (str)
+        """
+        prompt = f"""Explain this vulnerability finding and provide remediation steps:
+
+FINDING:
+{json.dumps(finding, indent=2, default=str)[:3000]}
+
+Explain it as if you are a senior penetration tester explaining it to a developer.
+Provide a clear, detailed explanation of how it works and what the impact is.
+Then, provide specific, actionable remediation steps.
+
+Return JSON with:
+- "ai_explanation": string containing the explanation
+- "ai_remediation": string containing the remediation steps
+"""
+        return self.provider.generate_json(prompt, system=_PROMPTS["SYSTEM_PENTESTER"])
 
     # ── Utility ───────────────────────────────────────────────────────────
 
@@ -300,7 +286,7 @@ Return JSON with:
         prompt = question
         if context:
             prompt = f"Context:\n{context[:3000]}\n\nQuestion: {question}"
-        return self.client.generate(prompt, system=_SYSTEM_PENTESTER,
+        return self.provider.generate(prompt, system=_PROMPTS["SYSTEM_PENTESTER"],
                                     temperature=0.4)
 
     async def aplan_attack_strategy(self, recon_data: dict) -> dict | list | None:
@@ -313,4 +299,4 @@ RECON DATA:
 Produce a JSON object with priority_targets, attack_phases, vuln_hypotheses,
 custom_payloads, estimated_risk_areas."""
 
-        return await self.client.agenerate_json(prompt, system=_SYSTEM_PENTESTER)
+        return await self.provider.agenerate_json(prompt, system=_PROMPTS["SYSTEM_PENTESTER"])

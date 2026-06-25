@@ -454,6 +454,10 @@ class TwoFactorVerifyView(views.APIView):
         )
 
 
+from django.views.decorators.csrf import csrf_protect
+from django.utils.decorators import method_decorator
+
+@method_decorator(csrf_protect, name='dispatch')
 class ContactView(generics.CreateAPIView):
     """Handle contact form submissions — no auth required."""
     serializer_class = ContactMessageSerializer
@@ -500,3 +504,24 @@ class JobApplicationView(views.APIView):
             {'detail': 'Application submitted successfully. We will review it and get back to you soon.'},
             status=status.HTTP_201_CREATED,
         )
+
+
+class UserSettingsView(views.APIView):
+    """GET /api/user/settings"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        org = getattr(request, 'organization', None)
+        from .models import AIConfiguration
+        from .serializers import AIConfigurationSerializer
+        
+        response_data = {
+            'organization': org.name if org else None,
+        }
+        
+        if org:
+            ai_config = AIConfiguration.objects.filter(organization=org).first()
+            if ai_config:
+                response_data['ai_configuration'] = AIConfigurationSerializer(ai_config).data
+                
+        return Response(response_data)

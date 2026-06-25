@@ -1,0 +1,28 @@
+{
+  "scan_vuln_scan_0": {
+    "entry_id": "scan_vuln_scan_0",
+    "entry_type": "technique",
+    "title": "[Nuclei] [] Duplicate Vuln",
+    "description": "Test",
+    "severity": "ToolSeverity.HIGH",
+    "affected_tech": [],
+    "cwe": "",
+    "cvss": 0.0,
+    "payloads": [],
+    "source": "scan_result",
+    "timestamp": 1782393396.61113
+  },
+  "scan_vuln_scan_1": {
+    "entry_id": "scan_vuln_scan_1",
+    "entry_type": "technique",
+    "title": "[Nuclei] [] Duplicate Vuln",
+    "description": "Test",
+    "severity": "ToolSeverity.HIGH",
+    "affected_tech": [],
+    "cwe": "",
+    "cvss": 0.0,
+    "payloads": [],
+    "source": "scan_result",
+    "timestamp": 1782393396.6111448
+  }
+}

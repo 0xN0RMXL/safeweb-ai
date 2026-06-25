@@ -52,7 +52,19 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.core.middleware.RequestIDMiddleware',
+    'apps.accounts.middleware.OrganizationMiddleware',
+    'apps.core.middleware.SecurityHeadersMiddleware',
 ]
+
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'same-origin'
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 ROOT_URLCONF = 'config.urls'
 
@@ -250,9 +262,14 @@ DEFAULT_FROM_EMAIL = 'SafeWeb AI <noreply@safeweb.ai>'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'request_id': {
+            '()': 'apps.core.middleware.RequestIDLogFilter',
+        },
+    },
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'format': '{levelname} {asctime} [{request_id}] {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
     },
@@ -260,6 +277,7 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
+            'filters': ['request_id'],
         },
     },
     'root': {

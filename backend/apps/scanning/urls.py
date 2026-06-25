@@ -89,4 +89,13 @@ urlpatterns = [
 
     # Tool registry health check (admin)
     path('tools/health/', views.ToolHealthView.as_view(), name='tools-health'),
+
+    # ── Target Management ────────────────────────────────────────────────
+    path('targets/', views.TargetListCreateView.as_view(), name='targets-list'),
+    path('targets/<uuid:id>/', views.TargetDetailView.as_view(), name='targets-detail'),
+
+    # ── Shared Reports (Phase C) ─────────────────────────────────────────
+    path('<uuid:scan_id>/share/', views.SharedReportCreateView.as_view(), name='scan-share-create'),
+    path('share/<uuid:pk>/', views.SharedReportDeleteView.as_view(), name='scan-share-delete'),
+    path('public/<uuid:access_token>/', views.PublicReportView.as_view(), name='scan-public-report'),
 ]

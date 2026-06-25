@@ -4,6 +4,82 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
+class Organization(models.Model):
+    """Multi-tenancy isolation boundary."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    plan_tier = models.CharField(
+        max_length=20,
+        choices=[('free', 'Free'), ('pro', 'Pro'), ('enterprise', 'Enterprise')],
+        default='free'
+    )
+    usage_counters = models.JSONField(default=dict, blank=True)
+    owner = models.ForeignKey(
+        'User', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name='owned_organizations'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'organizations'
+
+    def __str__(self):
+        return self.name
+
+
+class OrganizationMembership(models.Model):
+    """Many-to-Many link between User and Organization."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='memberships')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='memberships')
+    role = models.CharField(
+        max_length=20,
+        choices=[('owner', 'Owner'), ('admin', 'Admin'), ('member', 'Member')],
+        default='member'
+    )
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'organization_memberships'
+        unique_together = ('user', 'organization')
+
+    def __str__(self):
+        return f'{self.user.email} - {self.organization.name} ({self.role})'
+
+
+class AIConfiguration(models.Model):
+    """AI Provider configuration per Organization."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='ai_config')
+    provider = models.CharField(
+        max_length=50,
+        choices=[('openai', 'OpenAI'), ('anthropic', 'Anthropic'), ('gemini', 'Google Gemini'), ('custom', 'Custom Provider')],
+        default='openai'
+    )
+    api_key = models.CharField(max_length=255, blank=True, default='')
+    model_name = models.CharField(max_length=100, blank=True, default='')
+    base_url = models.URLField(blank=True, default='', help_text="For custom providers or specific endpoints")
+    temperature = models.FloatField(default=0.7)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def masked_api_key(self):
+        if not self.api_key:
+            return ""
+        if len(self.api_key) <= 8:
+            return "********"
+        return f"{self.api_key[:3]}...{self.api_key[-4:]}"
+
+    class Meta:
+        db_table = 'ai_configurations'
+
+    def __str__(self):
+        return f'{self.organization.name} AI Config ({self.provider})'
+
+
 class User(AbstractUser):
     """Extended user model with security-focused fields."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -17,11 +93,6 @@ class User(AbstractUser):
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     company = models.CharField(max_length=255, blank=True, default='')
     job_title = models.CharField(max_length=255, blank=True, default='')
-    plan = models.CharField(
-        max_length=20,
-        choices=[('free', 'Free'), ('pro', 'Pro'), ('enterprise', 'Enterprise')],
-        default='free'
-    )
     is_2fa_enabled = models.BooleanField(default=False)
     two_fa_secret = models.CharField(max_length=64, blank=True, default='')
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)

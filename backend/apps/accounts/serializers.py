@@ -255,3 +255,22 @@ class ContactMessageSerializer(serializers.ModelSerializer):
         model = ContactMessage
         fields = ['id', 'name', 'email', 'subject', 'message', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+
+class AIConfigurationSerializer(serializers.ModelSerializer):
+    """Serializer for AI Configuration, masking the API key."""
+    api_key = serializers.SerializerMethodField()
+
+    class Meta:
+        from .models import AIConfiguration
+        model = AIConfiguration
+        fields = ['id', 'provider', 'model_name', 'api_key']
+
+    def get_api_key(self, obj):
+        key = getattr(obj, 'api_key', '')
+        if not key:
+            return None
+        # Return only last 4 characters, e.g., sk-...1234
+        if len(key) > 4:
+            return f"sk-...{key[-4:]}"
+        return "****"

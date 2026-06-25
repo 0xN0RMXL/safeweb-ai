@@ -33,6 +33,18 @@ _MAX_OUTPUT_BYTES = 5 * 1024 * 1024
 _EXTERNAL_TOOLS_ENABLED: ContextVar[bool] = ContextVar('external_tools_enabled', default=True)
 
 
+def set_memory_limit():
+    """Limit subprocess memory usage to prevent host exhaustion."""
+    try:
+        import resource
+        max_mem = 500 * 1024 * 1024  # 500 MB
+        resource.setrlimit(resource.RLIMIT_AS, (max_mem, max_mem))
+    except ImportError:
+        pass  # Windows fallback
+    except Exception as e:
+        logger.debug(f'Failed to set memory limit: {e}')
+
+
 def set_external_tools_enabled(enabled: bool) -> Token:
     """Set external tool execution mode for the current scan context."""
     return _EXTERNAL_TOOLS_ENABLED.set(bool(enabled))
@@ -112,6 +124,7 @@ class ExternalTool(ABC):
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                preexec_fn=set_memory_limit,
             )
         except subprocess.TimeoutExpired:
             logger.warning('%s: timed out after %ds', self.name, timeout)
@@ -144,6 +157,7 @@ class ExternalTool(ABC):
                 *args,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                preexec_fn=set_memory_limit,
             )
             stdout, stderr = await asyncio.wait_for(
                 proc.communicate(), timeout=timeout
