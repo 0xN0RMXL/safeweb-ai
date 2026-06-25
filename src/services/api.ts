@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 // ── Axios instance ──────────────────────────────────────────────────
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api',
+    baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1',
     headers: { 'Content-Type': 'application/json' },
 });
 
@@ -59,7 +59,7 @@ api.interceptors.response.use(
             isRefreshing = true;
 
             try {
-                const baseUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+                const baseUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1';
                 const { data } = await axios.post(`${baseUrl}/auth/refresh/`, { refresh });
                 setTokens(data.access, data.refresh || refresh);
                 processQueue(null);
@@ -352,9 +352,24 @@ export const chatAPI = {
 
     getSuggestions: (scanId?: string) =>
         api.get('/chat/suggestions/', { params: scanId ? { scan_id: scanId } : {} }),
-
     getAnalytics: (timeRange = '30d') =>
         api.get('/chat/analytics/', { params: { timeRange } }),
+};
+
+// ── AI Remediation endpoints ──────────────────────────────────────────
+export const aiAPI = {
+    getRemediation: (scanId: string, vulnId: string) =>
+        api.post(`/scan/${scanId}/findings/${vulnId}/remediate/`),
+};
+
+// ── Target Management endpoints ─────────────────────────────────────
+export const targetAPI = {
+    getTargets: () => api.get('/scan/targets/'),
+    createTarget: (data: { domain: string; display_name: string; tags?: string[] }) =>
+        api.post('/scan/targets/', data),
+    getTarget: (id: string) => api.get(`/scan/targets/${id}/`),
+    updateTarget: (id: string, data: any) => api.patch(`/scan/targets/${id}/`, data),
+    deleteTarget: (id: string) => api.delete(`/scan/targets/${id}/`),
 };
 
 // ── Admin endpoints ─────────────────────────────────────────────────

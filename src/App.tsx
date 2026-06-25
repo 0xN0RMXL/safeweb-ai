@@ -31,9 +31,11 @@ const Careers          = lazy(() => import('@pages/Careers'));
 const Partners         = lazy(() => import('@pages/Partners'));
 const ScheduledScans   = lazy(() => import('@pages/ScheduledScans'));
 const ScopeManagement  = lazy(() => import('@pages/ScopeManagement'));
+const Targets          = lazy(() => import('@pages/Targets'));
 const AssetInventory   = lazy(() => import('@pages/AssetInventory'));
 const WebhookSettings  = lazy(() => import('@pages/WebhookSettings'));
 const ScanComparison   = lazy(() => import('@pages/ScanComparison'));
+const Onboarding       = lazy(() => import('@pages/Onboarding'));
 const NotFound         = lazy(() => import('@pages/NotFound'));
 
 // Admin pages — grouped into a separate chunk by Vite's manualChunks
@@ -126,9 +128,11 @@ function App() {
                     <Route path="/partners" element={<L C={Partners} />} />
                     <Route path="/scheduled-scans" element={<ProtectedRoute><L C={ScheduledScans} /></ProtectedRoute>} />
                     <Route path="/scopes" element={<ProtectedRoute><L C={ScopeManagement} /></ProtectedRoute>} />
+                    <Route path="/targets" element={<ProtectedRoute><L C={Targets} /></ProtectedRoute>} />
                     <Route path="/assets" element={<ProtectedRoute><L C={AssetInventory} /></ProtectedRoute>} />
                     <Route path="/settings/webhooks" element={<ProtectedRoute><L C={WebhookSettings} /></ProtectedRoute>} />
                     <Route path="/scan/compare/:id1/:id2" element={<ProtectedRoute><L C={ScanComparison} /></ProtectedRoute>} />
+                    <Route path="/onboarding" element={<ProtectedRoute><L C={Onboarding} /></ProtectedRoute>} />
 
                     {/* Admin Routes */}
                     <Route path="/admin" element={<ProtectedRoute adminOnly><L C={AdminDashboard} /></ProtectedRoute>} />

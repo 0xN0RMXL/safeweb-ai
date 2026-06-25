@@ -10,8 +10,8 @@ export default function Input({
     id,
     ...props
 }: InputProps) {
-    // Generate id from label if not provided
-    const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+    // Generate id from id prop, name prop, or label
+    const inputId = id || props.name || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
     
     const baseClasses = 'w-full bg-bg-secondary border border-border-primary rounded-lg px-4 py-2.5 text-text-primary placeholder:text-text-muted transition-colors duration-200 focus:outline-none focus:border-accent-green focus:ring-1 focus:ring-accent-green';
     const errorClasses = error ? 'border-status-critical focus:border-status-critical focus:ring-status-critical' : '';
