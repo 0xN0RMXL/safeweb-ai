@@ -47,7 +47,7 @@ class VulnerabilitySerializer(serializers.ModelSerializer):
         model = Vulnerability
         fields = [
             'id', 'name', 'severity', 'category', 'description',
-            'impact', 'remediation', 'cwe', 'cvss', 'affected_url',
+            'impact', 'remediation', 'ai_explanation', 'ai_remediation', 'cwe', 'cvss', 'affected_url',
             'evidence', 'is_false_positive', 'verified',
             'false_positive_score', 'attack_chain', 'oob_callback',
             'exploit_data', 'tool_name',

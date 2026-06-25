@@ -74,9 +74,21 @@ class WebsiteScanCreateView(views.APIView):
         # Wide scope starts in pending_confirmation so user can review discovered domains
         initial_status = 'pending_confirmation' if scope_type == 'wide_scope' else 'pending'
 
+        org = request.organization
+        if not org and hasattr(request, 'user') and request.user.is_authenticated:
+            org_id = request.headers.get('X-Organization-ID') or request.META.get('HTTP_X_ORGANIZATION_ID')
+            if org_id:
+                from apps.accounts.models import Organization
+                org = Organization.objects.filter(id=org_id, memberships__user=request.user).first()
+            if not org:
+                from apps.accounts.models import OrganizationMembership
+                first_mem = OrganizationMembership.objects.filter(user=request.user).first()
+                if first_mem:
+                    org = first_mem.organization
+
         scan = Scan.objects.create(
             user=request.user,
-            organization=request.organization,
+            organization=org,
             scan_type='website',
             target=data['target'],
             depth=data.get('scan_depth', 'medium'),
@@ -1805,6 +1817,17 @@ class TargetListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         from apps.accounts.middleware import get_current_organization
         org = get_current_organization()
+        if not org and hasattr(self.request, 'user') and self.request.user.is_authenticated:
+            org_id = self.request.headers.get('X-Organization-ID') or self.request.META.get('HTTP_X_ORGANIZATION_ID')
+            if org_id:
+                from apps.accounts.models import Organization
+                org = Organization.objects.filter(id=org_id, memberships__user=self.request.user).first()
+            if not org:
+                from apps.accounts.models import OrganizationMembership
+                first_mem = OrganizationMembership.objects.filter(user=self.request.user).first()
+                if first_mem:
+                    org = first_mem.organization
+
         if not org:
             from rest_framework.exceptions import ValidationError
             raise ValidationError("Organization context required.")

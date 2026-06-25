@@ -28,6 +28,16 @@ class IsOrganizationAdmin(BasePermission):
             return False
         org = getattr(request, 'organization', None)
         if not org:
+            org_id = request.headers.get('X-Organization-ID') or request.META.get('HTTP_X_ORGANIZATION_ID')
+            from .models import OrganizationMembership
+            if org_id:
+                mem = OrganizationMembership.objects.filter(user=request.user, organization_id=org_id).first()
+            else:
+                mem = OrganizationMembership.objects.filter(user=request.user).first()
+            if mem:
+                org = mem.organization
+                request.organization = org
+        if not org:
             return False
         from .models import OrganizationMembership
         membership = OrganizationMembership.objects.filter(user=request.user, organization=org).first()
@@ -41,7 +51,18 @@ class CanStartScan(BasePermission):
             return False
         org = getattr(request, 'organization', None)
         if not org:
+            org_id = request.headers.get('X-Organization-ID') or request.META.get('HTTP_X_ORGANIZATION_ID')
+            from .models import OrganizationMembership
+            if org_id:
+                mem = OrganizationMembership.objects.filter(user=request.user, organization_id=org_id).first()
+            else:
+                mem = OrganizationMembership.objects.filter(user=request.user).first()
+            if mem:
+                org = mem.organization
+                request.organization = org
+        if not org:
             return False
         from .models import OrganizationMembership
         membership = OrganizationMembership.objects.filter(user=request.user, organization=org).first()
         return membership and membership.role != 'viewer'
+

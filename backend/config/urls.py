@@ -6,7 +6,14 @@ from django.http import JsonResponse
 
 
 def health_check(request):
-    return JsonResponse({'status': 'ok'})
+    try:
+        from django.db import connection
+        connection.ensure_connection()
+        db_status = 'connected'
+    except Exception:
+        db_status = 'disconnected'
+    return JsonResponse({'status': 'ok', 'db': db_status})
+
 
 
 def celery_health_check(request):
@@ -22,6 +29,7 @@ def celery_health_check(request):
 
 
 urlpatterns = [
+    path('health', health_check, name='root-health-check'),
     path('api/v1/health/', health_check, name='health-check'),
     path('api/v1/health/celery/', celery_health_check, name='celery-health-check'),
     path('admin/', admin.site.urls),
