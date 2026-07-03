@@ -2,13 +2,11 @@
 Model trainer — generates and trains scikit-learn models
 for phishing and malware detection using synthetic data.
 """
-import os
 import logging
 import time
 import numpy as np
 import joblib
 from pathlib import Path
-from datetime import datetime
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score

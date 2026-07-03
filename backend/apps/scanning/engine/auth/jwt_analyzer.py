@@ -278,7 +278,7 @@ class JWTAnalyzer:
                 result.findings.append(JWTFinding(
                     title='JWT Signed with Weak Secret',
                     severity='critical',
-                    description=f'Token is signed with a guessable secret',
+                    description='Token is signed with a guessable secret',
                     cwe='CWE-521',
                     evidence=f'alg={alg}',
                 ))

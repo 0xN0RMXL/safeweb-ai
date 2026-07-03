@@ -88,4 +88,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 .vercel
+playwright-report/
+test-results/
+*.txt
+backend/*.txt
+runtime_toggle_proof_result.json
 .env*.local

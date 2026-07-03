@@ -9,11 +9,9 @@ Handles login flows that require JavaScript execution:
 """
 from __future__ import annotations
 
-import json
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +185,6 @@ class HeadlessAuthFlow:
 
     def apply_to_session(self, session, auth_result: HeadlessAuthResult) -> None:
         """Apply browser auth state to a requests.Session."""
-        import requests
         for cookie in auth_result.cookies:
             session.cookies.set(
                 cookie['name'], cookie['value'],
@@ -290,3 +287,25 @@ class HeadlessAuthFlow:
                         headers['Authorization'] = f'Bearer {val}'
                         break
         return headers
+
+    def run_auto_login(
+        self,
+        login_url: str,
+        username: str = '',
+        password: str = '',
+    ) -> HeadlessAuthResult:
+        """Create standalone Playwright browser context and execute form login."""
+        result = HeadlessAuthResult()
+        if not HAS_PLAYWRIGHT:
+            result.error = 'Playwright not available'
+            return result
+        try:
+            from playwright.sync_api import sync_playwright
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                context = browser.new_context()
+                result = self.login_form(context, login_url, username, password)
+                browser.close()
+        except Exception as e:
+            result.error = str(e)
+        return result

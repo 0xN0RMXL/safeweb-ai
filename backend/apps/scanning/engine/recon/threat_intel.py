@@ -8,7 +8,6 @@ import math
 import re
 import time
 from typing import Optional
-from urllib.parse import urlparse
 
 from ._base import (
     create_result,
@@ -328,7 +327,7 @@ def run_threat_intel(target_url: str, recon_data: Optional[dict] = None) -> dict
         recon_data = {}
 
     hostname = extract_hostname(target_url)
-    root_domain = extract_root_domain(hostname) if hostname else ''
+    extract_root_domain(hostname) if hostname else ''
 
     logger.info('Starting threat intelligence enrichment for %s', target_url)
 

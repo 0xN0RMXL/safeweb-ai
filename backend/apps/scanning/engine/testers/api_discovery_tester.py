@@ -6,7 +6,6 @@ Tests for: OpenAPI/Swagger exposure, REST endpoint enumeration, HTTP method
 testing (dangerous methods), authentication requirement detection, API versioning
 exposure, and rate limiting assessment.
 """
-import re
 import json
 import logging
 from urllib.parse import urljoin, urlparse
@@ -287,7 +286,7 @@ class APIDiscoveryTester(BaseTester):
             critically_sensitive = [r for r in accessible if r['sensitive']]
             if critically_sensitive:
                 vulnerabilities.append(self._build_vuln(
-                    name=f'Sensitive API Resources Accessible Without Auth',
+                    name='Sensitive API Resources Accessible Without Auth',
                     severity='high',
                     category='API Discovery',
                     description=f'{len(critically_sensitive)} sensitive API resource(s) '

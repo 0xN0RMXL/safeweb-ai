@@ -31,18 +31,43 @@ class LLMProvider:
             headers = {"Authorization": f"Bearer {self.org_config.api_key}"}
             url = self.org_config.base_url
             model = self.org_config.model_name
-            # For known providers
-            if self.org_config.provider == 'openai':
-                url = url or "https://api.openai.com/v1/chat/completions"
-            elif self.org_config.provider == 'anthropic':
-                url = url or "https://api.anthropic.com/v1/messages"
+
+            default_configs = {
+                'openai': ("https://api.openai.com/v1/chat/completions", "gpt-4o-mini"),
+                'gemini': ("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-2.5-flash"),
+                'groq': ("https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile"),
+                'openrouter': ("https://openrouter.ai/api/v1/chat/completions", "openai/gpt-3.5-turbo"),
+                'cerebras': ("https://api.cerebras.ai/v1/chat/completions", "llama3.1-70b"),
+                'mistral': ("https://api.mistral.ai/v1/chat/completions", "mistral-large-latest"),
+                'together': ("https://api.together.ai/v1/chat/completions", "meta-llama/Llama-3.3-70B-Instruct-Turbo"),
+                'fireworks': ("https://api.fireworks.ai/inference/v1/chat/completions", "accounts/fireworks/models/llama-v3p3-70b-instruct"),
+                'xai': ("https://api.x.ai/v1/chat/completions", "grok-2-1212"),
+                'anthropic': ("https://api.anthropic.com/v1/messages", "claude-3-5-sonnet-20241022"),
+            }
+
+            default_url, default_model = default_configs.get(self.org_config.provider, ("", ""))
+            url = url or default_url
+            model = model or default_model
+
+            if self.org_config.provider == 'anthropic':
                 headers["x-api-key"] = self.org_config.api_key
                 headers.pop("Authorization", None)
                 headers["anthropic-version"] = "2023-06-01"
-            elif self.org_config.provider == 'gemini':
-                # Gemini REST format requires API key in query usually, but assuming standard compatible here
-                url = url or "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+            elif self.org_config.provider == 'openrouter':
+                headers["HTTP-Referer"] = "https://safeweb-ai.com"
+                headers["X-Title"] = "SafeWeb AI"
+
             return url, headers, model
+            
+        gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if gemini_key:
+            return (
+                "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+                {
+                    "Authorization": f"Bearer {gemini_key}",
+                },
+                "gemini-2.5-flash"
+            )
             
         if self.openrouter_key:
             return (

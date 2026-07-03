@@ -220,7 +220,7 @@ class ReDoSTester(BaseTester):
 
             try:
                 t0 = time.monotonic()
-                resp = self._make_request(method, action, data=evil_data)
+                self._make_request(method, action, data=evil_data)
                 elapsed = time.monotonic() - t0
 
                 if (elapsed > REDOS_TIME_THRESHOLD

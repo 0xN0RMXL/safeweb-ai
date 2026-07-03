@@ -217,6 +217,23 @@ ACTION_TOOLS = [
             }
         }
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_learning_center",
+            "description": "Search the 557 PostgreSQL security articles for remediation advice, attack guides, or AppSec concepts",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search keyword or vulnerability topic (e.g. 'CORS', 'SQL injection', 'JWT')"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
+    },
 ]
 
 
@@ -835,7 +852,7 @@ class ChatEngine:
         self._client = None
 
     def _has_llm_key(self):
-        return bool(getattr(settings, 'OPENROUTER_API_KEY', ''))
+        return bool(getattr(settings, 'GEMINI_API_KEY', '') or getattr(settings, 'GOOGLE_API_KEY', '') or getattr(settings, 'OPENROUTER_API_KEY', ''))
 
     def extract_json(self, text: str) -> dict:
         """Extract clean JSON dictionary from dirty markdown LLM outputs."""
@@ -865,16 +882,23 @@ class ChatEngine:
         if self._client is None and self._has_llm_key():
             try:
                 import openai
-                self._client = openai.OpenAI(
-                    base_url='https://openrouter.ai/api/v1',
-                    api_key=settings.OPENROUTER_API_KEY,
-                    default_headers={
-                        'HTTP-Referer': 'https://safeweb.ai',
-                        'X-Title': 'SafeWeb AI Assistant',
-                    },
-                )
+                gemini_key = getattr(settings, 'GEMINI_API_KEY', '') or getattr(settings, 'GOOGLE_API_KEY', '')
+                if gemini_key:
+                    self._client = openai.OpenAI(
+                        base_url='https://generativelanguage.googleapis.com/v1beta/openai/',
+                        api_key=gemini_key,
+                    )
+                else:
+                    self._client = openai.OpenAI(
+                        base_url='https://openrouter.ai/api/v1',
+                        api_key=settings.OPENROUTER_API_KEY,
+                        default_headers={
+                            'HTTP-Referer': 'https://safeweb.ai',
+                            'X-Title': 'SafeWeb AI Assistant',
+                        },
+                    )
             except Exception as e:
-                logger.error(f'Failed to initialize OpenRouter client: {e}')
+                logger.error(f'Failed to initialize AI client: {e}')
         return self._client
 
     def generate_response(self, message, session, scan_context='', user_context='', user=None):
@@ -902,7 +926,8 @@ class ChatEngine:
             'content': f'<user_message>{message}</user_message>',
         })
 
-        model = getattr(settings, 'OPENROUTER_MODEL', 'google/gemini-2.0-flash-001')
+        gemini_key = getattr(settings, 'GEMINI_API_KEY', '') or getattr(settings, 'GOOGLE_API_KEY', '')
+        model = 'gemini-2.5-flash' if gemini_key else getattr(settings, 'OPENROUTER_MODEL', 'google/gemini-2.0-flash-001')
 
         # First call — with tools for action detection
         try:
@@ -1011,18 +1036,73 @@ class ChatEngine:
                 'source': 'local',
             }
 
+        # Database RAG Full-Text Search over 557 PostgreSQL articles
+        try:
+            from django.db.models import Q
+            from apps.learn.models import Article
+            
+            # Clean stop words for better search matching
+            stop_words = {'what', 'is', 'how', 'do', 'i', 'can', 'to', 'the', 'a', 'an', 'in', 'of', 'for', 'about', 'on', 'my', 'does', 'why', 'are', 'with', 'tell', 'me', 'nodejs'}
+            terms = [w for w in re.findall(r'\w+', lower) if len(w) > 2 and w not in stop_words]
+            
+            query_filter = Q()
+            for t in terms[:4]:
+                query_filter |= Q(title__icontains=t) | Q(excerpt__icontains=t) | Q(category__icontains=t) | Q(content__icontains=t)
+                
+            if terms:
+                articles = Article.objects.filter(query_filter, is_published=True).distinct()[:2]
+                if articles.exists():
+                    art = articles.first()
+                    rag_text = (
+                        f"### 📚 {art.title}\n\n"
+                        f"{art.excerpt}\n\n"
+                    )
+                    if art.content:
+                        # Extract first meaningful section or code block
+                        paragraphs = [p.strip() for p in art.content.split('\n\n') if p.strip() and not p.strip().startswith('#')]
+                        if paragraphs:
+                            rag_text += f"{paragraphs[0]}\n\n"
+                    
+                    rag_text += f"👉 **[Read Full Specialist Guide](/learn)** in the Security Learning Center."
+                    
+                    return {
+                        'response': rag_text,
+                        'tokens_used': 0,
+                        'actions': [{'type': 'navigate', 'path': '/learn'}],
+                        'suggestions': self._generate_suggestions(message, rag_text, scan_context),
+                        'source': 'local_rag',
+                    }
+        except Exception as e:
+            logger.warning(f'Local RAG search failed: {e}')
+
         # Default fallback
+        is_arabic = bool(re.search(r'[\u0600-\u06FF]', message))
+        if is_arabic:
+            return {
+                'response': (
+                    "أنا مساعد **SafeWeb AI الذكي** وخبير الأمن السيبراني الخاص بك. إليك كيف يمكنني مساعدتك الآن:\n\n"
+                    "- 🔍 **بدء ومتابعة الفحوصات**: اطلب مني بدء فحص سريع أو شرح نتائج فحصك الحالي.\n"
+                    "- 🛡️ **معالجة الثغرات**: ابحث في أكثر من 500 دليل تخصصي (XSS, SQLi, IDOR, CORS, JWT).\n"
+                    "- 💳 **الباقات والاشتراكات**: تصفح باقاتنا الشفافة أو تحقق من رصيدك المتبقي.\n\n"
+                    "جرب السؤال: *\"كيف أعالج ثغرة DOM XSS؟\"* أو *\"ابدأ فحصاً سريعاً لموقع example.com\"*"
+                ),
+                'tokens_used': 0,
+                'actions': [],
+                'suggestions': ['كيف أبدأ فحصاً جديداً؟', 'ابحث عن ثغرة XSS', 'عرض باقات الأسعار'],
+                'source': 'local',
+            }
+
         return {
             'response': (
-                "I'm not sure I understand that question. I can help you with:\n\n"
-                "- **Security topics**: XSS, SQL injection, CSRF, OWASP Top 10, and more\n"
-                "- **SafeWeb AI features**: Starting scans, exports, scheduled scans, settings\n"
-                "- **Your scan results**: Vulnerability analysis, remediation advice, score explanation\n\n"
-                "Try asking something like *\"How do I start a scan?\"* or *\"What is XSS?\"*"
+                "I'm SafeWeb AI Assistant, your autonomous cybersecurity expert. Here is how I can assist you right now:\n\n"
+                "- 🔍 **Start or Track Scans**: Ask me to start a quick scan or explain your active scan results.\n"
+                "- 🛡️ **Vulnerability Remediation**: Search our 500+ security playbooks (XSS, SQLi, IDOR, CORS, JWT).\n"
+                "- 💳 **Plans & Billing**: Explore our transparent pricing tiers starting at $39/mo or check your quota.\n\n"
+                "Try asking: *\"How do I fix DOM XSS?\"* or *\"Start a quick scan on example.com\"*"
             ),
             'tokens_used': 0,
             'actions': [],
-            'suggestions': ['How do I start a scan?', 'What is OWASP Top 10?', 'Explain security headers'],
+            'suggestions': ['How do I start a scan?', 'Search articles for XSS', 'Show pricing plans'],
             'source': 'local',
         }
 
@@ -1043,6 +1123,11 @@ class ChatEngine:
                 'role': 'system',
                 'content': f'User profile context:\n{user_context}',
             })
+
+        messages.append({
+            'role': 'system',
+            'content': 'IMPORTANT: Always reply in the exact same language the user writes in. If the user writes in Arabic, respond in clear, professional Arabic.',
+        })
 
         # Add conversation history (last N messages)
         history = session.messages.order_by('-created_at')[:MAX_CONTEXT_MESSAGES]

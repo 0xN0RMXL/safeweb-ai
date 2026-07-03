@@ -4,12 +4,10 @@ from rest_framework import generics, status, views
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
-from .models import User, APIKey, UserSession, ContactMessage
+from .models import User, APIKey, UserSession
 from .serializers import (
-    RegisterSerializer, LoginSerializer, UserSerializer,
-    ProfileSerializer, ProfileUpdateSerializer,
+    RegisterSerializer, LoginSerializer, ProfileSerializer, ProfileUpdateSerializer,
     ChangePasswordSerializer, ForgotPasswordSerializer,
     ResetPasswordSerializer, APIKeySerializer, APIKeyCreateSerializer,
     SessionSerializer, TwoFactorVerifySerializer,
@@ -40,6 +38,7 @@ def get_tokens_for_user(user, remember_me=False):
 
 def build_user_response(user, tokens=None):
     """Build standardized user response."""
+    from apps.scanning.models import Target
     user_data = {
         'id': str(user.id),
         'email': user.email,
@@ -52,6 +51,8 @@ def build_user_response(user, tokens=None):
         'twoFactorEnabled': getattr(user, 'is_2fa_enabled', False),
         'createdAt': user.created_at.isoformat() if user.created_at else None,
         'lastLogin': user.last_login.isoformat() if user.last_login else None,
+        'has_targets': Target.objects.filter(organization__memberships__user=user).exists() or
+                       Target.objects.filter(organization__owner=user).exists(),
     }
     response = {'user': user_data}
     if tokens:

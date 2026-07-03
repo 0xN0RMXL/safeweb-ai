@@ -166,8 +166,6 @@ def run_subdomain_permutation(
             all_words.update(_extract_words(label))
 
         # Pair each word with high-value prefixes
-        high_value_words = {'api', 'app', 'admin', 'dev', 'internal',
-                            'staging', 'prod', 'db', 'auth', 'vpn'}
         for word, pfx in itertools.product(all_words, _PREFIXES[:20]):
             for form in _apply_prefix(pfx, word):
                 candidates.add(f'{form}.{domain}')

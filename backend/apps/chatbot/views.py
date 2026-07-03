@@ -1,4 +1,3 @@
-import json
 import logging
 from django.utils import timezone
 from rest_framework import status
@@ -289,7 +288,7 @@ class SuggestionsView(APIView):
                 recent = Scan.objects.filter(user=request.user).order_by('-created_at').first()
                 if recent:
                     suggestions = [
-                        f'Show my recent scan results',
+                        'Show my recent scan results',
                         'How is my security score calculated?',
                         'What vulnerabilities should I fix first?',
                         'How do I schedule recurring scans?',

@@ -12,15 +12,12 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import json
 import logging
-import os
 import re
 import secrets
 import time
 from dataclasses import dataclass, field
-from typing import Any
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import urlencode
 
 import requests
 

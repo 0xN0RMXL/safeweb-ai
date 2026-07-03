@@ -7,7 +7,6 @@ Includes cloud storage bucket enumeration (S3, Azure Blob, GCS).
 """
 import logging
 import re
-import socket
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.request import urlopen, Request
@@ -228,7 +227,7 @@ def _check_dns_for_cloud(dns_results: dict) -> list[dict]:
     """Inspect DNS records for cloud provider indicators."""
     services = []
     cnames = dns_results.get('records', {}).get('cname', [])
-    a_records = dns_results.get('ip_addresses', [])
+    dns_results.get('ip_addresses', [])
 
     for cname in cnames:
         cname_lower = cname.lower()

@@ -1,5 +1,4 @@
 """Tests for all recon modules — import, standardised format, and basic functionality."""
-import pytest
 from unittest.mock import patch, MagicMock
 
 

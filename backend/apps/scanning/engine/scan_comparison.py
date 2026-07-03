@@ -5,7 +5,6 @@ changed-severity, and regressed vulnerabilities.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 
 def _finding_key(f: dict) -> str:

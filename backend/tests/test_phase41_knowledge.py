@@ -11,7 +11,6 @@ Tests for:
   - Package imports    (engine/knowledge/__init__.py)
   - Registration (#73)
 """
-import pytest
 import sys
 import os
 
@@ -433,7 +432,7 @@ class TestRemediationKBCompliance:
         assert len(frameworks) == 9
 
     def test_all_nine_framework_keys_present(self):
-        from apps.scanning.engine.knowledge.remediation_kb import RemediationKB, _ALL_FRAMEWORKS
+        from apps.scanning.engine.knowledge.remediation_kb import _ALL_FRAMEWORKS
         expected = {
             'owasp_top10_2021', 'owasp_api_top10_2023', 'owasp_llm_top10',
             'pci_dss_v4', 'soc2', 'iso_27001', 'nist_800_53', 'hipaa', 'gdpr',

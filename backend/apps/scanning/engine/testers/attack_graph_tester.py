@@ -16,7 +16,6 @@ import logging
 from apps.scanning.engine.testers.base_tester import BaseTester
 from apps.scanning.engine.attack_graph_v2 import (
     AttackGraphV2,
-    BUSINESS_IMPACT_PRIORITY,
 )
 
 logger = logging.getLogger(__name__)

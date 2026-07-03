@@ -58,7 +58,7 @@ class DNSRebindingTester(BaseTester):
         vulns = []
         url = getattr(page, 'url', '')
         body = getattr(page, 'body', '') or ''
-        headers = getattr(page, 'headers', {}) or {}
+        getattr(page, 'headers', {}) or {}
 
         # 1. Check for internal IP/metadata references in body
         vuln = self._check_internal_ip_exposure(url, body)
@@ -161,7 +161,7 @@ class DNSRebindingTester(BaseTester):
                                    recon_data: dict = None):
         """Check for cloud metadata endpoint access indicators."""
         cloud_info = self._get_cloud_info(recon_data) if recon_data else {}
-        cloud_provider = cloud_info.get('provider', '')
+        cloud_info.get('provider', '')
 
         # Check if body references metadata endpoint
         for provider, ip, path in METADATA_ENDPOINTS:

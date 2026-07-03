@@ -15,7 +15,6 @@ import asyncio
 import logging
 import threading
 import time
-from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Optional
 

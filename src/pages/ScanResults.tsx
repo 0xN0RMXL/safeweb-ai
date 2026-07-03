@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSSE } from '@/hooks/useSSE';
-import type { SSEFindingData } from '@/hooks/useSSE';
+import type { SSEFindingData, SSEAgentActivityData } from '@/hooks/useSSE';
 import { useScanTimer } from '@/hooks/useScanTimer';
 import { useParams, Link } from 'react-router-dom';
 import Layout from '@components/layout/Layout';
@@ -11,6 +11,7 @@ import Button from '@components/ui/Button';
 import ReconTab from '@components/scan/ReconTab';
 import TesterBreakdownTab from '@components/scan/TesterBreakdownTab';
 import AttackChainTab from '@components/scan/AttackChainTab';
+import { AgentActivityGraph } from '@/components/scanning/AgentActivityGraph';
 // DEACTIVATED: ML Analysis tab disabled
 // import MLAnalysisTab from '@components/scan/MLAnalysisTab';
 import { formatDateTime } from '@utils/date';
@@ -59,6 +60,12 @@ export default function ScanResults() {
     const [liveTool, setLiveTool] = useState('');
     const [liveStartedAt, setLiveStartedAt] = useState<string | null>(null);
     const [liveEstimatedRemaining, setLiveEstimatedRemaining] = useState<number | null>(null);
+    const [agentActivityData, setAgentActivityData] = useState<SSEAgentActivityData>({
+        flowStatus: 'initializing',
+        costMeterUsd: 0.0,
+        engagementLog: [],
+        taskGraph: {},
+    });
 
     const [scan, setScan] = useState<ScanResult>({
         id: id || '',
@@ -75,6 +82,14 @@ export default function ScanResults() {
     // Single source of truth for snake_case → camelCase conversion.
     // Defined at component scope so all callbacks can use it without duplication.
     const mapApiResponse = useCallback((data: Record<string, unknown>): ScanResult => {
+        if (data.flowStatus || data.flow_status || data.engagementLog || data.engagement_log) {
+            setAgentActivityData({
+                flowStatus: (data.flowStatus ?? data.flow_status ?? 'initializing') as string,
+                costMeterUsd: Number(data.costMeterUsd ?? data.cost_meter_usd ?? 0.0),
+                engagementLog: (data.engagementLog ?? data.engagement_log ?? []) as SSEAgentActivityData['engagementLog'],
+                taskGraph: (data.taskGraph ?? data.task_graph ?? {}) as Record<string, unknown>,
+            });
+        }
         const vuln: Vulnerability[] = ((data.vulnerabilities ?? []) as Record<string, unknown>[]).map(
             (v) => ({
                 id: v.id as string,
@@ -227,6 +242,7 @@ export default function ScanResults() {
             }));
         },
         onFinding: handleFinding,
+        onAgentActivity: (data) => setAgentActivityData(data),
         onCompleted: handleSseCompleted,
         onDataUpdate: handleDataUpdate,
         onError: () => { setSseUrl(null); },
@@ -454,6 +470,12 @@ export default function ScanResults() {
     // ── Overview tab ─────────────────────────────────────────────────────────
     const renderOverview = () => (
         <div className="space-y-6">
+            <AgentActivityGraph
+                flowStatus={agentActivityData.flowStatus || livePhase || scan.status}
+                costMeterUsd={agentActivityData.costMeterUsd}
+                engagementLog={agentActivityData.engagementLog}
+            />
+
             {/* Scope type badge */}
             {scan.scopeType && scan.scopeType !== 'single_domain' && (
                 <Card className="p-4 flex items-center gap-3 bg-accent-blue/5 border-accent-blue/20">

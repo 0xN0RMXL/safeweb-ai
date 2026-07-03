@@ -473,7 +473,7 @@ class MisconfigTester(BaseTester):
                 name=f'Weak Content Security Policy ({len(issues)} issues)',
                 severity='medium',
                 category='Security Misconfiguration',
-                description=f'The Content-Security-Policy has weaknesses:\n' +
+                description='The Content-Security-Policy has weaknesses:\n' +
                            '\n'.join(f'  - {i}' for i in issues),
                 impact='A weak CSP provides insufficient protection against XSS and data injection.',
                 remediation="Tighten CSP: remove 'unsafe-inline' and 'unsafe-eval', "
@@ -529,7 +529,7 @@ class MisconfigTester(BaseTester):
                 name='Weak HSTS Configuration',
                 severity='low',
                 category='Security Misconfiguration',
-                description=f'HSTS is present but has configuration weaknesses:\n' +
+                description='HSTS is present but has configuration weaknesses:\n' +
                            '\n'.join(f'  - {i}' for i in issues),
                 impact='Incomplete HSTS may leave subdomains or initial connections vulnerable '
                       'to protocol downgrade attacks.',

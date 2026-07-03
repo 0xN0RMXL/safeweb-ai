@@ -184,7 +184,7 @@ class HTTP2Tester(BaseTester):
 
     def _test_downgrade(self, page):
         """Test for HTTP/2 to HTTP/1.1 request smuggling via downgrade."""
-        parsed = urlparse(page.url)
+        urlparse(page.url)
 
         # Detect downgrade by inspecting response behaviour
         # If a proxy speaks h2 but backend speaks h1.1, CL/TE desync is possible

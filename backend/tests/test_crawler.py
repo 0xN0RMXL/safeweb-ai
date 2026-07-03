@@ -1,5 +1,4 @@
 """Tests for the WebCrawler module."""
-import pytest
 from unittest.mock import patch, MagicMock
 
 

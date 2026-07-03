@@ -11,7 +11,6 @@ from ._base import (
     create_result,
     add_finding,
     finalize_result,
-    extract_hostname,
 )
 
 logger = logging.getLogger(__name__)

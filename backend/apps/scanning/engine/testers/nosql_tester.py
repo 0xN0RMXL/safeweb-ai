@@ -11,10 +11,8 @@ import json
 import logging
 from .base_tester import BaseTester
 from ..payloads.nosql_payloads import (
-    MONGO_OPERATORS,
     URL_PARAM_INJECTION as NOSQL_URL_PAYLOADS,
     JSON_INJECTION as NOSQL_JSON_PAYLOADS,
-    JS_INJECTION as NOSQL_JS_PAYLOADS,
     NOSQL_ERROR_PATTERNS,
 )
 
@@ -215,8 +213,8 @@ class NoSQLInjectionTester(BaseTester):
                     name='NoSQL Injection via JSON Body',
                     severity='critical',
                     category='NoSQL Injection',
-                    description=f'The API endpoint accepts JSON payloads that can manipulate '
-                               f'NoSQL queries.',
+                    description='The API endpoint accepts JSON payloads that can manipulate '
+                               'NoSQL queries.',
                     impact='Attackers can inject NoSQL operators via JSON request bodies to '
                           'bypass authentication or extract data.',
                     remediation='Validate JSON schema strictly. Reject unexpected operators. '

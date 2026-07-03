@@ -1,4 +1,6 @@
-import os, django, json
+import os
+import django
+import json
 os.environ['DJANGO_SETTINGS_MODULE'] = 'config.settings.development'
 django.setup()
 from apps.scanning.models import Scan

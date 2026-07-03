@@ -8,7 +8,6 @@ provides deeper, more targeted WSTG-ERRH coverage.
 """
 import re
 import logging
-from urllib.parse import urljoin, urlparse
 
 from .base_tester import BaseTester
 

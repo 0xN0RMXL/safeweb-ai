@@ -10,7 +10,6 @@ Algorithm (matching puredns):
   3. Check if responses share IP or same-size body → content wildcard.
   4. Mark wildcard IPs so callers can filter them out.
 """
-import re
 import random
 import string
 import socket

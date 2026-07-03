@@ -12,7 +12,6 @@ Uses ``_base`` helpers for the standardised return format.
 import logging
 import re
 import time
-from urllib.parse import urlparse
 
 from ._base import (
     create_result,

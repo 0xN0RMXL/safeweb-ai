@@ -21,7 +21,7 @@ import re
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
-from .patterns import SECRET_PATTERNS, SEVERITY_ORDER
+from .patterns import SECRET_PATTERNS
 
 logger = logging.getLogger(__name__)
 

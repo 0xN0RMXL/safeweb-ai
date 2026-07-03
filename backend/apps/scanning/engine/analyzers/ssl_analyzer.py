@@ -6,7 +6,6 @@ import logging
 import ssl
 import socket
 from urllib.parse import urlparse
-from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 

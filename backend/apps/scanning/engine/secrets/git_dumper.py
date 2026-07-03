@@ -9,7 +9,6 @@ It probe-checks for exposure and extracts secrets from accessible
 objects using standard HTTP requests only.
 """
 
-import hashlib
 import logging
 import re
 from dataclasses import dataclass, field

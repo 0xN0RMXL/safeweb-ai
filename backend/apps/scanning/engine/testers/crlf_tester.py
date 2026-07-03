@@ -5,9 +5,8 @@ OWASP A03:2021 — Injection.
 Tests for: header injection, HTTP response splitting, log injection,
 and Set-Cookie injection via CRLF sequences.
 """
-import re
 import logging
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse, quote
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 from .base_tester import BaseTester
 
 logger = logging.getLogger(__name__)
@@ -133,7 +132,7 @@ class CRLFInjectionTester(BaseTester):
             if param_name.lower() not in redirect_params:
                 continue
 
-            payload = f'http://example.com%0d%0aInjected-Header:true'
+            payload = 'http://example.com%0d%0aInjected-Header:true'
             parsed = urlparse(page.url)
             params = parse_qs(parsed.query)
             params[param_name] = payload
@@ -144,7 +143,7 @@ class CRLFInjectionTester(BaseTester):
 
             response = self._make_request('GET', test_url, allow_redirects=False)
             if response:
-                location = response.headers.get('Location', '')
+                response.headers.get('Location', '')
                 if CRLF_CANARY_HEADER.lower() in {k.lower() for k in response.headers}:
                     return self._build_vuln(
                         name=f'CRLF Injection in Redirect: {param_name}',

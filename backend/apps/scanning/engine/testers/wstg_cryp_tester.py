@@ -93,7 +93,7 @@ class WSTGCryptographyTester(BaseTester):
             return found
 
         # Check using ssl module for deprecated protocol support
-        deprecated_checks = [
+        [
             (ssl.PROTOCOL_TLS_CLIENT, 'TLS', 'TLSv1', ssl.TLSVersion.TLSv1)
             if hasattr(ssl, 'TLSVersion') else None,
         ]
@@ -237,7 +237,6 @@ class WSTGCryptographyTester(BaseTester):
         Sends requests with modified encrypted tokens and checks for
         distinct error messages that indicate CBC padding oracle.
         """
-        import urllib.parse
 
         # Look for base64/hex cookie values that might be CBC encrypted
         resp = self._make_request('GET', url)
@@ -263,13 +262,13 @@ class WSTGCryptographyTester(BaseTester):
 
                     if resp2 and resp3:
                         body2 = (resp2.text or '').lower()
-                        body3 = (resp3.text or '').lower()
+                        (resp3.text or '').lower()
 
                         padding_errors = ['invalid padding', 'padding error', 'decryption error',
                                           'mac mismatch', 'authentication failed', 'invalid token']
 
                         has_padding_msg = any(e in body2 for e in padding_errors)
-                        different_responses = abs(len(resp2.text or '') - len(resp3.text or '')) > 20
+                        abs(len(resp2.text or '') - len(resp3.text or '')) > 20
 
                         if has_padding_msg or (resp2.status_code != resp3.status_code and
                                                resp2.status_code in (200, 500)):

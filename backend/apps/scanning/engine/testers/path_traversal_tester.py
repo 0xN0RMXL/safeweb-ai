@@ -8,7 +8,7 @@ log poisoning chain detection.
 """
 import re
 import logging
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse, quote
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 from .base_tester import BaseTester
 
 logger = logging.getLogger(__name__)

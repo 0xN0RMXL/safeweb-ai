@@ -3,9 +3,7 @@ Phase 29 — CMS Deep Scanner tests.
 
 Tests for WordPressScanner, DrupalScanner, JoomlaScanner and the CMSTester wrapper.
 """
-import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
-from dataclasses import dataclass, field
+from unittest.mock import MagicMock
 
 from tests.conftest import MockPage
 

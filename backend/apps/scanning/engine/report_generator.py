@@ -351,7 +351,7 @@ def generate_html_report(scan, vulnerabilities=None) -> str:
     """
     from apps.scanning.engine.poc_generator import PoCGenerator
     from apps.scanning.engine.compliance import (
-        COMPLIANCE_MAP, get_owasp_coverage, get_pci_coverage,
+        get_owasp_coverage, get_pci_coverage,
     )
 
     if vulnerabilities is None:
@@ -412,7 +412,7 @@ def generate_html_report(scan, vulnerabilities=None) -> str:
         )
 
     def vuln_detail(v, idx):
-        sev = (v.severity if hasattr(v, 'severity') else v.get('severity', 'info')).lower()
+        (v.severity if hasattr(v, 'severity') else v.get('severity', 'info')).lower()
         name = esc(v.name if hasattr(v, 'name') else v.get('name', ''))
         desc = esc(v.description if hasattr(v, 'description') else v.get('description', ''))
         impact = esc(v.impact if hasattr(v, 'impact') else v.get('impact', ''))

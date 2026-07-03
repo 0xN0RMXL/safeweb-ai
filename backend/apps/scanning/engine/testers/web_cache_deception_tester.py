@@ -114,7 +114,7 @@ class WebCacheDeceptionTester(BaseTester):
                 if not resp or resp.status_code not in (200, 301, 302):
                     continue
 
-                resp_headers = dict(getattr(resp, 'headers', {}))
+                dict(getattr(resp, 'headers', {}))
                 resp_body = getattr(resp, 'text', '')
 
                 # Vulnerability: sensitive data returned on a cacheable path

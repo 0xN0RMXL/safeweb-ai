@@ -7,10 +7,8 @@ Tests for:
   - ScopeDefinition / MultiTargetScan / DiscoveredAsset models
   - REST API: /api/scan/scopes/*, /api/scan/multi/*, /api/scan/assets/*
 """
-import uuid
 import pytest
 from unittest.mock import patch
-from django.urls import reverse
 from rest_framework.test import APIClient
 
 from apps.scanning.engine.scope.scope_manager import ScopeManager

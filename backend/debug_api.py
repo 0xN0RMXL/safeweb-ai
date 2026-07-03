@@ -8,7 +8,7 @@ import django
 django.setup()
 
 from apps.scanning.models import Vulnerability, Scan
-import json, requests
+import requests
 
 SCAN_ID = 'a3269bde-82ae-42ca-a8e2-aafd31feacaa'
 scan = Scan.objects.get(id=SCAN_ID)

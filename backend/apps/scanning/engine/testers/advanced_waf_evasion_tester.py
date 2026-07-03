@@ -7,16 +7,10 @@ bypassed using fingerprint-specific, encoding, fragmentation, and
 request-mutation techniques.
 """
 import logging
-import json
-from urllib.parse import urlparse
 
 from apps.scanning.engine.testers.base_tester import BaseTester
 from apps.scanning.engine.waf_evasion_v2 import (
     AdvancedWAFEvasion,
-    WAFFingerprintBypass,
-    EncodingChainEngine,
-    PayloadFragmentationEngine,
-    RequestMutationEngine,
 )
 
 logger = logging.getLogger(__name__)
@@ -130,7 +124,7 @@ class AdvancedWAFEvasionTester(BaseTester):
             if status not in (403, 406, 429, 503):
                 results.append({
                     'category': 'fingerprint_bypass',
-                    'detail': f'WAF bypassed with fingerprint-specific encoding',
+                    'detail': 'WAF bypassed with fingerprint-specific encoding',
                     'evidence': f'Variant: {variant[:100]} → HTTP {status}',
                 })
                 return results
@@ -149,7 +143,7 @@ class AdvancedWAFEvasionTester(BaseTester):
             if status not in (403, 406, 429, 503):
                 results.append({
                     'category': 'encoding_bypass',
-                    'detail': f'WAF bypassed with encoded payload',
+                    'detail': 'WAF bypassed with encoded payload',
                     'evidence': f'Variant: {variant[:100]} → HTTP {status}',
                 })
                 return results
@@ -168,7 +162,7 @@ class AdvancedWAFEvasionTester(BaseTester):
             if status not in (403, 406, 429, 503):
                 results.append({
                     'category': 'fragmentation_bypass',
-                    'detail': f'WAF bypassed with fragmented payload',
+                    'detail': 'WAF bypassed with fragmented payload',
                     'evidence': f'Variant: {variant[:100]} → HTTP {status}',
                 })
                 return results
@@ -208,7 +202,7 @@ class AdvancedWAFEvasionTester(BaseTester):
             if status not in (403, 406, 429, 503):
                 results.append({
                     'category': 'hpp_bypass',
-                    'detail': f'WAF bypassed with HTTP Parameter Pollution',
+                    'detail': 'WAF bypassed with HTTP Parameter Pollution',
                     'evidence': f'HPP query: {hpp[:80]} → HTTP {status}',
                 })
                 return results
@@ -226,7 +220,7 @@ class AdvancedWAFEvasionTester(BaseTester):
             if status not in (403, 406, 429, 503):
                 results.append({
                     'category': 'method_override_bypass',
-                    'detail': f'WAF bypassed with method override header',
+                    'detail': 'WAF bypassed with method override header',
                     'evidence': f'Override header: {hdr_dict} → HTTP {status}',
                 })
                 return results

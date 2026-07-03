@@ -3,7 +3,7 @@ Phase 43 — Scheduled & Continuous Scanning
 Tests for ScheduledScanEngine, ScheduledScanTester, models, and tasks.
 """
 import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 
 # ---------------------------------------------------------------------------

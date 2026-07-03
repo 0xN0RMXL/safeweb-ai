@@ -31,13 +31,24 @@ class OrganizationMiddleware:
                 except Exception:
                     _current_organization.set(None)
             else:
-                from apps.accounts.models import OrganizationMembership
+                from apps.accounts.models import OrganizationMembership, Organization
                 first_membership = OrganizationMembership.objects.filter(user=request.user).first()
                 if first_membership:
                     _current_organization.set(first_membership.organization)
                     request.organization = first_membership.organization
                 else:
-                    _current_organization.set(None)
+                    org = request.user.current_organization
+                    if not org:
+                        org_name = f"{request.user.username or request.user.email}'s Organization"
+                        org, _ = Organization.objects.get_or_create(
+                            name=org_name,
+                            defaults={'owner': request.user}
+                        )
+                        OrganizationMembership.objects.get_or_create(user=request.user, organization=org, defaults={'role': 'owner'})
+                        request.user.current_organization = org
+                        request.user.save(update_fields=['current_organization'])
+                    _current_organization.set(org)
+                    request.organization = org
         else:
             _current_organization.set(None)
             

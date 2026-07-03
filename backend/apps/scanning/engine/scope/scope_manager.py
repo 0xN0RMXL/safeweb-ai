@@ -96,6 +96,13 @@ class ScopeManager:
         if not host:
             return False
 
+        # Phase B2 QA Scope Enforcement: Hardcode isolated target network refusal
+        import os
+        if os.environ.get('ENFORCE_QA_SCOPE', '').lower() == 'true':
+            allowed_qa_hosts = ['127.0.0.1', 'localhost', 'target-dvwa', 'target-juiceshop', 'target-webgoat', 'dvwa', 'juiceshop', 'webgoat']
+            if not any(host == h or host.startswith(h + ':') or host.endswith('.' + h) for h in allowed_qa_hosts):
+                return False
+
         # No rules → everything passes
         if self.in_scope:
             in_match = any(self._matches_pattern(host, p) for p in self.in_scope)

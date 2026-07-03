@@ -1,5 +1,4 @@
 """Tests for the reconnaissance engine modules."""
-import pytest
 from unittest.mock import patch, MagicMock
 
 
@@ -80,7 +79,7 @@ class TestPortScanner:
         with patch('socket.create_connection', side_effect=mock_connect):
             with patch('socket.gethostbyname', return_value='93.184.216.34'):
                 result = run_port_scan('https://example.com', 'shallow', timeout=0.1)
-                open_ports = [p['port'] for p in result.get('open_ports', [])]
+                [p['port'] for p in result.get('open_ports', [])]
                 # Port 22 might or might not be in shallow scan list; just verify structure
                 assert isinstance(result['open_ports'], list)
 

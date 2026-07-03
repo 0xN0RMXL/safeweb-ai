@@ -1,7 +1,8 @@
 """Raw HTTP response dump for the first vulnerability."""
 import sys
 sys.path.insert(0, r'd:\My Files\Graduation Project\safeweb-ai\backend\venv\Lib\site-packages')
-import requests, json
+import requests
+import json
 
 login = requests.post("http://localhost:8000/api/auth/login/",
     json={"email": "test@safeweb.ai", "password": "testpass123"}, timeout=10)
@@ -19,5 +20,5 @@ print(f"HTTP status: {resp.status_code}")
 print(f"Vuln count: {len(vulns)}")
 if vulns:
     v = vulns[0]
-    print(f"\nFirst vuln raw JSON:")
+    print("\nFirst vuln raw JSON:")
     print(json.dumps(v, indent=2, default=str))

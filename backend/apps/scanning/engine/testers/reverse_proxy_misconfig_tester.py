@@ -63,7 +63,7 @@ class ReverseProxyMisconfigTester(BaseTester):
     def test(self, page, depth: str = 'medium', recon_data: dict = None) -> list:
         vulns = []
         url = getattr(page, 'url', '')
-        body = getattr(page, 'body', '') or ''
+        getattr(page, 'body', '') or ''
         headers = getattr(page, 'headers', {}) or {}
 
         # 1. Check for proxy-related headers (indicates reverse proxy)

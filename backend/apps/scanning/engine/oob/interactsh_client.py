@@ -8,14 +8,11 @@ Supports both the public oast.live server and self-hosted Interactsh instances.
 Falls back to a simple canary-based detection when Interactsh is unavailable.
 """
 import base64
-import hashlib
 import json
 import logging
 import os
 import secrets
-import time
 from typing import Optional
-from urllib.parse import urlparse
 
 import requests
 

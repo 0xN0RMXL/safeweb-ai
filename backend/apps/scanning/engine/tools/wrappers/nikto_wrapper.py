@@ -1,6 +1,7 @@
 """Nikto — Web server vulnerability scanner."""
 from __future__ import annotations
-import json, re
+import json
+import re
 from typing import Any
 from ..base import ExternalTool, ToolCapability
 from ..result import ToolResult, ToolSeverity

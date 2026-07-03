@@ -152,7 +152,7 @@ class DependencyConfusionTester(BaseTester):
 
     def _check_scoped_packages(self, url: str, packages: list):
         """Check for scoped packages that may be vulnerable."""
-        scoped = [
+        [
             p for p in packages
             if any(ind.search(p) for ind in PRIVATE_SCOPE_INDICATORS)
         ]

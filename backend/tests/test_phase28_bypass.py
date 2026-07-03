@@ -5,8 +5,7 @@ Tests for:
   - ForbiddenBypassEngine (core engine: path, method, header, protocol, method-override)
   - ForbiddenBypassTester (BaseTester wrapper)
 """
-import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 
 from tests.conftest import MockPage
 
@@ -15,10 +14,7 @@ from apps.scanning.engine.bypass.forbidden_bypass import (
     PATH_MANIPULATIONS,
     BYPASS_METHODS,
     BYPASS_HEADERS,
-    METHOD_OVERRIDE_HEADERS,
-    PROTOCOL_HEADERS,
     BLOCKED_STATUS_CODES,
-    SUCCESS_STATUS_CODES,
     MIN_BYPASS_BODY_LENGTH,
 )
 from apps.scanning.engine.testers.forbidden_bypass_tester import ForbiddenBypassTester

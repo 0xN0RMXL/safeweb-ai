@@ -3,7 +3,7 @@ from unittest.mock import patch
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from apps.accounts.models import Organization, OrganizationMembership
-from apps.scanning.models import Target, Scan
+from apps.scanning.models import Scan
 
 User = get_user_model()
 

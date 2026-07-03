@@ -602,7 +602,7 @@ class ComponentTester(BaseTester):
                             category='Vulnerable Components',
                             description=f'{lib_name} {version} detected in inline script comment. '
                                        f'This version has known vulnerabilities ({info["cve"]}).',
-                            impact=f'Known vulnerability may allow exploitation.',
+                            impact='Known vulnerability may allow exploitation.',
                             remediation=f'Update {lib_name} to the latest version.',
                             cwe='CWE-1104',
                             cvss=6.1,

@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 load_dotenv(Path(__file__).resolve().parent.parent.parent / '.env')
 
@@ -86,13 +87,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database — use DATABASE_URL in production (Railway provides this), fall back to SQLite for local dev
+# Database — PostgreSQL mandate in production, allow SQLite in local development
+_db_url = os.getenv('DATABASE_URL', 'sqlite:///db.sqlite3')
+if not DEBUG and (not _db_url or _db_url.startswith('sqlite://')):
+    raise ImproperlyConfigured("DATABASE_URL must be set and must point to PostgreSQL in production.")
+
 DATABASES = {
-    'default': dj_database_url.config(
-        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+    'default': dj_database_url.parse(_db_url, conn_max_age=600, conn_health_checks=True)
 }
 
 # Custom user model
@@ -227,6 +228,8 @@ if not DEBUG:
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
 OPENROUTER_MODEL = os.getenv('OPENROUTER_MODEL', 'google/gemini-2.0-flash-001')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', '')
 
 # Phase 23: OSINT API Keys
 SHODAN_API_KEY = os.getenv('SHODAN_API_KEY', '')

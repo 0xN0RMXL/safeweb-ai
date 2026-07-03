@@ -1,6 +1,6 @@
 """testssl.sh — TLS/SSL cipher and vulnerability testing."""
 from __future__ import annotations
-import json, re
+import json
 from typing import Any
 from ..base import ExternalTool, ToolCapability
 from ..result import ToolResult, ToolSeverity

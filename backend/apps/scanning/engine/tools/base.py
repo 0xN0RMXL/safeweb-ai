@@ -25,6 +25,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Sequence
 
 from .result import ToolResult
+from .mcp_server import MCPToolServer
 
 logger = logging.getLogger(__name__)
 
@@ -193,8 +194,25 @@ class ExternalTool(ABC):
 
     async def run_async(self, target: str, **options: Any) -> list[ToolResult]:
         """Async version of run().  Default delegates to sync in executor."""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, lambda: self.run(target, **options))
+        return await asyncio.to_thread(self.run, target, **options)
+
+    def run_mcp(self, target: str, request_id: Any = 1, **options: Any) -> dict[str, Any]:
+        """Execute tool and return MCP JSON-RPC 2.0 formatted response."""
+        try:
+            results = self.run(target, **options)
+            return MCPToolServer.format_json_rpc_response(self.name, target, results, request_id=request_id)
+        except Exception as e:
+            logger.error('%s run_mcp failed: %s', self.name, str(e))
+            return MCPToolServer.format_json_rpc_error(-32603, f"Tool execution error: {str(e)}", request_id=request_id)
+
+    async def run_mcp_async(self, target: str, request_id: Any = 1, **options: Any) -> dict[str, Any]:
+        """Async version of run_mcp()."""
+        try:
+            results = await self.run_async(target, **options)
+            return MCPToolServer.format_json_rpc_response(self.name, target, results, request_id=request_id)
+        except Exception as e:
+            logger.error('%s run_mcp_async failed: %s', self.name, str(e))
+            return MCPToolServer.format_json_rpc_error(-32603, f"Tool execution error: {str(e)}", request_id=request_id)
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__} name={self.name!r} binary={self.binary!r}>'

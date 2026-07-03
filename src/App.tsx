@@ -4,6 +4,8 @@ import {
 } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import ProtectedRoute from '@components/ProtectedRoute';
  
 // ── Page chunks — each is downloaded only when the user navigates to it ──────
@@ -19,6 +21,8 @@ const ScanHistory      = lazy(() => import('@pages/ScanHistory'));
 const Learn            = lazy(() => import('@pages/Learn'));
 const ArticleDetail    = lazy(() => import('@pages/ArticleDetail'));
 const Documentation    = lazy(() => import('@pages/Documentation'));
+const Pricing          = lazy(() => import('@pages/Pricing'));
+const Checkout         = lazy(() => import('@pages/Checkout'));
 const About            = lazy(() => import('@pages/About'));
 const Contact          = lazy(() => import('@pages/Contact'));
 const Services         = lazy(() => import('@pages/Services'));
@@ -101,58 +105,64 @@ function L({ C }: { C: React.LazyExoticComponent<ComponentType<object>> }) {
 
 function App() {
     return (
-        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <AuthProvider>
-                <Routes>
-                    <Route path="/" element={<L C={Home} />} />
-                    <Route path="/login" element={<L C={Login} />} />
-                    <Route path="/register" element={<L C={Register} />} />
-                    <Route path="/forgot-password" element={<L C={ForgotPassword} />} />
-                    <Route path="/reset-password" element={<L C={ResetPassword} />} />
-                    <Route path="/dashboard" element={<ProtectedRoute><L C={Dashboard} /></ProtectedRoute>} />
-                    <Route path="/scan" element={<ProtectedRoute><L C={ScanWebsite} /></ProtectedRoute>} />
-                    <Route path="/scan/results/:id" element={<ProtectedRoute><L C={ScanResults} /></ProtectedRoute>} />
-                    <Route path="/history" element={<ProtectedRoute><L C={ScanHistory} /></ProtectedRoute>} />
-                    <Route path="/learn" element={<L C={Learn} />} />
-                    <Route path="/learn/:slug" element={<L C={ArticleDetail} />} />
-                    <Route path="/docs" element={<L C={Documentation} />} />
-                    <Route path="/about" element={<L C={About} />} />
-                    <Route path="/contact" element={<L C={Contact} />} />
-                    <Route path="/services" element={<L C={Services} />} />
-                    <Route path="/profile" element={<ProtectedRoute><L C={Profile} /></ProtectedRoute>} />
-                    <Route path="/terms" element={<L C={Terms} />} />
-                    <Route path="/privacy" element={<L C={Privacy} />} />
-                    <Route path="/cookies" element={<L C={CookiePolicy} />} />
-                    <Route path="/compliance" element={<L C={Compliance} />} />
-                    <Route path="/careers" element={<L C={Careers} />} />
-                    <Route path="/partners" element={<L C={Partners} />} />
-                    <Route path="/scheduled-scans" element={<ProtectedRoute><L C={ScheduledScans} /></ProtectedRoute>} />
-                    <Route path="/scopes" element={<ProtectedRoute><L C={ScopeManagement} /></ProtectedRoute>} />
-                    <Route path="/targets" element={<ProtectedRoute><L C={Targets} /></ProtectedRoute>} />
-                    <Route path="/assets" element={<ProtectedRoute><L C={AssetInventory} /></ProtectedRoute>} />
-                    <Route path="/settings/webhooks" element={<ProtectedRoute><L C={WebhookSettings} /></ProtectedRoute>} />
-                    <Route path="/scan/compare/:id1/:id2" element={<ProtectedRoute><L C={ScanComparison} /></ProtectedRoute>} />
-                    <Route path="/onboarding" element={<ProtectedRoute><L C={Onboarding} /></ProtectedRoute>} />
+        <ThemeProvider>
+            <LanguageProvider>
+                <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <AuthProvider>
+                        <Routes>
+                            <Route path="/" element={<L C={Home} />} />
+                            <Route path="/login" element={<L C={Login} />} />
+                            <Route path="/register" element={<L C={Register} />} />
+                            <Route path="/forgot-password" element={<L C={ForgotPassword} />} />
+                            <Route path="/reset-password" element={<L C={ResetPassword} />} />
+                            <Route path="/dashboard" element={<ProtectedRoute><L C={Dashboard} /></ProtectedRoute>} />
+                            <Route path="/scan" element={<ProtectedRoute><L C={ScanWebsite} /></ProtectedRoute>} />
+                            <Route path="/scan/results/:id" element={<ProtectedRoute><L C={ScanResults} /></ProtectedRoute>} />
+                            <Route path="/history" element={<ProtectedRoute><L C={ScanHistory} /></ProtectedRoute>} />
+                            <Route path="/learn" element={<L C={Learn} />} />
+                            <Route path="/learn/:slug" element={<L C={ArticleDetail} />} />
+                            <Route path="/docs" element={<L C={Documentation} />} />
+                            <Route path="/pricing" element={<L C={Pricing} />} />
+                            <Route path="/checkout" element={<L C={Checkout} />} />
+                            <Route path="/about" element={<L C={About} />} />
+                            <Route path="/contact" element={<L C={Contact} />} />
+                            <Route path="/services" element={<L C={Services} />} />
+                            <Route path="/profile" element={<ProtectedRoute><L C={Profile} /></ProtectedRoute>} />
+                            <Route path="/terms" element={<L C={Terms} />} />
+                            <Route path="/privacy" element={<L C={Privacy} />} />
+                            <Route path="/cookies" element={<L C={CookiePolicy} />} />
+                            <Route path="/compliance" element={<L C={Compliance} />} />
+                            <Route path="/careers" element={<L C={Careers} />} />
+                            <Route path="/partners" element={<L C={Partners} />} />
+                            <Route path="/scheduled-scans" element={<ProtectedRoute><L C={ScheduledScans} /></ProtectedRoute>} />
+                            <Route path="/scopes" element={<ProtectedRoute><L C={ScopeManagement} /></ProtectedRoute>} />
+                            <Route path="/targets" element={<ProtectedRoute><L C={Targets} /></ProtectedRoute>} />
+                            <Route path="/assets" element={<ProtectedRoute><L C={AssetInventory} /></ProtectedRoute>} />
+                            <Route path="/settings/webhooks" element={<ProtectedRoute><L C={WebhookSettings} /></ProtectedRoute>} />
+                            <Route path="/scan/compare/:id1/:id2" element={<ProtectedRoute><L C={ScanComparison} /></ProtectedRoute>} />
+                            <Route path="/onboarding" element={<ProtectedRoute><L C={Onboarding} /></ProtectedRoute>} />
 
-                    {/* Admin Routes */}
-                    <Route path="/admin" element={<ProtectedRoute adminOnly><L C={AdminDashboard} /></ProtectedRoute>} />
-                    <Route path="/admin/users" element={<ProtectedRoute adminOnly><L C={AdminUsers} /></ProtectedRoute>} />
-                    <Route path="/admin/scans" element={<ProtectedRoute adminOnly><L C={AdminScans} /></ProtectedRoute>} />
-                    <Route path="/admin/ml" element={<ProtectedRoute adminOnly><L C={AdminML} /></ProtectedRoute>} />
-                    <Route path="/admin/settings" element={<ProtectedRoute adminOnly><L C={AdminSettings} /></ProtectedRoute>} />
-                    <Route path="/admin/contacts" element={<ProtectedRoute adminOnly><L C={AdminContacts} /></ProtectedRoute>} />
-                    <Route path="/admin/applications" element={<ProtectedRoute adminOnly><L C={AdminApplications} /></ProtectedRoute>} />
+                            {/* Admin Routes */}
+                            <Route path="/admin" element={<ProtectedRoute adminOnly><L C={AdminDashboard} /></ProtectedRoute>} />
+                            <Route path="/admin/users" element={<ProtectedRoute adminOnly><L C={AdminUsers} /></ProtectedRoute>} />
+                            <Route path="/admin/scans" element={<ProtectedRoute adminOnly><L C={AdminScans} /></ProtectedRoute>} />
+                            <Route path="/admin/ml" element={<ProtectedRoute adminOnly><L C={AdminML} /></ProtectedRoute>} />
+                            <Route path="/admin/settings" element={<ProtectedRoute adminOnly><L C={AdminSettings} /></ProtectedRoute>} />
+                            <Route path="/admin/contacts" element={<ProtectedRoute adminOnly><L C={AdminContacts} /></ProtectedRoute>} />
+                            <Route path="/admin/applications" element={<ProtectedRoute adminOnly><L C={AdminApplications} /></ProtectedRoute>} />
 
-                    {/* Catch-all 404 */}
-                    <Route path="*" element={<L C={NotFound} />} />
-                </Routes>
+                            {/* Catch-all 404 */}
+                            <Route path="*" element={<L C={NotFound} />} />
+                        </Routes>
 
-                {/* ChatbotWidget loads silently in the background */}
-                <Suspense fallback={null}>
-                    <ChatbotWidget />
-                </Suspense>
-            </AuthProvider>
-        </Router>
+                        {/* ChatbotWidget loads silently in the background */}
+                        <Suspense fallback={null}>
+                            <ChatbotWidget />
+                        </Suspense>
+                    </AuthProvider>
+                </Router>
+            </LanguageProvider>
+        </ThemeProvider>
     );
 }
 

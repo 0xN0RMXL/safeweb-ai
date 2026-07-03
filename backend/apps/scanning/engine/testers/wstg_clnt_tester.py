@@ -12,7 +12,7 @@ Fills client-side testing gaps identified in Phase 46.
 """
 import re
 import logging
-from urllib.parse import urlparse, urlencode, urljoin, parse_qs, urlunparse
+from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
 
 from .base_tester import BaseTester
 

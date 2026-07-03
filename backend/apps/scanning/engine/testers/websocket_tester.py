@@ -153,7 +153,7 @@ class WebSocketTester(BaseTester):
                 cwe='CWE-346',
                 cvss=5.3,
                 affected_url=page_url,
-                evidence=f'WebSocket accepted connection without Origin header.',
+                evidence='WebSocket accepted connection without Origin header.',
             )
         except Exception:
             return None

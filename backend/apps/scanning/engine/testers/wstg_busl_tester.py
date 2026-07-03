@@ -9,9 +9,8 @@ Maps to: WSTG-BUSL-01 (Data Validation), WSTG-BUSL-02 (Forging Requests),
 
 Fills business logic testing gaps identified in Phase 46.
 """
-import re
 import logging
-from urllib.parse import urlparse, urlencode, urljoin, parse_qs, urlunparse
+from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
 
 from .base_tester import BaseTester
 
@@ -195,7 +194,7 @@ class WSTGBusinessLogicTester(BaseTester):
                 ):
                     # Server accepted the value silently
                     found.append(self._build_vuln(
-                        name=f'Business Logic: Extreme/Negative Value Accepted Without Validation',
+                        name='Business Logic: Extreme/Negative Value Accepted Without Validation',
                         severity='medium',
                         category='WSTG-BUSL-01: Testing for Business Logic Data Validation',
                         description=f'The field "{field_name}" at "{action}" accepted extreme value '
@@ -250,7 +249,7 @@ class WSTGBusinessLogicTester(BaseTester):
                     w in body for w in ('invalid date', 'invalid', 'error', 'must be')
                 ):
                     found.append(self._build_vuln(
-                        name=f'Business Logic: Date Field Accepts Out-of-Range Value',
+                        name='Business Logic: Date Field Accepts Out-of-Range Value',
                         severity='low',
                         category='WSTG-BUSL-04: Testing for Process Timing',
                         description=f'The date field "{field_name}" at "{action}" accepted '

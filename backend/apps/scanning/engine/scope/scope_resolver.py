@@ -8,7 +8,6 @@ For each scope type:
 """
 import asyncio
 import logging
-from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 

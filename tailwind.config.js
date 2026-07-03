@@ -19,20 +19,21 @@ export default {
         'animate-badge-pulse-orange',
         'animate-badge-pulse-red',
     ],
+    darkMode: 'class',
     theme: {
         extend: {
             colors: {
                 // Background colors
-                'bg-primary': '#050607',
-                'bg-secondary': '#0A0C0E',
-                'bg-tertiary': '#0F1113',
-                'bg-card': '#12151A',
-                'bg-hover': '#1A1D23',
+                'bg-primary': 'rgb(var(--bg-primary) / <alpha-value>)',
+                'bg-secondary': 'rgb(var(--bg-secondary) / <alpha-value>)',
+                'bg-tertiary': 'rgb(var(--bg-tertiary) / <alpha-value>)',
+                'bg-card': 'rgb(var(--bg-card) / <alpha-value>)',
+                'bg-hover': 'rgb(var(--bg-hover) / <alpha-value>)',
 
                 // Accent colors
-                'accent-green': '#00FF88',
+                'accent-green': 'rgb(var(--accent-green) / <alpha-value>)',
                 'accent-green-hover': '#00E67A',
-                'accent-blue': '#3AA9FF',
+                'accent-blue': 'rgb(var(--accent-blue) / <alpha-value>)',
                 'accent-blue-hover': '#2E95E8',
 
                 // Status colors
@@ -43,19 +44,19 @@ export default {
                 'status-info': '#3AA9FF',
 
                 // Text colors
-                'text-primary': '#FFFFFF',
-                'text-secondary': '#B0B8C1',
-                'text-tertiary': '#8B949E',
-                'text-muted': '#4B5563',
+                'text-primary': 'rgb(var(--text-primary) / <alpha-value>)',
+                'text-secondary': 'rgb(var(--text-secondary) / <alpha-value>)',
+                'text-tertiary': 'rgb(var(--text-tertiary) / <alpha-value>)',
+                'text-muted': 'rgb(var(--text-muted) / <alpha-value>)',
 
                 // Border colors
-                'border-primary': '#1F2937',
-                'border-secondary': '#374151',
-                'border-accent': '#00FF88',
+                'border-primary': 'rgb(var(--border-primary) / <alpha-value>)',
+                'border-secondary': 'rgb(var(--border-secondary) / <alpha-value>)',
+                'border-accent': 'rgb(var(--accent-green) / <alpha-value>)',
             },
             fontFamily: {
-                'sans': ['Inter', 'system-ui', 'sans-serif'],
-                'heading': ['Space Grotesk', 'Inter', 'sans-serif'],
+                'sans': ['Cairo', 'Inter', 'system-ui', 'sans-serif'],
+                'heading': ['Cairo', 'Space Grotesk', 'Inter', 'sans-serif'],
                 'mono': ['JetBrains Mono', 'Fira Code', 'monospace'],
             },
             maxWidth: {

@@ -5,7 +5,6 @@ Provides encoding, header manipulation, chunking, and timing-based
 evasion techniques that integrate with PayloadEngine and BaseTester.
 """
 import random
-import time
 import urllib.parse
 import logging
 

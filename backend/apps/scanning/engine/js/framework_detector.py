@@ -25,7 +25,7 @@ import logging
 import re
 import time
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
 logger = logging.getLogger(__name__)
 
@@ -286,7 +286,7 @@ def check_nextjs(content: str, headers: dict | None = None,
             result['api_routes'].append(route)
 
     # _next/data fetch URLs
-    parsed_base = urljoin(url, '/') if url else ''
+    urljoin(url, '/') if url else ''
     build_id = result['build_id'] or '*'
     if result['build_id'] and result['api_routes']:
         for route in result['api_routes'][:10]:

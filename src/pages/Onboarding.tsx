@@ -40,8 +40,9 @@ export default function Onboarding() {
             
             // Redirect to scan page with pre-filled target
             navigate(`/scan?target=${encodeURIComponent(domain)}`);
-        } catch (err: any) {
-            setError(err?.response?.data?.detail || 'Failed to create target. Please try again.');
+        } catch (err: unknown) {
+            const errorObj = err as { response?: { data?: { detail?: string } } };
+            setError(errorObj?.response?.data?.detail || 'Failed to create target. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -63,7 +64,7 @@ export default function Onboarding() {
                                 Welcome to SafeWeb AI, {user?.name?.split(' ')[0] || 'User'}!
                             </h1>
                             <p className="text-lg text-text-secondary mb-10 max-w-xl mx-auto leading-relaxed">
-                                You are just a few steps away from securing your web infrastructure. Let's start by adding your first web application or domain as a target.
+                                You are just a few steps away from securing your web infrastructure. Let&apos;s start by adding your first web application or domain as a target.
                             </p>
                             <Button variant="primary" className="px-8 py-3 text-lg" onClick={() => setStep(2)}>
                                 Get Started

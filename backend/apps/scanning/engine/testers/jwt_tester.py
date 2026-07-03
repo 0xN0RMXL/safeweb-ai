@@ -178,7 +178,7 @@ class JWTTester(BaseTester):
 
         # Create token with alg: none
         none_header = {**header, 'alg': 'none'}
-        none_token = (
+        (
             self._b64encode(json.dumps(none_header))
             + '.'
             + self._b64encode(json.dumps(payload))
@@ -419,7 +419,6 @@ class JWTTester(BaseTester):
 
     def _test_x5u_injection(self, url, token, header, source):
         """Check for x5u and x5c header presence (certificate injection vectors)."""
-        issues = []
 
         if 'x5u' in header:
             return self._build_vuln(
@@ -561,7 +560,7 @@ class JWTTester(BaseTester):
                 continue  # Already has this claim
 
             modified_payload = {**payload, claim_name: claim_value}
-            new_payload_b64 = self._b64encode(json.dumps(modified_payload))
+            self._b64encode(json.dumps(modified_payload))
 
             # We need the secret to re-sign — only works if we cracked it
             # This test mostly checks if the claim is in the payload at all

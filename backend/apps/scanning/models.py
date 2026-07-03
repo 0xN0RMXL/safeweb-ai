@@ -142,6 +142,13 @@ class Scan(models.Model):
     # Phase 48: per-tester execution metrics
     tester_results = models.JSONField(default=list, blank=True)
 
+    # Agentic multi-agent orchestration fields
+    flow_status = models.CharField(max_length=50, default='initializing')
+    task_graph = models.JSONField(default=dict, blank=True)
+    engagement_log = models.JSONField(default=list, blank=True)
+    cost_meter_usd = models.DecimalField(max_digits=8, decimal_places=4, default=0.0000)
+    scope_allowlist = models.JSONField(default=list, blank=True)
+
     # Incremental-update counter: incremented each time recon_data or tester_results
     # are saved mid-scan so the SSE stream can emit a data_update signal.
     data_version = models.IntegerField(default=0)
@@ -214,6 +221,11 @@ class Vulnerability(models.Model):
         ('low', 'Low'),
         ('info', 'Info'),
     ]
+    VERIFICATION_STATUS_CHOICES = [
+        ('candidate', 'Candidate (Unverified)'),
+        ('verified', 'Verified (3/3 Confirmed)'),
+        ('unverified', 'Unverified (Replay Failed)'),
+    ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     scan = models.ForeignKey(Scan, on_delete=models.CASCADE, related_name='vulnerabilities')
@@ -239,6 +251,9 @@ class Vulnerability(models.Model):
     attack_chain = models.CharField(max_length=128, blank=True, default='')
     oob_callback = models.CharField(max_length=255, blank=True, default='')  # Phase 19: OOB callback ID
     exploit_data = models.JSONField(default=dict, blank=True)  # Exploit proof + BB report data
+    verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS_CHOICES, default='candidate')
+    proof_capsule = models.JSONField(default=dict, blank=True, null=True)
+    action_id_reference = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

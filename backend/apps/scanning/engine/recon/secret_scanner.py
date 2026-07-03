@@ -8,7 +8,7 @@ import logging
 import re
 import time
 
-from ._base import create_result, add_finding, finalize_result, extract_hostname
+from ._base import create_result, add_finding, finalize_result
 
 logger = logging.getLogger(__name__)
 

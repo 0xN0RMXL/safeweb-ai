@@ -51,11 +51,25 @@ class OrganizationMembership(models.Model):
 
 class AIConfiguration(models.Model):
     """AI Provider configuration per Organization."""
+    PROVIDER_CHOICES = [
+        ('openai', 'OpenAI Platform'),
+        ('anthropic', 'Anthropic Console'),
+        ('gemini', 'Google AI Studio (Gemini)'),
+        ('groq', 'Groq Cloud'),
+        ('openrouter', 'OpenRouter'),
+        ('cerebras', 'Cerebras Cloud'),
+        ('mistral', 'Mistral AI La Plateforme'),
+        ('together', 'Together AI'),
+        ('fireworks', 'Fireworks AI'),
+        ('xai', 'xAI API'),
+        ('custom', 'Custom Provider'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='ai_config')
     provider = models.CharField(
         max_length=50,
-        choices=[('openai', 'OpenAI'), ('anthropic', 'Anthropic'), ('gemini', 'Google Gemini'), ('custom', 'Custom Provider')],
+        choices=PROVIDER_CHOICES,
         default='openai'
     )
     api_key = models.CharField(max_length=255, blank=True, default='')
@@ -112,6 +126,22 @@ class User(AbstractUser):
     @property
     def is_admin(self):
         return self.role == 'admin' or self.is_superuser
+
+    @property
+    def organization(self):
+        org = getattr(self, 'current_organization', None)
+        if not org:
+            first_mem = self.memberships.first()
+            if first_mem:
+                org = first_mem.organization
+            else:
+                org = self.owned_organizations.first()
+        return org
+
+    @property
+    def plan(self):
+        org = self.organization
+        return org.plan_tier if org else 'pro'
 
 
 class APIKey(models.Model):

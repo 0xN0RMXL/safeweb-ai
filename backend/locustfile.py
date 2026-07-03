@@ -1,5 +1,4 @@
 from locust import HttpUser, task, between
-import random
 import uuid
 
 class SafeWebAIUser(HttpUser):

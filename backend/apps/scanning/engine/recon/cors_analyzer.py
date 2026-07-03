@@ -5,7 +5,6 @@ Tests for common CORS misconfigurations that could allow data theft:
 null origin, reflected origin, wildcard with credentials, subdomain trust.
 """
 import logging
-import re
 import time
 from urllib.parse import urlparse
 
@@ -13,7 +12,6 @@ from ._base import (
     create_result,
     add_finding,
     finalize_result,
-    extract_hostname,
     extract_root_domain,
 )
 

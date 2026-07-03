@@ -7,6 +7,7 @@ import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
 import { chatAPI } from '@/services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ChatAction {
     type: 'navigate' | 'download';
@@ -42,6 +43,14 @@ const WELCOME_MSG: ChatMsg = {
     suggestions: ['How do I start a scan?', 'What is OWASP Top 10?', 'Check my subscription'],
 };
 
+const WELCOME_MSG_AR: ChatMsg = {
+    id: 1,
+    text: "مرحباً! أنا **مساعد SafeWeb AI الذكي** — خبير الأمن السيبراني الخاص بك.\n\nيمكنني مساعدتك في:\n- 🔍 بدء وإدارة فحوصات الأمان\n- 🛡️ فهم ومعالجة الثغرات الأمنية\n- 📊 تحليل نتائج فحوصاتك\n- ⚙️ التنقل في مزايا المنصة\n\nكيف يمكنني مساعدتك اليوم؟",
+    sender: 'bot',
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    suggestions: ['كيف أبدأ فحصاً جديداً؟', 'ما هو تصنيف OWASP Top 10؟', 'عرض باقة اشتراكي'],
+};
+
 const QUICK_ACTIONS = [
     { label: '🔍 Start a scan', text: 'How do I start a new scan?' },
     { label: '📊 My scans', text: 'Show my recent scans' },
@@ -53,12 +62,27 @@ const QUICK_ACTIONS = [
     { label: '❓ Help', text: 'What can you help me with?' },
 ];
 
+const QUICK_ACTIONS_AR = [
+    { label: '🔍 بدء فحص', text: 'كيف أبدأ فحصاً جديداً؟' },
+    { label: '📊 فحوصاتي', text: 'اعرض أحدث فحوصاتي' },
+    { label: '🛡️ OWASP Top 10', text: 'ما هو تصنيف OWASP Top 10؟' },
+    { label: '💳 باقة الاشتراك', text: 'ما هي باقة اشتراكي الحالية؟' },
+    { label: '📤 تصدير تقرير', text: 'كيف أصدر تقرير الفحص؟' },
+    { label: '⚙️ درجة الأمان', text: 'كيف يتم حساب تقييم الأمان؟' },
+    { label: '🔐 تفعيل 2FA', text: 'كيف أفعل المصادقة الثنائية؟' },
+    { label: '❓ مساعدة', text: 'كيف يمكنك مساعدتي؟' },
+];
+
 export default function ChatbotWidget() {
+    const { language } = useLanguage();
+    const activeWelcome = language === 'ar' ? WELCOME_MSG_AR : WELCOME_MSG;
+    const activeQuickActions = language === 'ar' ? QUICK_ACTIONS_AR : QUICK_ACTIONS;
+
     const [isOpen, setIsOpen] = useState(false);
     const [message, setMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [sessionId, setSessionId] = useState<string | undefined>();
-    const [messages, setMessages] = useState<ChatMsg[]>([WELCOME_MSG]);
+    const [messages, setMessages] = useState<ChatMsg[]>([activeWelcome]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const location = useLocation();
@@ -130,7 +154,7 @@ export default function ChatbotWidget() {
                 })
             );
             setSessionId(id);
-            setMessages(msgs.length > 0 ? msgs : [WELCOME_MSG]);
+            setMessages(msgs.length > 0 ? msgs : [activeWelcome]);
             setShowSessions(false);
         } catch {
             // silently fail
@@ -145,7 +169,7 @@ export default function ChatbotWidget() {
             setSessions((prev) => prev.filter((s) => s.id !== id));
             if (sessionId === id) {
                 setSessionId(undefined);
-                setMessages([WELCOME_MSG]);
+                setMessages([activeWelcome]);
             }
         } catch {
             // silently fail
@@ -155,7 +179,7 @@ export default function ChatbotWidget() {
     // Start a brand-new chat
     const startNewChat = () => {
         setSessionId(undefined);
-        setMessages([WELCOME_MSG]);
+        setMessages([activeWelcome]);
         setShowSessions(false);
     };
 
@@ -512,9 +536,11 @@ export default function ChatbotWidget() {
                         {/* Quick Actions — shown only on welcome */}
                         {messages.length === 1 && (
                             <div className="px-4 py-3 bg-bg-secondary border-t border-border-primary">
-                                <div className="text-xs text-text-tertiary mb-2">Quick actions:</div>
+                                <div className="text-xs text-text-tertiary mb-2">
+                                    {language === 'ar' ? 'إجراءات سريعة:' : 'Quick actions:'}
+                                </div>
                                 <div className="flex flex-wrap gap-1.5">
-                                    {QUICK_ACTIONS.map((qa, index) => (
+                                    {activeQuickActions.map((qa, index) => (
                                         <button
                                             key={index}
                                             onClick={() => sendMessage(qa.text)}
@@ -532,7 +558,7 @@ export default function ChatbotWidget() {
                             <div className="flex items-center gap-2">
                                 <Input
                                     type="text"
-                                    placeholder="Ask about security, scans, features..."
+                                    placeholder={language === 'ar' ? 'اسأل عن الأمان، الفحوصات، المزايا...' : 'Ask about security, scans, features...'}
                                     value={message}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMessage(e.target.value)}
                                     onKeyDown={handleKeyDown}

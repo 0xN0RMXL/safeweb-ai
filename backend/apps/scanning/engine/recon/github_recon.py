@@ -22,7 +22,7 @@ Uses ``_base`` helpers for the standardised return format.
 import logging
 import re
 import time
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 import requests
 

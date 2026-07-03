@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 import socket
-from typing import Any
+from typing import Callable, Any
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class ServiceDetector:
     def __init__(self, timeout: float = 3.0):
         self.timeout = timeout
         # service-name → test method
-        self._tests: dict[str, callable] = {
+        self._tests: dict[str, Callable[..., Any]] = {
             'ftp': self._test_ftp_anon,
             'redis': self._test_redis_unauth,
             'mongodb': self._test_mongodb_unauth,
@@ -79,7 +79,7 @@ class ServiceDetector:
                 s.connect((host, port))
                 banner = s.recv(1024).decode('utf-8', errors='replace')
                 s.sendall(b'USER anonymous\r\n')
-                resp1 = s.recv(1024).decode('utf-8', errors='replace')
+                s.recv(1024).decode('utf-8', errors='replace')
                 s.sendall(b'PASS anonymous@\r\n')
                 resp2 = s.recv(1024).decode('utf-8', errors='replace')
                 if resp2.startswith('230'):
@@ -203,7 +203,7 @@ class ServiceDetector:
                 s.sendall(b'EHLO test.local\r\n')
                 s.recv(1024)
                 s.sendall(b'MAIL FROM:<test@test.local>\r\n')
-                resp_from = s.recv(1024).decode('utf-8', errors='replace')
+                s.recv(1024).decode('utf-8', errors='replace')
                 s.sendall(b'RCPT TO:<test@example.com>\r\n')
                 resp_to = s.recv(1024).decode('utf-8', errors='replace')
                 s.sendall(b'QUIT\r\n')

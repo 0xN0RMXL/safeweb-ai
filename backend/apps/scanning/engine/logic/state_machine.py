@@ -7,7 +7,6 @@ Tests:
   - State transition abuse
 """
 import logging
-import re
 import json
 
 logger = logging.getLogger(__name__)

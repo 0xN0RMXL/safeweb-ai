@@ -18,7 +18,6 @@ Depth behaviour:
 from __future__ import annotations
 
 import logging
-import time
 
 from apps.scanning.engine.testers.base_tester import BaseTester
 
@@ -140,7 +139,6 @@ class ActiveReconTester(BaseTester):
         """Check SPF and DMARC configuration."""
         vulns: list[dict] = []
         try:
-            from apps.scanning.engine.active_recon import parse_spf, parse_dmarc
             from urllib.parse import urlparse
             hostname = urlparse(url).hostname or ''
             if not hostname:
@@ -161,7 +159,7 @@ class ActiveReconTester(BaseTester):
         vulns: list[dict] = []
         try:
             from apps.scanning.engine.active_recon.http_probe import (
-                fingerprint_headers, detect_cdn_and_origin,
+                fingerprint_headers,
             )
             headers = page.get('headers', {})
             fp = fingerprint_headers(headers)

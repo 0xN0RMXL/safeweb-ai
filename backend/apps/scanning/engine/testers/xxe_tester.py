@@ -7,7 +7,6 @@ injection, XInclude, SVG XXE, and SOAP XXE.
 """
 import re
 import logging
-from urllib.parse import urlparse
 from .base_tester import BaseTester
 from apps.scanning.engine.payloads.xxe_payloads import (
     get_xxe_payloads_by_depth,
@@ -135,7 +134,7 @@ class XXETester(BaseTester):
 
                 if self._has_xxe_success(response.text):
                     return self._build_vuln(
-                        name=f'XML External Entity Injection (XXE)',
+                        name='XML External Entity Injection (XXE)',
                         severity='critical',
                         category='XXE Injection',
                         description='The endpoint processes XML input with external entity resolution enabled, '

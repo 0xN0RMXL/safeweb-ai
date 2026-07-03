@@ -10,7 +10,7 @@ Supports:
 from __future__ import annotations
 
 import logging
-from typing import Type
+from typing import Type, Any
 
 from .base import ExternalTool, ToolCapability
 
@@ -59,6 +59,14 @@ class ToolRegistry:
 
     def all_tools(self) -> list[ExternalTool]:
         return list(self._tools.values())
+
+    def run_tool_mcp(self, name: str, target: str, request_id: Any = 1, **options: Any) -> dict[str, Any]:
+        """Run tool by name and return MCP JSON-RPC response."""
+        tool = self.get(name)
+        if not tool:
+            from .mcp_server import MCPToolServer
+            return MCPToolServer.format_json_rpc_error(-32601, f"Tool '{name}' not found in registry.", request_id=request_id)
+        return tool.run_mcp(target, request_id=request_id, **options)
 
     # ── Health ────────────────────────────────────────────────────────────
 

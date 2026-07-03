@@ -32,7 +32,6 @@ def auth_client(django_user_model):
 
 @pytest.fixture
 def completed_scan(auth_client):
-    from django.utils import timezone
     from apps.scanning.models import Scan, Vulnerability
 
     _, user = auth_client

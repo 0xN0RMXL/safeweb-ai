@@ -6,7 +6,6 @@ Tests for: introspection enabled, query depth/complexity abuse,
 batching attacks, injection via GraphQL arguments, IDOR, and
 information disclosure through error messages.
 """
-import json
 import re
 import logging
 from urllib.parse import urlparse, urljoin
@@ -351,6 +350,6 @@ class GraphQLTester(BaseTester):
                     cwe='CWE-89',
                     cvss=9.8,
                     affected_url=endpoint,
-                    evidence=f'SQL error triggered by GraphQL argument payload.',
+                    evidence='SQL error triggered by GraphQL argument payload.',
                 )
         return None

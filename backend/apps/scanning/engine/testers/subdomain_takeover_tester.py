@@ -249,7 +249,7 @@ class SubdomainTakeoverTester(BaseTester):
 
         try:
             # Try to resolve CNAME
-            answers = socket.getaddrinfo(hostname, None)
+            socket.getaddrinfo(hostname, None)
             # If we get here, DNS resolves — check if it matches known services
             for service, info in VULNERABLE_SERVICES.items():
                 for pattern in info['cname_patterns']:
@@ -259,7 +259,7 @@ class SubdomainTakeoverTester(BaseTester):
         except socket.gaierror:
             # NXDOMAIN — domain doesn't resolve
             return self._build_vuln(
-                name=f'NXDOMAIN on Scanned Domain',
+                name='NXDOMAIN on Scanned Domain',
                 severity='info',
                 category='Subdomain Takeover',
                 description=f'The scanned domain "{hostname}" does not resolve in DNS (NXDOMAIN).',

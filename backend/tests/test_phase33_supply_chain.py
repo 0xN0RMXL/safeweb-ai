@@ -8,7 +8,6 @@ Covers:
   - SupplyChainScanner: unified interface
   - SupplyChainTester: BaseTester integration, registration, tester count
 """
-import pytest
 from unittest.mock import patch, MagicMock
 
 # ── Engine imports ───────────────────────────────────────────────────────────
@@ -578,7 +577,7 @@ class TestDBCoverage:
 
     def test_lib_aliases_map_to_vuln_db(self):
         """Every alias target should ideally exist in VULN_DB (best effort)."""
-        canonical_names = set(VULN_DB.keys())
+        set(VULN_DB.keys())
         for alias, canon in LIB_ALIASES.items():
             # Not all aliases have DB entries (some are just name normalization)
             pass  # Informational — no assertion needed

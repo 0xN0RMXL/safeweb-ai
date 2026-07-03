@@ -18,7 +18,6 @@ Depth behaviour:
 from __future__ import annotations
 
 import logging
-import time
 
 from apps.scanning.engine.testers.base_tester import BaseTester
 

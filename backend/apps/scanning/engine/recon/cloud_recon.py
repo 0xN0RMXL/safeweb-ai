@@ -27,7 +27,6 @@ import logging
 import re
 import time
 from typing import Callable, Optional
-from urllib.parse import urlparse
 
 from ._base import (
     create_result,
@@ -195,7 +194,7 @@ def _interpret_response(
     if status == 403:
         return 'exists_no_read', 'Bucket exists but access denied (403)'
     if status in (301, 302, 307, 308):
-        return 'redirect', f'Redirect → possibly region-specific endpoint'
+        return 'redirect', 'Redirect → possibly region-specific endpoint'
     if status == 404:
         return 'not_found', 'Bucket does not exist'
     if status == 400:

@@ -12,15 +12,14 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Scan, Vulnerability, Webhook, WebhookDelivery, NucleiTemplate, ScopeDefinition, MultiTargetScan, DiscoveredAsset, ScheduledScan, AssetMonitorRecord, AuthConfig, SharedReport
 from .serializers import (
     ScanCreateSerializer,
-    # DEACTIVATED: ScanURLCreateSerializer,
+    ScanURLCreateSerializer,
     ScanDetailSerializer, ScanListSerializer,
     ScanFullCreateSerializer, WebhookSerializer,
     WebhookDeliverySerializer, NucleiTemplateSerializer,
     VulnerabilitySerializer,
     ScopeDefinitionSerializer, MultiTargetScanSerializer,
     DiscoveredAssetSerializer, ScopeImportSerializer, ScopeValidateSerializer,
-    ScheduledScanSerializer, AssetMonitorRecordSerializer, AuthConfigSerializer,
-    SharedReportSerializer,
+    ScheduledScanSerializer, AssetMonitorRecordSerializer,
 )
 from .tasks import execute_scan_task
 from apps.accounts.utils import time_ago
@@ -29,7 +28,6 @@ logger = logging.getLogger(__name__)
 
 
 from rest_framework.exceptions import APIException
-from rest_framework import status
 
 class ServiceUnavailable(APIException):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
@@ -39,7 +37,14 @@ class ServiceUnavailable(APIException):
 def _dispatch_scan_task(scan_id: str):
     """Dispatch scan task via Celery. If the broker is unavailable, raise 503."""
     if getattr(django_settings, 'CELERY_TASK_ALWAYS_EAGER', False):
-        t = threading.Thread(target=execute_scan_task, args=(scan_id,), daemon=True)
+        def _run_scan_in_thread(sid):
+            import os
+            os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+            try:
+                execute_scan_task(sid)
+            except Exception as e:
+                logger.error(f'Thread scan failed for {sid}: {e}')
+        t = threading.Thread(target=_run_scan_in_thread, args=(scan_id,), daemon=True)
         t.start()
     else:
         try:
@@ -1011,6 +1016,8 @@ class ScanStreamView(views.APIView):
             last_tool: str | None = None
             last_vuln_count = -1
             last_data_version = -1
+            last_flow_status: str | None = None
+            last_log_len = -1
             deadline = _time.monotonic() + _MAX_SECONDS
 
             while _time.monotonic() < deadline:
@@ -1103,6 +1110,19 @@ class ScanStreamView(views.APIView):
                         f'{json.dumps({"dataVersion": snap.data_version})}\n\n'
                     )
                 last_data_version = snap.data_version
+
+                # ── agent_activity: multi-agent LangGraph telemetry ────────
+                current_log_len = len(snap.engagement_log or [])
+                if snap.flow_status != last_flow_status or current_log_len != last_log_len:
+                    agent_payload = {
+                        "flowStatus": snap.flow_status,
+                        "costMeterUsd": float(snap.cost_meter_usd or 0.0),
+                        "engagementLog": snap.engagement_log or [],
+                        "taskGraph": snap.task_graph or {}
+                    }
+                    yield f'event: agent_activity\ndata: {json.dumps(agent_payload)}\n\n'
+                    last_flow_status = snap.flow_status
+                    last_log_len = current_log_len
 
                 if snap.status in _TERMINAL:
                     yield (
@@ -1243,7 +1263,6 @@ class AuthConfigCreateView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        from .models import AuthConfig
         kwargs = {
             'auth_type': auth_type,
             'role': request.data.get('role', 'attacker'),
@@ -1812,7 +1831,8 @@ class TargetListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         from .models import Target
-        return Target.objects.filter(organization__memberships__user=self.request.user)
+        from django.db.models import Q
+        return Target.objects.filter(Q(organization__memberships__user=self.request.user) | Q(organization__owner=self.request.user)).distinct()
 
     def perform_create(self, serializer):
         from apps.accounts.middleware import get_current_organization
@@ -1823,10 +1843,21 @@ class TargetListCreateView(generics.ListCreateAPIView):
                 from apps.accounts.models import Organization
                 org = Organization.objects.filter(id=org_id, memberships__user=self.request.user).first()
             if not org:
-                from apps.accounts.models import OrganizationMembership
+                from apps.accounts.models import OrganizationMembership, Organization
                 first_mem = OrganizationMembership.objects.filter(user=self.request.user).first()
                 if first_mem:
                     org = first_mem.organization
+                else:
+                    org = self.request.user.current_organization
+                    if not org:
+                        org_name = f"{self.request.user.username or self.request.user.email}'s Organization"
+                        org, _ = Organization.objects.get_or_create(
+                            name=org_name,
+                            defaults={'owner': self.request.user}
+                        )
+                        OrganizationMembership.objects.get_or_create(user=self.request.user, organization=org, defaults={'role': 'owner'})
+                        self.request.user.current_organization = org
+                        self.request.user.save(update_fields=['current_organization'])
 
         if not org:
             from rest_framework.exceptions import ValidationError

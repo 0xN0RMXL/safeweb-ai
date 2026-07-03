@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch
 from rest_framework.exceptions import ValidationError
 from apps.scanning.serializers import TargetSerializer
-from apps.scanning.models import Target, Scan, Vulnerability
+from apps.scanning.models import Target, Scan
 from apps.accounts.models import Organization
 
 pytestmark = pytest.mark.django_db

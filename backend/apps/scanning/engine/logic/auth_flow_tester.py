@@ -10,9 +10,7 @@ Tests:
 """
 import logging
 import re
-import time
 import json
-import hashlib
 
 logger = logging.getLogger(__name__)
 

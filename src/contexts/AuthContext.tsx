@@ -12,7 +12,7 @@ export interface User {
     jobTitle: string;
     plan: string;
     twoFactorEnabled: boolean;
-    has_targets: boolean;
+    hasTargets: boolean;
 }
 
 interface AuthContextType {

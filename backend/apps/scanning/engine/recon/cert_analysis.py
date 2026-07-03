@@ -948,7 +948,7 @@ def _jarm_probe(hostname: str, port: int, hello: bytes, timeout: float = 5.0) ->
     if len(data) <= offset + 4 or data[offset] != 0x02:  # not a ServerHello
         return '|||', '|||'
 
-    msg_len = struct.unpack('>I', b'\x00' + data[offset + 1:offset + 4])[0]
+    struct.unpack('>I', b'\x00' + data[offset + 1:offset + 4])[0]
     offset += 4
 
     if len(data) < offset + 36:

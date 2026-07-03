@@ -1,8 +1,5 @@
 """Tests for Phase 22 — Payload Loader & Mega Wordlist Library."""
 import os
-import types
-import pytest
-from unittest.mock import patch, MagicMock
 
 
 # ── PayloadLoader Tests ─────────────────────────────────────────────────────

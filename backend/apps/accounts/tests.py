@@ -1,8 +1,7 @@
 import pytest
-from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 from apps.accounts.models import User
-from apps.accounts.serializers import RegisterSerializer, ChangePasswordSerializer
+from apps.accounts.serializers import RegisterSerializer
 
 pytestmark = pytest.mark.django_db
 

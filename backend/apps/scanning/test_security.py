@@ -1,8 +1,6 @@
 import pytest
 from django.test import TestCase
-from django.urls import reverse
 from apps.accounts.models import Organization, User
-from apps.scanning.models import Scan, Target
 
 @pytest.mark.django_db
 class TestSecuritySuite(TestCase):
@@ -24,7 +22,7 @@ class TestSecuritySuite(TestCase):
         }
         
         # Mocking the organization headers
-        headers = {
+        {
             "HTTP_X_ORGANIZATION_ID": str(self.org.id),
             "HTTP_AUTHORIZATION": "Bearer fake_token"
         }

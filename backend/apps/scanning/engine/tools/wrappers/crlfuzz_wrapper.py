@@ -1,6 +1,5 @@
 """CRLFuzz — CRLF injection scanner."""
 from __future__ import annotations
-import json
 from typing import Any
 from ..base import ExternalTool, ToolCapability
 from ..result import ToolResult, ToolSeverity

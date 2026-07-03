@@ -28,13 +28,11 @@ class DnsreconTool(ExternalTool):
         except json.JSONDecodeError:
             return results
         records = data if isinstance(data, list) else data.get('records', [])
-        zone_transfer = False
         for rec in records:
             rtype = rec.get('type', '')
             name = rec.get('name', '')
             addr = rec.get('address', rec.get('target', ''))
             if rtype == 'info' and 'zone transfer' in rec.get('zone_transfer', '').lower():
-                zone_transfer = True
                 results.append(ToolResult(
                     tool_name=self.name, category='dns',
                     title=f'Zone Transfer possible for {name}',

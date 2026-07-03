@@ -2,7 +2,6 @@ import re
 from datetime import timedelta
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from django.contrib.auth.password_validation import validate_password
 from django.utils import timezone
 from .models import User, APIKey, UserSession, ContactMessage
 
@@ -72,15 +71,21 @@ class LoginSerializer(serializers.Serializer):
 
 class UserSerializer(serializers.ModelSerializer):
     """User serializer for responses."""
+    has_targets = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'name', 'role', 'avatar',
             'company', 'job_title', 'plan', 'is_2fa_enabled',
-            'created_at', 'last_login',
+            'created_at', 'last_login', 'has_targets',
         ]
         read_only_fields = ['id', 'email', 'role', 'created_at', 'last_login']
+
+    def get_has_targets(self, obj):
+        from apps.scanning.models import Target
+        return Target.objects.filter(organization__memberships__user=obj).exists() or \
+               Target.objects.filter(organization__owner=obj).exists()
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -89,15 +94,21 @@ class ProfileSerializer(serializers.ModelSerializer):
     subscription = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
     two_factor_enabled = serializers.BooleanField(source='is_2fa_enabled', read_only=True)
+    has_targets = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'name', 'role', 'avatar',
             'company', 'job_title', 'plan', 'two_factor_enabled',
-            'created_at', 'last_login', 'stats', 'subscription',
+            'created_at', 'last_login', 'stats', 'subscription', 'has_targets',
         ]
         read_only_fields = ['id', 'email', 'role', 'created_at', 'last_login']
+
+    def get_has_targets(self, obj):
+        from apps.scanning.models import Target
+        return Target.objects.filter(organization__memberships__user=obj).exists() or \
+               Target.objects.filter(organization__owner=obj).exists()
 
     def get_role(self, obj):
         return 'admin' if obj.is_admin else obj.role
@@ -206,7 +217,6 @@ class APIKeySerializer(serializers.ModelSerializer):
     def get_last_used(self, obj):
         if not obj.last_used_at:
             return 'Never'
-        from django.utils import timezone
         from apps.accounts.utils import time_ago
         return time_ago(obj.last_used_at)
 

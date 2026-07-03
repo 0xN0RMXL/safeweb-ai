@@ -14,14 +14,13 @@ Verification methods:
   - Open Redirect: different redirect target, check Location header
   - Generic: response diffing (payload vs clean request)
 """
-import hashlib
 import logging
 import re
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
-from urllib.parse import urlencode, urlparse, parse_qs, urljoin, quote
+from urllib.parse import urlencode, urlparse, parse_qs
 
 import requests
 import urllib3
@@ -85,22 +84,28 @@ class VerificationEngine:
         Returns list of VerificationResult objects.
         """
         import asyncio
-        results = []
+        from apps.scanning.engine.async_engine import AsyncTaskRunner
+        
+        runner = AsyncTaskRunner(max_concurrency=20, default_timeout=20.0)
         for vuln in vulns:
             severity = vuln.get('severity', 'info')
             if severity not in ('critical', 'high'):
                 continue
-            try:
-                result = await asyncio.to_thread(self._verify_single, vuln)
-                results.append(result)
-            except Exception as exc:
-                logger.debug(f'Verification failed for {vuln.get("name", "?")}: {exc}')
+            vuln_id = vuln.get('_id', '')
+            runner.add(vuln_id, self._verify_single, args=(vuln,))
+            
+        task_results = await runner.run()
+        results = []
+        for key, res in task_results.items():
+            if res.result:
+                results.append(res.result)
+            else:
                 results.append(VerificationResult(
-                    vuln_id=vuln.get('_id', ''),
+                    vuln_id=key,
                     confirmed=False,
                     confidence=0.3,
                     confirmation_method='error',
-                    evidence=f'Verification error: {exc}',
+                    evidence=f'Verification error/timeout: {res.error}',
                 ))
         return results
 
@@ -210,7 +215,7 @@ class VerificationEngine:
         # Baseline: SLEEP(0)
         url_fast = self._inject_param(affected_url, param, "1' AND SLEEP(0)-- -")
         t0 = time.monotonic()
-        resp_fast = self._safe_request('GET', url_fast)
+        self._safe_request('GET', url_fast)
         time_fast = time.monotonic() - t0
 
         # Payload: SLEEP(5)
@@ -228,7 +233,7 @@ class VerificationEngine:
             )
 
         # Fallback: check for SQL error strings from original evidence
-        evidence = vuln.get('evidence', '') or ''
+        vuln.get('evidence', '') or ''
         error_patterns = [
             r'sql syntax', r'mysql', r'ORA-\d{5}', r'postgresql',
             r'sqlite3?\.', r'unclosed quotation', r'quoted string not properly terminated',

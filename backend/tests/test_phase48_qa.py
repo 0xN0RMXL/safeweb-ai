@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -217,7 +216,7 @@ class TestAuditSecurityHeaders:
 
     def test_finding_description_mentions_header(self):
         result = self._run({})
-        names = {f['name'] for f in result}
+        {f['name'] for f in result}
         # Each finding's evidence mentions the header name
         for f in result:
             assert f['evidence']

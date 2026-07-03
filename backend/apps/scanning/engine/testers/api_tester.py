@@ -15,8 +15,6 @@ Covers:
 """
 import json
 import logging
-import re
-import time
 
 from apps.scanning.engine.testers.base_tester import BaseTester
 
@@ -298,7 +296,7 @@ class APITester(BaseTester):
                                                 'database', 'admin', 'system']
                             if any(ind in str(data).lower() for ind in admin_indicators):
                                 vulns.append(self._build_vuln(
-                                    name=f'BFLA — Admin Endpoint Accessible',
+                                    name='BFLA — Admin Endpoint Accessible',
                                     severity='critical',
                                     category='Authorization',
                                     description=(

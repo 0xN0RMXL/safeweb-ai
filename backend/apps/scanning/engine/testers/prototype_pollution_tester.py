@@ -10,7 +10,6 @@ Covers:
 """
 import json
 import logging
-import urllib.parse
 
 from apps.scanning.engine.testers.base_tester import BaseTester
 
@@ -216,7 +215,7 @@ class PrototypePollutionTester(BaseTester):
                         cwe='CWE-1321',
                         cvss=6.1,
                         affected_url=polluted_url[:200],
-                        evidence=f'Page contains merge/spread patterns and accepts __proto__ params.',
+                        evidence='Page contains merge/spread patterns and accepts __proto__ params.',
                     ))
                     break
 
@@ -242,7 +241,7 @@ class PrototypePollutionTester(BaseTester):
                         cwe='CWE-1321',
                         cvss=6.1,
                         affected_url=fragment_url[:200],
-                        evidence=f'Page uses location.hash parsing.',
+                        evidence='Page uses location.hash parsing.',
                     ))
                     break
 

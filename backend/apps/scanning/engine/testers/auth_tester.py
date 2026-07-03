@@ -8,7 +8,6 @@ and HTTP-based login detection.
 """
 import re
 import logging
-from urllib.parse import urlparse
 from .base_tester import BaseTester
 from apps.scanning.engine.payloads.default_credentials import get_all_credentials
 

@@ -447,7 +447,6 @@ class ScheduledScanEngine:
 
         Returns one finding per new/fixed/regressed item.
         """
-        from apps.scanning.engine.testers.base_tester import BaseTester
 
         dummy = _DummyTester()
         vulns: list[dict] = []
@@ -623,7 +622,6 @@ class _DummyTester:
         SEVERITY_CVSS_MAP = {
             'critical': 9.5, 'high': 7.5, 'medium': 5.0, 'low': 2.5, 'info': 0.0,
         }
-        SEV_ORDER = {'info': 0, 'low': 1, 'medium': 2, 'high': 3, 'critical': 4}
         CVSS_SEV = [(9.0, 'critical'), (7.0, 'high'), (4.0, 'medium'), (0.1, 'low')]
 
         if cvss == 0 and severity in SEVERITY_CVSS_MAP:

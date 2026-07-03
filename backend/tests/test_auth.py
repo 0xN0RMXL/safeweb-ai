@@ -3,17 +3,14 @@
 Covers AuthSessionManager, LoginHandler, AuthSequence, and integration.
 """
 import time
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
-import pytest
 import requests
 
 from apps.scanning.engine.auth.session_manager import (
     AuthCredentials,
     AuthSessionManager,
-    AuthType,
     SessionState,
-    SESSION_MAX_AGE,
     HEALTH_CHECK_INTERVAL,
 )
 from apps.scanning.engine.auth.login_handler import LoginHandler
@@ -520,7 +517,7 @@ class TestAuthSequence:
             extract_pattern=r'token["\s:]+["\']([a-f0-9]+)',
             extract_store_as='csrf',
         )
-        resp = _mock_response(text='<input name="token" value="abc123">')
+        _mock_response(text='<input name="token" value="abc123">')
         # Need a response with matching pattern
         resp2 = _mock_response(text='token: "deadbeef"')
         seq.last_response = resp2
@@ -598,7 +595,7 @@ class TestAuthSequence:
             # Optional step fails
             fail_resp = _mock_response(status_code=500)
             mock_get.return_value = fail_resp
-            result = seq.execute(session)
+            seq.execute(session)
 
         # Optional step failed, verify step checks last_response (500) — fails but seq still completes
         # Actually verify step is required by default, so:

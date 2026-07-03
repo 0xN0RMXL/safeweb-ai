@@ -6,8 +6,8 @@ cookie injection, custom header auth, CSRF token extraction, and MFA/TOTP.
 """
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urljoin, urlparse
+from typing import Any, Dict, Optional, Tuple
+from urllib.parse import urljoin
 
 import requests
 

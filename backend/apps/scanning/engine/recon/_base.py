@@ -16,7 +16,7 @@ import logging
 import os
 import time
 from datetime import datetime, timezone
-from typing import Any, Optional, Union
+from typing import Union
 
 logger = logging.getLogger(__name__)
 

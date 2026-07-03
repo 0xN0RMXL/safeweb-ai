@@ -8,7 +8,6 @@ Fills identity management testing gaps identified in Phase 46.
 """
 import re
 import logging
-from urllib.parse import urljoin, urlparse
 
 from .base_tester import BaseTester
 

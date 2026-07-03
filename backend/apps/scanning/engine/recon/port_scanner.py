@@ -173,7 +173,6 @@ COMMON_PORTS = {
     5601: 'Kibana',
     7777: 'Oracle XML DB',
     8161: 'ActiveMQ Web Console',
-    8834: 'Nessus',
     9090: 'Prometheus/Cockpit',
     11443: 'HTTPS Alt',
     50000: 'Jenkins Agent / SAP',
@@ -187,7 +186,6 @@ COMMON_PORTS = {
     903: 'VMware ESXi',
     # Misc high-value
     1099: 'Java RMI',
-    4848: 'GlassFish Admin',
     4899: 'RAdmin',
     8649: 'Ganglia',
     9200: 'Elasticsearch',

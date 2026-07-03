@@ -239,7 +239,7 @@ class ParameterEngine:
     @staticmethod
     def _classify_param(name: str) -> str:
         lower = name.lower()
-        stripped = re.sub(r'[-_\[\]]', '', lower)
+        re.sub(r'[-_\[\]]', '', lower)
 
         if lower in _ID_NAMES or lower.endswith('_id') or lower.startswith('id_'):
             return 'id'

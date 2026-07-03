@@ -162,6 +162,28 @@ def execute_scan_task(self, scan_id):
         raise self.retry(exc=exc)
 
 
+@shared_task(bind=True, max_retries=1)
+def execute_agentic_scan_task(self, scan_id: str, target_url: str, allowlist: list = None):
+    """Execute autonomous multi-agent pentesting scan via LangGraph."""
+    from apps.scanning.engine.langgraph_engine import LangGraphOrchestrator
+    logger.info(f"Dispatching agentic LangGraph scan for scan_id={scan_id}")
+    orchestrator = LangGraphOrchestrator()
+    initial_state = {
+        "scan_id": str(scan_id),
+        "target_url": target_url,
+        "scope_allowlist": allowlist or [target_url],
+        "flow_status": "initializing",
+        "discovered_endpoints": [],
+        "candidate_vulnerabilities": [],
+        "verified_vulnerabilities": [],
+        "current_cost": 0.0,
+        "engagement_log": []
+    }
+    final_state = orchestrator.run_scan(initial_state)
+    logger.info(f"Agentic scan completed. Final status: {final_state.get('flow_status')}")
+    return final_state
+
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=60)
 def populate_ai_explanations_task(self, scan_id: str):
     """
@@ -169,7 +191,6 @@ def populate_ai_explanations_task(self, scan_id: str):
     """
     from apps.scanning.models import Vulnerability
     from apps.scanning.engine.ai.reasoning import LLMReasoningEngine
-    import asyncio
 
     logger.info(f'Populating AI explanations for scan: {scan_id}')
     try:

@@ -4,7 +4,6 @@ Covers: OAuthTester, SAMLTester, CSSInjectionTester, CSVInjectionTester,
         DNSRebindingTester, HPPTester, TypeJugglingTester, ReDoSTester
 """
 import time
-import pytest
 from unittest.mock import patch, MagicMock
 from tests.conftest import MockPage, MockForm, MockFormInput
 

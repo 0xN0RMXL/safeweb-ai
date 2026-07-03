@@ -13,21 +13,12 @@ Tests:
   - Context window overflow attacks
   - Multi-turn escalation patterns
 """
-import json
 import logging
-import re
 
 from apps.scanning.engine.testers.base_tester import BaseTester
 from apps.scanning.engine.payloads.prompt_injection_payloads import (
     DIRECT_INJECTION,
     INDIRECT_INJECTION,
-    JAILBREAK_PROMPTS,
-    ENCODING_BYPASS,
-    DATA_EXFILTRATION,
-    TOOL_ABUSE,
-    MULTI_LANGUAGE,
-    OUTPUT_MANIPULATION,
-    CONTEXT_OVERFLOW,
     SUCCESS_INDICATORS,
     get_prompt_injection_payloads_by_depth,
 )
@@ -88,7 +79,7 @@ class PromptInjectionTester(BaseTester):
         """Test discovered AI API endpoints for prompt injection."""
         vulns = []
         payloads = get_prompt_injection_payloads_by_depth(depth)
-        payloads = self._augment_payloads_with_seclists(payloads, 'prompt_injection', recon_data if hasattr(self, '_last_recon_data') else {})
+        payloads = self._augment_payloads_with_seclists(payloads, 'prompt_injection', self._last_recon_data if hasattr(self, '_last_recon_data') else {})
         endpoints = ai_info.get('endpoints', [])
 
         for endpoint in endpoints[:5]:  # Limit endpoints tested
@@ -611,7 +602,7 @@ class PromptInjectionTester(BaseTester):
                     cwe='CWE-770',
                     cvss=3.1,
                     affected_url=url,
-                    evidence=f'Large prompt accepted without error.',
+                    evidence='Large prompt accepted without error.',
                 ))
                 break
 

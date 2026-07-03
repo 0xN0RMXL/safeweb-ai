@@ -11,15 +11,10 @@ New capabilities:
 """
 from __future__ import annotations
 
-import itertools
 import logging
-import random
-import re
 import socket
-import string
 import time
 from typing import Any
-from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 

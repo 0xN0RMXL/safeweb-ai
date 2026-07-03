@@ -5,7 +5,6 @@ Wraps the ForbiddenBypassEngine into the BaseTester interface so it
 participates in the standard scan pipeline.
 """
 import logging
-from urllib.parse import urlparse
 
 from apps.scanning.engine.testers.base_tester import BaseTester
 from apps.scanning.engine.bypass.forbidden_bypass import ForbiddenBypassEngine

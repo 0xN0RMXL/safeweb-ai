@@ -1,5 +1,4 @@
 """Tests for MisconfigTester (upgraded)."""
-import pytest
 from unittest.mock import patch, MagicMock
 from tests.conftest import MockPage
 
@@ -97,7 +96,7 @@ class TestMisconfigTester:
 
         with patch.object(self.tester, '_make_request', return_value=mock_resp):
             vulns = self.tester.test(page, 'medium')
-            error_vulns = [v for v in vulns if 'error' in v.get('name', '').lower() or 'verbose' in v.get('name', '').lower()]
+            [v for v in vulns if 'error' in v.get('name', '').lower() or 'verbose' in v.get('name', '').lower()]
             assert isinstance(vulns, list)
 
     def test_no_issues_clean_headers(self):

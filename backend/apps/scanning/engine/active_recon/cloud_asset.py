@@ -15,7 +15,6 @@ import logging
 import re
 import time
 from typing import Any
-from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 

@@ -27,7 +27,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Props) {
     }
 
     // Force onboarding if the user has no targets configured
-    if (!adminOnly && user && !user.has_targets && location.pathname !== '/onboarding') {
+    if (!adminOnly && user && !user.hasTargets && location.pathname !== '/onboarding') {
         return <Navigate to="/onboarding" replace />;
     }
 

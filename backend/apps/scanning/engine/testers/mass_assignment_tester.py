@@ -7,7 +7,6 @@ Mongoose), nested object injection, and numeric privilege escalation.
 """
 import json
 import logging
-from urllib.parse import urlparse
 from .base_tester import BaseTester
 
 logger = logging.getLogger(__name__)

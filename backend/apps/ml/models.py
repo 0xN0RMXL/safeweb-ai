@@ -1,6 +1,5 @@
 import uuid
 from django.db import models
-from django.conf import settings
 
 
 class MLModel(models.Model):
@@ -49,3 +48,23 @@ class MLPrediction(models.Model):
 
     def __str__(self):
         return f'{self.prediction} ({self.confidence:.1%})'
+
+
+from pgvector.django import VectorField
+
+class ExploitMemory(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    technology_stack = models.CharField(max_length=255)
+    vulnerability_class = models.CharField(max_length=100)
+    attack_strategy_summary = models.TextField()
+    successful_payload = models.TextField()
+    vector_embedding = VectorField(dimensions=1536)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'exploit_memories'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.vulnerability_class} on {self.technology_stack}'
+

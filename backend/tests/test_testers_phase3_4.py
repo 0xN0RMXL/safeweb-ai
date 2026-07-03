@@ -1,7 +1,6 @@
 """Tests for vulnerability testers — Phase 3 (Modern) and Phase 4 (Infrastructure)."""
-import pytest
 from unittest.mock import patch, MagicMock
-from tests.conftest import MockPage, MockForm, MockFormInput
+from tests.conftest import MockPage
 
 
 # ---------------------------------------------------------------------------

@@ -1,7 +1,6 @@
 """Tests for vulnerability testers — Phase 1 (Core Injection)."""
-import pytest
 from unittest.mock import patch, MagicMock
-from tests.conftest import MockPage, MockForm, MockFormInput
+from tests.conftest import MockPage
 
 
 # ---------------------------------------------------------------------------

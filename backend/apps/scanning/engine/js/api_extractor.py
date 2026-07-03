@@ -24,8 +24,6 @@ from __future__ import annotations
 import logging
 import re
 import time
-from typing import Any
-from urllib.parse import urljoin
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +276,7 @@ def run_api_extraction(page: dict, depth: str = 'quick') -> dict:
     """
     start = time.monotonic()
 
-    url = page.get('url', '')
+    page.get('url', '')
     content = page.get('content', '')
     scripts = page.get('scripts', [])
 

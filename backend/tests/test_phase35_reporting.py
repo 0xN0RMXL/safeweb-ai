@@ -11,7 +11,6 @@ Covers:
     generate_trend
   - ReportingIntegrationTester: BaseTester integration, registration, count (67)
 """
-import json
 import time
 import pytest
 from unittest.mock import patch, MagicMock

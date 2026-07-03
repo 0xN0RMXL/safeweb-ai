@@ -11,7 +11,7 @@ Requires CENSYS_API_ID and CENSYS_API_SECRET environment variables.
 import logging
 import time
 from typing import Optional
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import urlparse
 
 import requests
 

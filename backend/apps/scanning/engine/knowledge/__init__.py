@@ -1,20 +1,20 @@
-"""
-Knowledge Base Package — Phase 41.
+import os
+import glob
+from typing import Optional
 
-Exposes:
-  VulnKB            — vulnerability information database
-  RemediationKB     — remediation and compliance mapping database
-  VULNERABILITY_DB  — raw vulnerability dict (CWE → record)
-  REMEDIATION_DB    — raw remediation dict (CWE → record)
-  COMPLIANCE_MAP    — raw compliance dict (CWE → framework controls)
-"""
-from .vuln_kb import VulnKB, VULNERABILITY_DB
-from .remediation_kb import RemediationKB, REMEDIATION_DB, COMPLIANCE_MAP
-
-__all__ = [
-    'VulnKB',
-    'RemediationKB',
-    'VULNERABILITY_DB',
-    'REMEDIATION_DB',
-    'COMPLIANCE_MAP',
-]
+def load_skill_markdown(tag: str) -> Optional[str]:
+    """Load matching skill markdown content based on vulnerability tags."""
+    skills_dir = os.path.join(os.path.dirname(__file__), 'skills')
+    if not os.path.exists(skills_dir):
+        return None
+        
+    tag_lower = tag.lower()
+    for file_path in glob.glob(os.path.join(skills_dir, '*.md')):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                if tag_lower in content.lower() or tag_lower in os.path.basename(file_path).lower():
+                    return content
+        except Exception:
+            continue
+    return None

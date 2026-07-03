@@ -165,9 +165,9 @@ class CloudStorageTester(BaseTester):
                            f'has public listing enabled. All files in the bucket can be enumerated.',
                 impact='Sensitive files, credentials, backups, or proprietary data stored in the '
                       'bucket can be discovered and downloaded by anyone.',
-                remediation=f'Disable public listing on the bucket. Review the bucket\'s '
-                           f'ACL/IAM policy. Enable server-side encryption. '
-                           f'Consider using a CDN with signed URLs for public assets.',
+                remediation='Disable public listing on the bucket. Review the bucket\'s '
+                           'ACL/IAM policy. Enable server-side encryption. '
+                           'Consider using a CDN with signed URLs for public assets.',
                 cwe='CWE-200',
                 cvss=9.1,
                 affected_url=test_url,

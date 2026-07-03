@@ -3,9 +3,7 @@ Tests for Phase 24 — Advanced Crawling & SPA Support.
 
 All Playwright interactions are mocked.
 """
-import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
-from queue import Queue
+from unittest.mock import patch, MagicMock
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -367,8 +365,6 @@ class TestCrawlerSPAIntegration:
 
     def test_imports_available(self):
         """Verify Phase 24 modules are importable."""
-        from apps.scanning.engine.headless.browser_pool import BrowserPool
-        from apps.scanning.engine.headless.spa_crawler import SPACrawler, SPACrawlResult
         from apps.scanning.engine.headless.spa_crawler import SPA_FRAMEWORKS
         assert 'react' in SPA_FRAMEWORKS
         assert 'angular' in SPA_FRAMEWORKS

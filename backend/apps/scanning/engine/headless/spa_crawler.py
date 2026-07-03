@@ -11,12 +11,10 @@ Provides advanced crawling capabilities for single-page applications:
 
 Designed to be used alongside the main WebCrawler when SPA content is detected.
 """
-import hashlib
 import logging
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 logger = logging.getLogger(__name__)

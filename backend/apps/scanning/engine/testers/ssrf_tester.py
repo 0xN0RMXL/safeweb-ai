@@ -6,7 +6,6 @@ Tests for: internal network access, cloud metadata (AWS IMDSv2/GCP/Azure/DO/Alib
 IP bypass techniques, protocol smuggling, DNS rebinding detection, redirect chain
 following, header-based SSRF, open redirect, and blind SSRF.
 """
-import re
 import time
 import logging
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
@@ -264,7 +263,7 @@ class SSRFTester(BaseTester):
             parsed.params, urlencode(params, doseq=True), '',
         ))
         start = time.time()
-        response = self._make_request('GET', test_url, timeout=15)
+        self._make_request('GET', test_url, timeout=15)
         test_time = time.time() - start
 
         if test_time - baseline_time > BLIND_THRESHOLD:
@@ -328,9 +327,9 @@ class SSRFTester(BaseTester):
                                f'This is a critical cloud-specific SSRF vulnerability.',
                     impact=f'Attackers can steal {provider} instance credentials, API keys, '
                           f'and service account tokens. This often leads to full cloud account compromise.',
-                    remediation=f'Block access to 169.254.169.254 from application servers. '
-                               f'Use IMDSv2 (AWS) or equivalent token-based metadata access. '
-                               f'Implement network-level controls to prevent metadata access.',
+                    remediation='Block access to 169.254.169.254 from application servers. '
+                               'Use IMDSv2 (AWS) or equivalent token-based metadata access. '
+                               'Implement network-level controls to prevent metadata access.',
                     cwe='CWE-918',
                     cvss=9.8,
                     affected_url=url,
@@ -414,7 +413,7 @@ class SSRFTester(BaseTester):
 
             start = time.time()
             response = self._make_request('GET', test_url, timeout=5)
-            elapsed = time.time() - start
+            time.time() - start
 
             if response and response.status_code == 200 and len(response.text) > 50:
                 open_ports.append(port_url)
@@ -433,7 +432,7 @@ class SSRFTester(BaseTester):
                 cwe='CWE-918',
                 cvss=7.5,
                 affected_url=url,
-                evidence=f'Open internal ports detected:\n' + '\n'.join(open_ports[:5]),
+                evidence='Open internal ports detected:\n' + '\n'.join(open_ports[:5]),
             ))
 
         return vulnerabilities
@@ -546,7 +545,7 @@ class SSRFTester(BaseTester):
             body = response.text.lower()
             if any(ind.lower() in body for ind in CLOUD_METADATA_INDICATORS):
                 return self._build_vuln(
-                    name=f'SSRF: AWS IMDSv1 Metadata Access (Fallback)',
+                    name='SSRF: AWS IMDSv1 Metadata Access (Fallback)',
                     severity='critical',
                     category='Server-Side Request Forgery',
                     description=f'The parameter "{param_name}" accesses AWS instance metadata '
@@ -578,7 +577,7 @@ class SSRFTester(BaseTester):
             token = response.text.strip()
             if len(token) > 20 and token.isascii() and ' ' not in token:
                 return self._build_vuln(
-                    name=f'SSRF: Potential AWS IMDSv2 Token Leak',
+                    name='SSRF: Potential AWS IMDSv2 Token Leak',
                     severity='high',
                     category='Server-Side Request Forgery',
                     description=f'The parameter "{param_name}" returned what appears to be '

@@ -7,7 +7,6 @@ page links. All candidates are presented as RECOMMENDATIONS only —
 they are NEVER auto-added to the active scan without explicit consent.
 """
 import logging
-import re
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)

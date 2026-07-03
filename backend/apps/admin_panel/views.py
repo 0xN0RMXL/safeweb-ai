@@ -1,5 +1,5 @@
 from django.utils import timezone
-from django.db.models import Count, Q
+from django.db.models import Q
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,7 +11,7 @@ from apps.ml.models import MLModel
 from .models import SystemAlert, SystemSettings
 from .serializers import (
     AdminUserSerializer, AdminScanSerializer, SystemAlertSerializer,
-    SystemSettingsSerializer, AdminContactSerializer, AdminJobApplicationSerializer,
+    AdminContactSerializer, AdminJobApplicationSerializer,
 )
 
 
@@ -25,9 +25,7 @@ class AdminDashboardView(APIView):
 
         # User stats
         total_users = User.objects.count()
-        active_users = User.objects.filter(last_login__gte=since).count()
-        pro_users = 0
-        enterprise_users = 0
+        User.objects.filter(last_login__gte=since).count()
 
         # Scan stats
         total_scans = Scan.objects.filter(created_at__gte=since).count()
@@ -36,7 +34,7 @@ class AdminDashboardView(APIView):
         failed_scans = Scan.objects.filter(created_at__gte=since, status='failed').count()
 
         # Vulnerability stats
-        total_vulns = Vulnerability.objects.filter(scan__created_at__gte=since).count()
+        Vulnerability.objects.filter(scan__created_at__gte=since).count()
         critical_vulns = Vulnerability.objects.filter(
             scan__created_at__gte=since, severity='critical'
         ).count()
@@ -192,7 +190,6 @@ class AdminUserDetailView(APIView):
                 )
 
         allowed_roles = {'user', 'admin'}
-        allowed_plans = {'free', 'pro', 'enterprise'}
 
         if 'role' in request.data:
             if request.data['role'] in allowed_roles:

@@ -30,7 +30,7 @@ print(f"Using scan: {target_scan.id} [{target_scan.status}] vulns={Vulnerability
 
 # Get first vuln and inspect its model fields
 v = Vulnerability.objects.filter(scan=target_scan).first()
-print(f"\n--- Model fields ---")
+print("\n--- Model fields ---")
 print(f"  name           = {v.name}")
 print(f"  affected_url   = {repr(v.affected_url)}")
 print(f"  is_false_pos   = {v.is_false_positive}")
@@ -42,7 +42,7 @@ print(f"  evidence       = {repr(v.evidence)[:60]}")
 
 # Serialize it
 data = dict(VulnerabilitySerializer(v).data)
-print(f"\n--- Serializer output ---")
+print("\n--- Serializer output ---")
 print(f"  Keys: {list(data.keys())}")
 print(f"\n  affected_url   -> {repr(data.get('affected_url'))}")
 print(f"  is_false_pos   -> {repr(data.get('is_false_positive'))}")
@@ -71,5 +71,5 @@ if vulns_in_response:
     missing2 = [k for k in REQUIRED_KEYS if k not in first]
     print(f"  First vuln keys: {list(first.keys())}")
     print(f"  MISSING in scan response: {missing2}")
-    print(f"\n  Full first vuln JSON:")
+    print("\n  Full first vuln JSON:")
     print(json.dumps(first, default=str, indent=4))

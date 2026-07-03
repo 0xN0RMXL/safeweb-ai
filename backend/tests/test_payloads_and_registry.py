@@ -1,5 +1,4 @@
 """Tests for the payload modules."""
-import pytest
 
 
 class TestSQLiPayloads:

@@ -2,7 +2,6 @@
 Phase 42 – Advanced Graph & Chain Analysis
 Tests for AttackGraphV2 and AttackGraphTester.
 """
-import pytest
 from dataclasses import fields as dc_fields
 
 
@@ -124,7 +123,7 @@ class TestAttackGraphV2Build:
                 assert chains[i].chain_cvss >= chains[i + 1].chain_cvss
 
     def test_prototype_pollution_single_step_min(self):
-        from apps.scanning.engine.attack_graph_v2 import AttackGraphV2, MULTI_STEP_CHAINS
+        from apps.scanning.engine.attack_graph_v2 import MULTI_STEP_CHAINS
         chain_def = next((c for c in MULTI_STEP_CHAINS if c['id'] == 'prototype_pollution_to_rce'), {})
         assert chain_def.get('min_steps', 99) <= 1
 

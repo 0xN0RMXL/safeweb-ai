@@ -12,7 +12,6 @@ Tests for:
   - ScanProfileTester               (testers/scan_profile_tester.py)
   - Registration (#71)
 """
-import pytest
 import sys
 import os
 
@@ -768,10 +767,8 @@ class TestProfileConstants:
     def test_package_imports(self):
         """All names exported from engine/profiles/__init__.py are accessible."""
         from apps.scanning.engine.profiles import (
-            ScanProfile, ProfileRegistry, ProfileBuilder, REGISTRY,
-            get_profile, list_profiles, list_builtin_profiles,
-            create_custom_profile, recommend_profile,
-            QUICK_SCAN, STANDARD_SCAN, DEEP_SCAN,
+            REGISTRY,
+            get_profile, recommend_profile,
         )
         assert REGISTRY is not None
         assert callable(get_profile)

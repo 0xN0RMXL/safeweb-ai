@@ -13,8 +13,7 @@ Tests for all 10 WSTG testers:
   WSTGBusinessLogicTester    (WSTG-BUSL)
   WSTGClientSideTester       (WSTG-CLNT)
 """
-import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 
 from tests.conftest import MockPage, MockForm, MockFormInput
 
@@ -111,7 +110,7 @@ class TestWSTGInfoTester:
                    for n in names)
 
     def test_robots_admin_disclosure(self):
-        page = MockPage(url='https://example.com/')
+        MockPage(url='https://example.com/')
         robots_resp = make_resp(200, 'User-agent: *\nDisallow: /admin\nDisallow: /api/internal')
         with patch.object(self.tester, '_make_request', return_value=robots_resp):
             vuln = self.tester._test_robots_disclosure('https://example.com/')
@@ -119,7 +118,7 @@ class TestWSTGInfoTester:
         assert 'robots' in vuln['name'].lower() or 'admin' in vuln['evidence'].lower()
 
     def test_robots_no_sensitive_paths(self):
-        page = MockPage(url='https://example.com/')
+        MockPage(url='https://example.com/')
         robots_resp = make_resp(200, 'User-agent: *\nDisallow: /images')
         with patch.object(self.tester, '_make_request', return_value=robots_resp):
             vuln = self.tester._test_robots_disclosure('https://example.com/')
@@ -138,7 +137,7 @@ class TestWSTGConfTester:
         assert self.tester.TESTER_NAME == 'WSTG-CONF'
 
     def test_backup_file_found(self):
-        page = MockPage(url='https://example.com/index.php')
+        MockPage(url='https://example.com/index.php')
         backup_resp = make_resp(200, '<?php db_password = "secret"; ?>')
         not_found = make_resp(404, '')
         def side_effect(method, url, **kwargs):
@@ -367,7 +366,7 @@ class TestWSTGSessionTester:
         cookie = make_cookie('sessionid', 'abc123xyz456', has_flag=False)
         cookie.has_nonstandard_attr = MagicMock(return_value=False)
         cookie._rest = {}
-        page = MockPage(url='https://example.com/')
+        MockPage(url='https://example.com/')
         resp = make_resp(200, '')
         resp.cookies = [cookie]
         vuln = self.tester._test_session_schema(resp, 'https://example.com/')

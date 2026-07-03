@@ -5,10 +5,8 @@ Manages the local template repository: clones or updates from GitHub,
 builds an in-memory index by tags/severity/type, filters templates for
 a given scan profile, and supports TTL-based cache refresh.
 """
-import hashlib
 import logging
 import os
-import shutil
 import time
 from pathlib import Path
 from typing import Dict, List, Optional, Set

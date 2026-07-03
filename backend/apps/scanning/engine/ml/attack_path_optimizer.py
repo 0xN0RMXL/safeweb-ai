@@ -16,7 +16,6 @@ real EPSS data requires daily CVE feed access.
 from __future__ import annotations
 
 import logging
-from typing import NamedTuple
 
 logger = logging.getLogger(__name__)
 
@@ -119,8 +118,7 @@ _EPSS_BY_CWE: dict[str, float] = {
     'CWE-94':   0.80,   # Code Injection
     'CWE-434':  0.75,   # Unrestricted Upload
     'CWE-862':  0.62,   # IDOR / Missing Authorization
-    'CWE-601':  0.50,   # Open Redirect
-    'CWE-94':   0.80,   # SSTI (same bucket as code injection)
+    'CWE-601':  0.50,   # SSTI (same bucket as code injection)
     'CWE-287':  0.65,   # Improper Authentication
     'CWE-200':  0.55,   # Information Exposure
     'CWE-798':  0.82,   # Hard-coded Credentials
@@ -376,7 +374,7 @@ def _build_narrative(categories: list[str], steps: list[str]) -> str:
     if not categories:
         return 'No attack chain identified.'
     start = categories[0].upper()
-    end = categories[-1].upper() if len(categories) > 1 else start
+    categories[-1].upper() if len(categories) > 1 else start
     impact = _classify_chain_impact(categories)
     n_steps = len(steps)
     return (

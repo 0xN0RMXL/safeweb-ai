@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import (
-    Scan, Vulnerability, ScanReport, Webhook, WebhookDelivery,
+    Scan, Vulnerability, Webhook, WebhookDelivery,
     NucleiTemplate, ScopeDefinition, MultiTargetScan, DiscoveredAsset,
     ScheduledScan, AssetMonitorRecord, AuthConfig, Target,
     SharedReport,
@@ -110,10 +110,9 @@ class ScanCreateSerializer(serializers.Serializer):
         return attrs
 
 
-# DEACTIVATED: URL phishing scan serializer — code preserved
-# class ScanURLCreateSerializer(serializers.Serializer):
-#     """Serializer for URL phishing scan."""
-#     url = serializers.URLField()
+class ScanURLCreateSerializer(serializers.Serializer):
+    """Serializer for URL phishing scan."""
+    url = serializers.URLField()
 
 
 class ScanDetailSerializer(serializers.ModelSerializer):
@@ -135,7 +134,7 @@ class ScanDetailSerializer(serializers.ModelSerializer):
             'ml_result', 'progress', 'current_phase', 'current_tool', 'phase_timings',
             'total_requests', 'pages_crawled', 'recon_data', 'tester_results', 'mode',
             'scope_type', 'seed_domains', 'discovered_domains', 'child_scans',
-            'data_version',
+            'data_version', 'flow_status', 'cost_meter_usd', 'engagement_log', 'task_graph',
         ]
 
     def get_summary(self, obj):

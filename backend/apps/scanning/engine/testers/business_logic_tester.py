@@ -13,8 +13,6 @@ Covers:
 """
 import json
 import logging
-import re
-import time
 import threading
 
 from apps.scanning.engine.testers.base_tester import BaseTester

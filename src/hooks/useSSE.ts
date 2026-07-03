@@ -24,10 +24,18 @@ export interface SSEFindingData {
     summary: Record<string, number>;
 }
 
+export interface SSEAgentActivityData {
+    flowStatus: string;
+    costMeterUsd: number;
+    engagementLog: { step?: string; finding?: string; status?: string; target?: string; reproof?: string }[];
+    taskGraph: Record<string, unknown>;
+}
+
 export interface SSECallbacks {
     onProgress?: (data: SSEProgressData) => void;
     onPhaseChange?: (data: { phase: string }) => void;
     onFinding?: (data: SSEFindingData) => void;
+    onAgentActivity?: (data: SSEAgentActivityData) => void;
     onCompleted?: () => void;
     /** Fired when the backend increments data_version (recon_data / tester_results updated) */
     onDataUpdate?: (data: { dataVersion: number }) => void;
@@ -79,6 +87,10 @@ export function useSSE(url: string | null, callbacks: SSECallbacks): void {
 
         es.addEventListener('data_update', (e: MessageEvent) => {
             cbRef.current.onDataUpdate?.(parse(e.data) as { dataVersion: number });
+        });
+
+        es.addEventListener('agent_activity', (e: MessageEvent) => {
+            cbRef.current.onAgentActivity?.(parse(e.data) as unknown as SSEAgentActivityData);
         });
 
         es.addEventListener('completed', () => {

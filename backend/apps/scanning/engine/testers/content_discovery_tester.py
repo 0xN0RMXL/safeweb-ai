@@ -6,7 +6,6 @@ Tests for: backup files, config files, admin panels, source code exposure,
 debug endpoints, common CMS paths, development artifacts, and database dumps.
 Uses smart status-code analysis and content-type validation.
 """
-import re
 import logging
 from urllib.parse import urljoin
 from .base_tester import BaseTester

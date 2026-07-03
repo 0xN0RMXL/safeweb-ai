@@ -8,6 +8,7 @@ import Badge from '@components/ui/Badge';
 import ScrollReveal from '@components/ui/ScrollReveal';
 import { formatDateTime } from '@utils/date';
 import { dashboardAPI, assetAPI, scheduledScanAPI } from '@/services/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Icons for stat cards — defined outside component to avoid recreation on every render
 const statIcons = [
@@ -18,6 +19,7 @@ const statIcons = [
 ];
 
 export default function Dashboard() {
+  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
 
   const [stats, setStats] = useState<{
@@ -131,10 +133,10 @@ export default function Dashboard() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
             <div>
               <h1 className="text-3xl font-heading font-bold text-text-primary mb-2">
-                Security Dashboard
+                {t.dashboard.title}
               </h1>
               <p className="text-text-secondary">
-                Monitor your security posture and recent scan activity
+                {t.dashboard.subtitle}
               </p>
             </div>
             <Link to="/scan">
@@ -142,7 +144,7 @@ export default function Dashboard() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                New Scan
+                {t.common.newScan}
               </Button>
             </Link>
           </div>
@@ -158,7 +160,12 @@ export default function Dashboard() {
           {/* Stats Grid */}
           <ScrollReveal stagger staggerDelay={80}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {stats.map((stat, index) => (
+            {stats.map((stat, index) => {
+              const translatedLabel = index === 0 ? t.dashboard.totalScans
+                : index === 1 ? t.dashboard.criticalIssues
+                : index === 2 ? t.dashboard.securityGrade
+                : t.dashboard.lastScan;
+              return (
               <Card key={index} className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="w-12 h-12 rounded-lg bg-accent-green/10 flex items-center justify-center text-accent-green">
@@ -179,9 +186,10 @@ export default function Dashboard() {
                 <div className="text-3xl font-bold text-text-primary mb-1">
                   {stat.value}
                 </div>
-                <div className="text-sm text-text-tertiary">{stat.label}</div>
+                <div className="text-sm text-text-tertiary">{translatedLabel}</div>
               </Card>
-            ))}
+              );
+            })}
           </div>
           </ScrollReveal>
 

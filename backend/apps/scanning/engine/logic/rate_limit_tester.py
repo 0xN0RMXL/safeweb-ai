@@ -9,8 +9,6 @@ Tests:
   - Bypass via endpoint variation (/api/v1 vs /api/v2)
 """
 import logging
-import re
-import json
 
 logger = logging.getLogger(__name__)
 

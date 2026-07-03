@@ -21,7 +21,7 @@ import logging
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urlparse, quote
+from urllib.parse import quote
 
 import requests
 
@@ -173,7 +173,7 @@ def _query_rapiddns(domain: str) -> set[str]:
         if resp.status_code == 200:
             # Extract subdomains from HTML table
             pattern = r'([a-zA-Z0-9][-a-zA-Z0-9]*\.)*' + re.escape(domain)
-            matches = re.findall(pattern, resp.text)
+            re.findall(pattern, resp.text)
             # More robust regex
             full_pattern = rf'([\w.-]+\.{re.escape(domain)})'
             for match in re.findall(full_pattern, resp.text):

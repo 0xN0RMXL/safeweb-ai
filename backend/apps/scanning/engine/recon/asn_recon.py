@@ -14,10 +14,9 @@ Data sources (all free, no API key required):
 Uses ``_base`` helpers for the standardised return format.
 """
 import logging
-import re
 import socket
 import time
-from urllib.parse import urlparse, quote
+from urllib.parse import quote
 
 import requests
 

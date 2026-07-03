@@ -9,7 +9,6 @@ Enhanced with:
 
 Uses ``_base`` helpers for the standardised return format.
 """
-import itertools
 import logging
 import random
 import socket

@@ -12,7 +12,6 @@ Features:
 from __future__ import annotations
 
 import datetime
-import hashlib
 import logging
 import socket
 import ssl
@@ -165,15 +164,14 @@ class SSLTester:
                         return result
 
                     # Subject / Issuer
-                    subject = dict(x[0] for x in cert.get('subject', ()))
-                    issuer = dict(x[0] for x in cert.get('issuer', ()))
+                    subject = dict(x[0] for x in cert.get('subject', ()) if isinstance(x, (list, tuple)) and len(x) >= 1 and isinstance(x[0], (list, tuple)) and len(x[0]) >= 2)
+                    issuer = dict(x[0] for x in cert.get('issuer', ()) if isinstance(x, (list, tuple)) and len(x) >= 1 and isinstance(x[0], (list, tuple)) and len(x[0]) >= 2)
                     result['subject'] = subject.get('commonName', '')
                     result['issuer'] = issuer.get('commonName', '')
                     result['serial'] = cert.get('serialNumber', '')
 
-                    # SAN
-                    san_entries = cert.get('subjectAltName', ())
-                    result['san'] = [v for _, v in san_entries]
+                    san_entries = cert.get('subjectAltName', ()) if isinstance(cert.get('subjectAltName'), (list, tuple)) else ()
+                    result['san'] = [entry[1] for entry in san_entries if isinstance(entry, (list, tuple)) and len(entry) >= 2]
 
                     # Self-signed check
                     if subject == issuer:
@@ -365,7 +363,7 @@ class SSLTester:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
             with socket.create_connection((host, port), timeout=self.timeout) as sock:
-                with ctx.wrap_socket(sock) as ssock:
+                with ctx.wrap_socket(sock):
                     return True
         except Exception:
             return False

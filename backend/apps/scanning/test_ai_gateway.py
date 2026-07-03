@@ -1,5 +1,4 @@
 import pytest
-import json
 import responses
 from django.test import TestCase
 from unittest.mock import patch

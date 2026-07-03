@@ -10,7 +10,6 @@ Tests for:
   - Registration (#72)
 """
 import asyncio
-import time
 import pytest
 import sys
 import os
@@ -99,7 +98,7 @@ class TestTrafficShaperAcquire:
 
     def test_burst_tokens_decrease_on_rapid_calls(self):
         """Rapid sequential calls should consume burst tokens."""
-        from apps.scanning.engine.stealth.traffic_shaper import TrafficShaper, DEFAULT_BURST_LIMIT
+        from apps.scanning.engine.stealth.traffic_shaper import TrafficShaper
         s = TrafficShaper(rps=1, jitter_pct=0.0)
         s.acquire('burst.test')               # first call — normal path
         initial = s.stats('burst.test')['burst_remaining']
@@ -365,7 +364,7 @@ class TestFingerprintEvasionTLS:
 
     def test_get_tls_profile_returns_copy(self):
         """Mutations to returned dict should not affect internal pool."""
-        from apps.scanning.engine.stealth.fingerprint_evasion import FingerprintEvasion, TLS_PROFILES
+        from apps.scanning.engine.stealth.fingerprint_evasion import FingerprintEvasion
         e = FingerprintEvasion(tls_variation=False)
         profile = e.get_tls_profile()
         profile['injected'] = True
@@ -647,13 +646,6 @@ class TestPackageImports:
         from apps.scanning.engine.stealth import (
             TrafficShaper,
             FingerprintEvasion,
-            FingerprintProfile,
-            DEFAULT_RPS, MIN_RPS, MAX_RPS,
-            DEFAULT_JITTER_PCT, DEFAULT_BURST_LIMIT,
-            DEFAULT_COOLDOWN_SEC, TOR_SOCKS_DEFAULT_PORT,
-            SLOWDOWN_FACTOR_429, SLOWDOWN_FACTOR_503,
-            UA_POOL, TLS_PROFILES,
-            HTTP_1_1, HTTP_2, HTTP_VERSIONS,
         )
         assert callable(TrafficShaper)
         assert callable(FingerprintEvasion)

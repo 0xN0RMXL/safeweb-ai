@@ -11,7 +11,6 @@ from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 from .base_tester import BaseTester
 from apps.scanning.engine.payloads.ssti_payloads import (
     get_ssti_payloads_by_depth,
-    GENERIC_DETECTION,
     ENGINE_INDICATORS,
     JINJA2_PAYLOADS,
     TWIG_PAYLOADS,

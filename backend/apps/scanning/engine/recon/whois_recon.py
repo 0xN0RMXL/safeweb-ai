@@ -15,7 +15,6 @@ import time
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
-from urllib.parse import urlparse
 
 from ._base import (
     create_result,

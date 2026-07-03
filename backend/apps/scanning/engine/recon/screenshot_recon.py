@@ -6,11 +6,10 @@ Takes screenshots and classifies page types heuristically
 """
 import hashlib
 import logging
-import os
 import re
 import time
 
-from ._base import create_result, add_finding, finalize_result, extract_hostname
+from ._base import create_result, add_finding, finalize_result
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +141,7 @@ def run_screenshot_recon(target_url: str, depth: str = 'medium',
         })
 
     # Highlight interesting pages
-    login_pages = [p for p in classified_pages if p['page_type'] == 'login_page']
+    [p for p in classified_pages if p['page_type'] == 'login_page']
     admin_pages = [p for p in classified_pages if p['page_type'] == 'admin_panel']
     api_pages = [p for p in classified_pages if p['page_type'] == 'api_explorer']
     error_pages = [p for p in classified_pages if p['page_type'] == 'error_page']

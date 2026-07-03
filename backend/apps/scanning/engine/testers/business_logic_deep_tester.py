@@ -6,7 +6,6 @@ Delegates to PaymentFlowTester, AuthFlowTester, StateMachineTester,
 and RateLimitTester based on page characteristics.
 """
 import logging
-from urllib.parse import urlparse
 
 from apps.scanning.engine.testers.base_tester import BaseTester
 from apps.scanning.engine.logic.payment_tester import PaymentFlowTester

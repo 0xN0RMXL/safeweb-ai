@@ -2,7 +2,6 @@
 Phishing URL/page detector using scikit-learn.
 Provides both a rule-based fallback and ML-based detection.
 """
-import os
 import logging
 import joblib
 import numpy as np

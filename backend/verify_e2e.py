@@ -1,7 +1,7 @@
 """Final E2E verification: confirm camelCase API fields and expliot_data rendering path."""
 import sys
 sys.path.insert(0, r'd:\My Files\Graduation Project\safeweb-ai\backend\venv\Lib\site-packages')
-import requests, json
+import requests
 
 BASE = "http://localhost:8000"
 SCAN_ID = "a3269bde-82ae-42ca-a8e2-aafd31feacaa"

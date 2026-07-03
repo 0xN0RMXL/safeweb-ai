@@ -1,5 +1,4 @@
 """Tests for vulnerability testers — Phase 5 (AI/LLM) and Phase 6 (Missing Classes)."""
-import pytest
 from unittest.mock import patch, MagicMock
 from tests.conftest import MockPage, MockForm, MockFormInput
 

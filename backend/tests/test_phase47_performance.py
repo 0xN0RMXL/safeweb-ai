@@ -12,11 +12,10 @@ Tests for:
 """
 from __future__ import annotations
 
-import asyncio
 import os
 import tempfile
 import threading
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 

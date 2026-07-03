@@ -12,9 +12,7 @@ Covers:
 """
 import socket
 import ssl
-import struct
-import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 
 # ── Engine imports ───────────────────────────────────────────────────────────
 from apps.scanning.engine.network.port_scanner import (

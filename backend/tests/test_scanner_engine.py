@@ -1,6 +1,6 @@
 import pytest
 import json
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 from apps.scanning.models import Scan, Vulnerability
 from apps.scanning.tasks import execute_scan_task
 from django.contrib.auth import get_user_model

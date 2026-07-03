@@ -263,7 +263,6 @@ class SAMLTester(BaseTester):
 
     def _check_acs_manipulation(self, url: str, params: dict):
         """Check if AssertionConsumerServiceURL can be manipulated."""
-        from urllib.parse import urlparse, urlencode
 
         for evil_acs in ACS_EVIL_URLS:
             try:

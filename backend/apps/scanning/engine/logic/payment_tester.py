@@ -9,8 +9,6 @@ Tests:
   - Race condition in payment processing
 """
 import logging
-import re
-import time
 import json
 
 logger = logging.getLogger(__name__)

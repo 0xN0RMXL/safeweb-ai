@@ -5,7 +5,6 @@ Tests for: WebCacheDeceptionTester, XSLeakTester, XSLTInjectionTester,
 ZipSlipTester, VHostTester, InsecureRandomnessTester,
 ReverseProxyMisconfigTester, DependencyConfusionTester.
 """
-import pytest
 from unittest.mock import patch, MagicMock
 
 from tests.conftest import MockPage, MockForm, MockFormInput

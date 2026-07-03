@@ -10,7 +10,6 @@ Fills session management testing gaps identified in Phase 46.
 import re
 import math
 import logging
-from base64 import b64decode
 from urllib.parse import urljoin, urlparse
 
 from .base_tester import BaseTester
@@ -49,7 +48,6 @@ class WSTGSessionTester(BaseTester):
         if not resp:
             return vulnerabilities
 
-        cookies = resp.cookies
 
         # WSTG-SESS-01/02: Session management schema + cookie attributes
         vulns = self._test_session_schema(resp, page.url)
@@ -129,8 +127,8 @@ class WSTGSessionTester(BaseTester):
 
     def _test_logout(self, page) -> list:
         """Check if logout endpoint properly invalidates session cookies."""
-        body = (getattr(page, 'body', '') or '').lower()
-        url_lower = page.url.lower()
+        (getattr(page, 'body', '') or '').lower()
+        page.url.lower()
 
         # Find logout link
         logout_paths = re.findall(r'href=["\']([^"\']*(?:logout|sign.?out|log.?off)[^"\']*)["\']',
@@ -138,7 +136,7 @@ class WSTGSessionTester(BaseTester):
         if not logout_paths:
             return None
 
-        base = self._base_url(page.url)
+        self._base_url(page.url)
         logout_url = urljoin(page.url, logout_paths[0])
 
         resp = self._make_request('GET', logout_url)

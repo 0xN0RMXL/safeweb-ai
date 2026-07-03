@@ -9,9 +9,8 @@ This tester covers the remaining WSTG-INPV gaps.
 
 Fills input validation testing gaps identified in Phase 46.
 """
-import re
 import logging
-from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 from .base_tester import BaseTester
 

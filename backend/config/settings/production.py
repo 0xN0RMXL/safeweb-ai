@@ -23,7 +23,7 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# Database — use DATABASE_URL (Railway PostgreSQL) if set, else SQLite fallback
+# Database — PostgreSQL enforced
 _database_url = os.getenv('DATABASE_URL')
 if _database_url:
     DATABASES = {

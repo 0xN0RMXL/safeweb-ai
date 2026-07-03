@@ -14,7 +14,6 @@ Depth behaviour:
 from __future__ import annotations
 
 import logging
-import time
 
 from apps.scanning.engine.testers.base_tester import BaseTester
 
@@ -56,7 +55,7 @@ class ReportingIntegrationTester(BaseTester):
         vulns = []
         try:
             from apps.scanning.engine.notifications import (
-                NotificationManager, FindingsStream, SeverityFilter, ScanEvent,
+                NotificationManager, SeverityFilter,
             )
 
             mgr = NotificationManager(min_severity='medium')
@@ -85,7 +84,6 @@ class ReportingIntegrationTester(BaseTester):
             # Verify severity filter works
             sf = SeverityFilter(min_severity='high')
             low_finding = {'severity': 'low'}
-            high_finding = {'severity': 'critical'}
             if sf.should_alert(low_finding):
                 vulns.append(self._build_vuln(
                     'Severity Filter Bypass',
@@ -152,7 +150,7 @@ class ReportingIntegrationTester(BaseTester):
         vulns = []
         try:
             from apps.scanning.engine.integrations import (
-                JiraIntegration, GitHubIntegration, GitLabIntegration,
+                JiraIntegration, GitHubIntegration,
             )
 
             sample_finding = {

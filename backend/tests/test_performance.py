@@ -1,6 +1,4 @@
 import pytest
-from rest_framework.test import APIClient
-from django.contrib.auth import get_user_model
 from apps.scanning.models import Scan
 from unittest.mock import patch
 

@@ -15,7 +15,7 @@ import hashlib
 import logging
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import requests
 
@@ -125,7 +125,7 @@ class EvidenceVerifier:
                 result.verified = True
                 result.confidence = 0.80
                 result.method = 'alternative_payload'
-                result.details = f'Verified with alternative payload'
+                result.details = 'Verified with alternative payload'
                 self._verified_cache[fid] = result
                 return result
 

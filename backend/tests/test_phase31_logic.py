@@ -4,11 +4,9 @@ Phase 31 — Business Logic Testing Engine tests.
 Tests for PaymentFlowTester, AuthFlowTester, StateMachineTester,
 RateLimitTester, and the BusinessLogicDeepTester wrapper.
 """
-import json
-import pytest
 from unittest.mock import MagicMock, patch
 
-from tests.conftest import MockPage, MockForm, MockFormInput
+from tests.conftest import MockPage
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -110,13 +108,13 @@ class TestPaymentFlowTester:
         tester = self._get_tester(make_req)
 
         # Medium depth — no coupon endpoints hit
-        findings_medium = tester.test('https://shop.com', depth='medium')
+        tester.test('https://shop.com', depth='medium')
         coupon_calls_medium = [u for u in call_log if 'coupon' in u or 'promo' in u or 'discount' in u or 'voucher' in u]
         assert len(coupon_calls_medium) == 0
 
         call_log.clear()
         # Deep depth — coupon endpoints hit
-        findings_deep = tester.test('https://shop.com', depth='deep')
+        tester.test('https://shop.com', depth='deep')
         coupon_calls_deep = [u for u in call_log if 'coupon' in u or 'promo' in u or 'discount' in u or 'voucher' in u]
         assert len(coupon_calls_deep) > 0
 
@@ -308,7 +306,7 @@ class TestAuthFlowTester:
 
         tester = self._get_tester(make_req)
         tester.test('https://auth.com', depth='medium')
-        register_calls_medium = [u for u in call_log if '/register' in u or '/signup' in u]
+        [u for u in call_log if '/register' in u or '/signup' in u]
         # At medium, register endpoints are not tested for abuse
         # (They might be hit by other tests but not by _test_registration_abuse)
         # So we check deep adds more

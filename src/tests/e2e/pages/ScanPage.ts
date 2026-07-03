@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test';
+import { Page } from '@playwright/test';
 
 export class ScanPage {
   constructor(private page: Page) {}
@@ -20,6 +20,8 @@ export class ScanPage {
     await this.mockScanCreation(scanId);
     await this.page.fill('input[name="target"]', targetUrl);
     await this.page.click('button[type="submit"]');
+    await this.page.check('#consent-allowlist-checkbox');
+    await this.page.click('#confirm-start-scan-btn');
   }
 
   async verifySSEProgress() {

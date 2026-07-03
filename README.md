@@ -347,7 +347,7 @@ safeweb-ai/
 
 ## 🔍 Scanning Engine
 
-The scanning engine is a 7-phase automated pipeline that orchestrates reconnaissance, crawling, vulnerability testing, and verification.
+The scanning engine is an advanced autonomous pipeline that orchestrates reconnaissance, crawling, vulnerability testing, and verification. Powered by PostgreSQL `pgvector` vector embeddings (`ExploitMemory`), Headless Browser MCP navigation, and multi-provider AI routing, it operates continuously without blocking asynchronous event loops.
 
 ### Phase Pipeline
 

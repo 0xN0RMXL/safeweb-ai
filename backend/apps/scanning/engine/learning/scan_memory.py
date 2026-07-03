@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -36,8 +35,12 @@ class ScanOutcome:
     confirmed_fp: int = 0
     vuln_types_found: list[str] = field(default_factory=list)
     best_payloads: dict[str, list[str]] = field(default_factory=dict)
-    blocked_payloads: dict[str, list[str]] = field(default_factory=dict)
     duration_seconds: float = 0.0
+    vuln_category: str = ''
+    was_vulnerable: bool = False
+    payload_used: str = ''
+    waf_present: bool = False
+    waf_bypassed: bool = False
 
 
 class ScanMemory:

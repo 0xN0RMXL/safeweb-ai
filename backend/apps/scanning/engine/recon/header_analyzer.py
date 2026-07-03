@@ -8,7 +8,6 @@ and misconfiguration detection.
 import re
 import logging
 import time
-from typing import Optional
 
 from ._base import create_result, add_finding, finalize_result
 

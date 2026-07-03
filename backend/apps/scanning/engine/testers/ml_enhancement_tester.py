@@ -219,7 +219,7 @@ class MLEnhancementTester(BaseTester):
 
             if response_type in ('error', 'reflected', 'timeout'):
                 fuzzer = RLFuzzer(epsilon=0.0)  # exploitation-only mode
-                state = RLFuzzerState(
+                RLFuzzerState(
                     tech_stack=page.get('tech_stack', 'unknown') or 'unknown',
                     waf_detected=bool(page.get('waf_detected', False)),
                     last_response_type=response_type,

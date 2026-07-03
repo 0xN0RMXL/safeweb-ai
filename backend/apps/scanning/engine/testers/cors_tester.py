@@ -5,7 +5,6 @@ OWASP A05:2021 — Security Misconfiguration.
 Tests for: wildcard origins, null origin, reflected origin,
 credentialed wildcard, subdomain wildcard, and insecure protocols.
 """
-import re
 import logging
 from urllib.parse import urlparse
 from .base_tester import BaseTester
@@ -104,7 +103,7 @@ class CORSTester(BaseTester):
                 cwe='CWE-942',
                 cvss=3.7,
                 affected_url=page.url,
-                evidence=f'Access-Control-Allow-Origin: *',
+                evidence='Access-Control-Allow-Origin: *',
             )
 
         return None

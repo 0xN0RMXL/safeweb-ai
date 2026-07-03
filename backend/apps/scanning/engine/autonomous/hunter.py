@@ -6,7 +6,6 @@ and change detection. Runs as a long-lived Celery task.
 """
 import asyncio
 import logging
-from datetime import datetime, timedelta
 from typing import Any
 
 logger = logging.getLogger(__name__)

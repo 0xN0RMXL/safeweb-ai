@@ -1,8 +1,6 @@
 """SQLMap — Automatic SQL injection detection and exploitation."""
 from __future__ import annotations
 
-import json
-import os
 import re
 import tempfile
 from typing import Any
@@ -48,7 +46,7 @@ class SqlmapTool(ExternalTool):
         if not raw:
             return results
         # Look for confirmed injection patterns
-        injectable_re = re.compile(
+        re.compile(
             r"Parameter:\s*['\"]?(\S+?)['\"]?\s.*?(is\s+vulnerable|Type:\s*\w+)",
             re.I | re.DOTALL,
         )

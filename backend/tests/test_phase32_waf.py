@@ -5,7 +5,6 @@ Tests for WAFFingerprintBypass, EncodingChainEngine, PayloadFragmentationEngine,
 RequestMutationEngine, AdvancedWAFEvasion unified engine, and the
 AdvancedWAFEvasionTester wrapper.
 """
-import pytest
 from unittest.mock import MagicMock, patch
 
 from tests.conftest import MockPage
@@ -485,11 +484,11 @@ class TestAdvancedWAFEvasionTester:
             page = MockPage(url='https://protected.com')
 
             # Medium: no mutation POST calls
-            vulns_medium = tester.test(page, depth='medium')
+            tester.test(page, depth='medium')
             post_calls_medium = [c for c in call_log if c[0] == 'POST']
 
             call_log.clear()
-            vulns_deep = tester.test(page, depth='deep')
+            tester.test(page, depth='deep')
             post_calls_deep = [c for c in call_log if c[0] == 'POST']
 
             # Deep should have more POST calls (Content-Type mutations)
@@ -501,7 +500,7 @@ class TestAdvancedWAFEvasionTester:
 
         def mock_req(method, url, **kwargs):
             params = kwargs.get('params', {})
-            data = kwargs.get('data', '')
+            kwargs.get('data', '')
             headers = kwargs.get('headers', {})
             test_val = params.get('test', '')
             # Block probes

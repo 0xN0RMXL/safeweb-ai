@@ -242,6 +242,35 @@ def _navigate_to(params, user):
     }
 
 
+def _search_learning_center(params, user):
+    """Search the 557 PostgreSQL security articles and return matching documentation."""
+    from django.db.models import Q
+    query = params.get('query', '').strip()
+    if not query:
+        return {'data': {'error': 'No search query provided'}, 'action': None}
+    
+    try:
+        from apps.learn.models import Article
+        articles = Article.objects.filter(
+            Q(title__icontains=query) | Q(excerpt__icontains=query) | Q(content__icontains=query) | Q(category__icontains=query)
+        ).filter(is_published=True)[:3]
+        
+        results = []
+        for a in articles:
+            results.append({
+                'id': str(a.id),
+                'title': a.title,
+                'slug': a.slug,
+                'category': a.category,
+                'summary': a.excerpt,
+                'snippet': (a.content[:400] + '...') if a.content else '',
+            })
+        return {'data': {'articles': results, 'total': len(results)}, 'action': {'type': 'navigate', 'path': f'/learn'}}
+    except Exception as e:
+        logger.error(f'Search articles failed: {e}')
+        return {'data': {'error': 'Search failed'}, 'action': None}
+
+
 # ── Action Registry ──────────────────────────────────────────────────
 ACTION_REGISTRY = {
     'start_scan': _start_scan,
@@ -251,4 +280,6 @@ ACTION_REGISTRY = {
     'get_subscription_info': _get_subscription_info,
     'get_vulnerability_details': _get_vulnerability_details,
     'navigate_to': _navigate_to,
+    'search_learning_center': _search_learning_center,
 }
+

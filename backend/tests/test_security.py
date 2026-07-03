@@ -1,8 +1,7 @@
 import pytest
-from django.urls import reverse
 from rest_framework.test import APIClient
 from apps.accounts.models import User, Organization, OrganizationMembership
-from apps.scanning.models import Target, Scan
+from apps.scanning.models import Target
 
 pytestmark = pytest.mark.django_db
 

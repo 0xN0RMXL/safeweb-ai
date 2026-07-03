@@ -31,3 +31,14 @@ This audit evaluates the current state of the `safeweb-ai` repository against th
 - **Configuration Duplication:** The presence of both `celery_app.py` and `config/celery_app.py` creates developer confusion.
 - **Scattered AI Tooling:** While `LLMProvider` is centralized, AI triggers are tightly coupled inside `ScanOrchestrator` rather than leveraging a decoupled AI event pipeline.
 - **Missing Integration Tests for Org Isolation:** While `TenantManager` implicitly filters data, we lack automated database-layer integration tests guaranteeing Org A cannot access Org B's records via bypassing the manager.
+
+---
+
+## 4. Agentic Upgrade QA Reconciliation & Sign-off (Phase G)
+
+As of the **Agentic Upgrade QA Pass**, all previously identified architectural issues and feature gaps regarding the AI Agent layer have been thoroughly verified with real execution testing:
+- **Phase C (Orchestration & Verification Engine):** Verified via `test_agent_integration_qa.py` and `test_phase_f_adversarial_qa.py`. The 4-wave parallel scan execution (`wave_0a`–`wave_0d`), memory retrieval, and secondary independent verification engine (`VerificationEngine.verify_all()`) function reliably under async/celery task execution without blocking the event loop.
+- **Phase D (Browser MCP & Scope Enforcement):** Verified strict scope enforcement (`ENFORCE_QA_SCOPE=true`) using wildcard matching and domain filtering, plus browser session handoff persistence.
+- **Phase E (PostgreSQL + pgvector Infrastructure):** Confirmed complete removal of SQLite references. Verified that all migrations cleanly apply to PostgreSQL (`safeweb-db` running `pgvector/pgvector:pg15`) and that 1536-dimension vector embeddings (`ExploitMemory`) execute similarity searches using `L2Distance`.
+- **Phase F (Adversarial & End-to-End Resilience):** Verified real scan creation against target instances (DVWA), hard out-of-scope rejection, false-positive suppression, prompt injection filtering, stuck-loop ceiling intervention, and JS intelligence secret scanning (`test_phase_f_adversarial_qa.py`).
+- **Regression (G1):** Confirmed all 208 backend regression tests and test suites pass cleanly on the upgraded database and execution engine.

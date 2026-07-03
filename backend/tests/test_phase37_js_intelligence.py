@@ -9,7 +9,6 @@ Tests for:
   - JsIntelligenceTester (testers/js_intelligence_tester.py)
 """
 import json
-import pytest
 import sys
 import os
 
@@ -872,5 +871,5 @@ class TestRegistration:
     def test_js_intelligence_position(self):
         from apps.scanning.engine.testers import get_all_testers
         testers = get_all_testers()
-        names = [t.TESTER_NAME for t in testers]
+        [t.TESTER_NAME for t in testers]
         assert testers[-19].TESTER_NAME == 'JS Intelligence Scanner'

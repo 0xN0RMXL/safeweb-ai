@@ -7,7 +7,6 @@ Covers:
   - HPP in forms, query strings, and POST data
 """
 import logging
-import re
 import urllib.parse
 
 from apps.scanning.engine.testers.base_tester import BaseTester
@@ -51,7 +50,7 @@ class HPPTester(BaseTester):
     def test(self, page, depth: str = 'medium', recon_data: dict = None) -> list:
         vulns = []
         url = getattr(page, 'url', '')
-        body = getattr(page, 'body', '') or ''
+        getattr(page, 'body', '') or ''
         params = getattr(page, 'parameters', {}) or {}
         forms = getattr(page, 'forms', []) or []
 
@@ -108,7 +107,7 @@ class HPPTester(BaseTester):
             if not resp_original or not resp_hpp:
                 return None
 
-            orig_body = getattr(resp_original, 'text', '')
+            getattr(resp_original, 'text', '')
             hpp_body = getattr(resp_hpp, 'text', '')
 
             # Check if our marker appears in the response

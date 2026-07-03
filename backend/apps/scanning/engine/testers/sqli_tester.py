@@ -6,7 +6,6 @@ Tests for: error-based, UNION-based, blind boolean (statistical), blind time-bas
 (per DB), stacked queries, second-order, HTTP header injection, WAF bypass,
 and database-specific injection vectors.
 """
-import re
 import logging
 import statistics
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
@@ -16,7 +15,6 @@ from apps.scanning.engine.payloads.sqli_payloads import (
     get_time_based_payloads,
     SQLI_ERROR_PATTERNS,
     WAF_SIGNATURES,
-    BOOLEAN_BLIND,
     UNION_BASED,
     WAF_BYPASS,
 )

@@ -44,6 +44,8 @@ export default function ScanWebsite() {
     const [apiError, setApiError] = useState('');
     const [isScanning, setIsScanning] = useState(false);
     const [isResolving, setIsResolving] = useState(false);
+    const [showConsentModal, setShowConsentModal] = useState(false);
+    const [allowlistChecked, setAllowlistChecked] = useState(false);
 
     const depthEstimates = formData.controlExternalTools
         ? {
@@ -107,22 +109,19 @@ export default function ScanWebsite() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
-        const checked = (e.target as HTMLInputElement).checked;
-
         setFormData((prev) => ({
             ...prev,
-            [name]: type === 'checkbox' ? checked : value,
+            [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
         }));
-
-        if (errors.target && name === 'target') {
-            setErrors({ target: '' });
+        if (errors[name as keyof typeof errors]) {
+            setErrors((prev) => ({ ...prev, [name]: '' }));
         }
     };
 
-    const validateForm = (): boolean => {
+    const validateForm = () => {
         const target = formData.target.trim();
         if (!target) {
-            setErrors({ target: 'Target is required' });
+            setErrors({ target: 'Please enter a target' });
             return false;
         }
 
@@ -145,10 +144,14 @@ export default function ScanWebsite() {
         return true;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateForm()) return;
+        setShowConsentModal(true);
+    };
 
+    const executeScan = async () => {
+        setShowConsentModal(false);
         setIsScanning(true);
         setApiError('');
 
@@ -734,6 +737,45 @@ export default function ScanWebsite() {
                     </div>
                 </Container>
             </div>
+
+            {/* Scope Consent Modal */}
+            {showConsentModal && (
+                <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full text-slate-100 shadow-2xl">
+                        <h3 className="text-xl font-bold text-cyan-400 mb-2">Scope Authorization Required</h3>
+                        <p className="text-sm text-slate-300 mb-4">
+                            You are initiating an autonomous multi-agent pentest against <span className="font-mono font-bold text-amber-300">{formData.target || 'target'}</span>. Autonomous offensive tools will execute active attacks and payloads.
+                        </p>
+                        <div className="bg-slate-950 p-3 rounded border border-slate-800 mb-6">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    id="consent-allowlist-checkbox"
+                                    checked={allowlistChecked}
+                                    onChange={(e) => setAllowlistChecked(e.target.checked)}
+                                    className="mt-1 rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-cyan-400"
+                                />
+                                <span className="text-xs text-slate-300">
+                                    I confirm that I own or have explicit legal authorization to perform active pentesting against this target allowlist.
+                                </span>
+                            </label>
+                        </div>
+                        <div className="flex justify-end gap-3">
+                            <Button variant="secondary" onClick={() => setShowConsentModal(false)}>
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="primary"
+                                disabled={!allowlistChecked}
+                                id="confirm-start-scan-btn"
+                                onClick={executeScan}
+                            >
+                                Confirm & Start Scan
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Layout>
     );
 }

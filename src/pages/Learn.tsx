@@ -8,6 +8,7 @@ import Input from '@components/ui/Input';
 import ScrollReveal from '@components/ui/ScrollReveal';
 import { formatDate } from '@utils/date';
 import { learnAPI } from '@/services/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 type CategoryFilter = {
     value: string;
@@ -29,6 +30,7 @@ type LearnArticle = {
 };
 
 export default function Learn() {
+    const { t } = useLanguage();
     const [searchParams] = useSearchParams();
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -117,10 +119,10 @@ export default function Learn() {
                     <ScrollReveal>
                     <div className="text-center mb-12">
                         <h1 className="text-4xl font-heading font-bold text-text-primary mb-4">
-                            Security Learning Center
+                            {t.learn.title}
                         </h1>
                         <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-                            Expand your security knowledge with in-depth articles, tutorials, and best practices
+                            {t.learn.subtitle}
                         </p>
                     </div>
                     </ScrollReveal>
@@ -129,7 +131,7 @@ export default function Learn() {
                     <div className="max-w-2xl mx-auto mb-12">
                         <Input
                             type="text"
-                            placeholder="Search articles..."
+                            placeholder={t.learn.searchPlaceholder}
                             value={searchInput}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchInput(e.target.value)}
                             leftIcon={
@@ -152,7 +154,7 @@ export default function Learn() {
                                         : 'bg-bg-card border-border-primary text-text-secondary hover:text-accent-green hover:border-accent-green'
                                 }`}
                             >
-                                {category.label}
+                                {category.value === 'all' ? t.learn.allArticles : category.label}
                             </button>
                         ))}
                     </div>
@@ -161,7 +163,7 @@ export default function Learn() {
                     {isLoading ? (
                         <div className="flex items-center justify-center py-20">
                             <div className="w-8 h-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
-                            <span className="ml-3 text-text-secondary">Loading articles...</span>
+                            <span className="ml-3 text-text-secondary">{t.learn.loading}</span>
                         </div>
                     ) : articles.length === 0 ? (
                         <Card className="p-12 text-center">
@@ -169,10 +171,10 @@ export default function Learn() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
                             <h3 className="text-xl font-heading font-semibold text-text-primary mb-2">
-                                {searchQuery ? 'No articles match your search' : 'No articles available yet'}
+                                {searchQuery ? t.learn.noArticlesTitle : 'No articles available yet'}
                             </h3>
                             <p className="text-text-secondary">
-                                {searchQuery ? 'Try adjusting your search terms or browse all articles.' : 'Check back soon for new security articles and tutorials.'}
+                                {searchQuery ? t.learn.noArticlesDesc : 'Check back soon for new security articles and tutorials.'}
                             </p>
                         </Card>
                     ) : (

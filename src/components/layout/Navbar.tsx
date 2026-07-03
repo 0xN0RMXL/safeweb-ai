@@ -4,6 +4,35 @@ import Button from '@components/ui/Button';
 import Container from '@components/ui/Container';
 import GlitchText from '@components/ui/GlitchText';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+
+function SunIcon({ className = "w-4 h-4" }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+        </svg>
+    );
+}
+
+function MoonIcon({ className = "w-4 h-4" }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+    );
+}
+
+function GlobeIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" strokeWidth="2" />
+            <line x1="2" y1="12" x2="22" y2="12" strokeWidth="2" />
+            <path strokeWidth="2" d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+    );
+}
 
 export default function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -14,6 +43,8 @@ export default function Navbar() {
     const location = useLocation();
     const navigate = useNavigate();
     const { user, isAuthenticated, logout } = useAuth();
+    const { theme, toggleTheme } = useTheme();
+    const { language, toggleLanguage, t } = useLanguage();
 
     // Close mobile menu on route change
     useEffect(() => {
@@ -43,11 +74,12 @@ export default function Navbar() {
     }, [showUserMenu]);
 
     const navLinks = [
-        { name: 'Dashboard', path: '/dashboard' },
-        { name: 'Scan', path: '/scan' },
-        { name: 'History', path: '/history' },
-        { name: 'Learn', path: '/learn' },
-        { name: 'Docs', path: '/docs' },
+        { name: t.nav.dashboard, path: '/dashboard' },
+        { name: t.nav.scan, path: '/scan' },
+        { name: t.nav.history, path: '/history' },
+        { name: t.nav.learn, path: '/learn' },
+        { name: t.nav.docs, path: '/docs' },
+        { name: t.nav.pricing, path: '/pricing' },
     ];
 
     const isActive = (path: string) => location.pathname === path;
@@ -109,8 +141,28 @@ export default function Navbar() {
                         )}
                     </button>
 
-                    {/* Auth Buttons */}
+                    {/* Right Controls: Theme Toggle, Language Switcher & Auth */}
                     <div className="hidden md:flex items-center gap-3">
+                        {/* Theme Toggle Button */}
+                        <button
+                            onClick={toggleTheme}
+                            className="p-2 rounded-lg bg-bg-card border border-border-primary text-text-secondary hover:text-accent-green hover:border-accent-green/50 transition-all duration-200 shadow-sm"
+                            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                            aria-label="Toggle Theme"
+                        >
+                            {theme === 'dark' ? <SunIcon className="w-4 h-4 text-accent-green" /> : <MoonIcon className="w-4 h-4 text-accent-blue" />}
+                        </button>
+
+                        {/* Language Switcher Button */}
+                        <button
+                            onClick={toggleLanguage}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-bg-card border border-border-primary text-xs font-mono font-semibold text-text-secondary hover:text-accent-blue hover:border-accent-blue/50 transition-all duration-200 shadow-sm"
+                            title="Switch Language / تبديل اللغة"
+                        >
+                            <GlobeIcon className="w-3.5 h-3.5 text-accent-blue" />
+                            <span>{language === 'en' ? 'AR / العربية' : 'EN / English'}</span>
+                        </button>
+
                         {isAuthenticated ? (
                             <div className="relative" ref={menuRef}>
                                 <button
@@ -192,6 +244,23 @@ export default function Navbar() {
                                     {link.name}
                                 </Link>
                             ))}
+                            <div className="flex items-center justify-between px-4 py-2 bg-bg-card rounded-lg border border-border-primary my-2">
+                                <span className="text-xs text-text-tertiary">Theme & Language</span>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={toggleTheme}
+                                        className="p-1.5 rounded-md bg-bg-primary text-text-secondary hover:text-accent-green transition-colors"
+                                    >
+                                        {theme === 'dark' ? <SunIcon className="w-4 h-4 text-accent-green" /> : <MoonIcon className="w-4 h-4 text-accent-blue" />}
+                                    </button>
+                                    <button
+                                        onClick={toggleLanguage}
+                                        className="px-2 py-1 rounded-md bg-bg-primary text-xs font-mono text-text-secondary hover:text-accent-blue transition-colors"
+                                    >
+                                        {language === 'en' ? 'العربية' : 'English'}
+                                    </button>
+                                </div>
+                            </div>
                             <hr className="my-2 border-border-primary" />
                             {isAuthenticated ? (
                                 <>

@@ -9,21 +9,19 @@ and filter bypass XSS vectors across 250+ payloads.
 import re
 import logging
 import html
-from urllib.parse import quote, urlparse, parse_qs, urlencode, urlunparse
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 from .base_tester import BaseTester
 from apps.scanning.engine.payloads.xss_payloads import (
     get_xss_payloads_by_depth,
     CANARY,
     DOM_SOURCES,
     DOM_SINKS,
-    TEMPLATE_INJECTION,
     ATTRIBUTE_INJECTION,
     JS_CONTEXT,
     POLYGLOTS,
     FILTER_BYPASS,
     MUTATION_XSS,
     CSP_BYPASS,
-    DOM_CLOBBERING,
 )
 
 logger = logging.getLogger(__name__)

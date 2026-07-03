@@ -8,9 +8,7 @@ Tests:
   medium:  submit poisoned document, query for injected content
   deep:    embedding injection, fine-tune endpoint detection, behavioral diff
 """
-import json
 import logging
-import re
 from urllib.parse import urlparse, urljoin
 
 from .base_tester import BaseTester
@@ -128,7 +126,7 @@ class AiDataPoisoningTester(BaseTester):
         """Build vulnerability for exposed ingestion endpoint."""
         severity = 'high' if not ep_info.get('authenticated') else 'medium'
         return self._build_vuln(
-            name=f'Unauthenticated Document Ingestion Endpoint',
+            name='Unauthenticated Document Ingestion Endpoint',
             severity=severity,
             category='AI Security',
             description=(

@@ -1,6 +1,4 @@
 """Tests for new recon modules: header_analyzer and cookie_analyzer."""
-import pytest
-from unittest.mock import patch, MagicMock
 
 
 # ---------------------------------------------------------------------------

@@ -157,7 +157,7 @@ class ScopeChecker:
         # ── Domain / FQDN handling ────────────────────────────────────────
 
         # Third-party check
-        root = _get_root_domain(target)
+        _get_root_domain(target)
         for tp in _THIRD_PARTY_DOMAINS:
             if target == tp or target.endswith('.' + tp):
                 return {'in_scope': False, 'reason': f'Third-party domain: {tp}',

@@ -1,7 +1,6 @@
 """Tests for Phase 19 — OOB Callback Infrastructure."""
 import time
-import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 from dataclasses import dataclass, field
 
 
@@ -238,7 +237,7 @@ class TestOOBManager:
         self.manager._client._correlation_id = 'test-corr'
         self.manager._client.interaction_url = 'test-corr.test.oast.live'
 
-        payloads = self.manager.get_oob_payloads('sqli', 'id', 'https://target.com')
+        self.manager.get_oob_payloads('sqli', 'id', 'https://target.com')
         assert self.manager.tracked_count > 0
 
     def test_poll_and_correlate_with_match(self):
@@ -403,7 +402,7 @@ class TestCallbackServer:
         """Test canary token matching."""
         canary = self.server.generate_canary('ssrf', 'url', 'https://target.com')
         # Extract the hash part from the token
-        hash_part = canary.token.split('.')[0].split('-')[-1]
+        canary.token.split('.')[0].split('-')[-1]
 
         result = self.server.check_canary(canary.token)
         assert result is not None

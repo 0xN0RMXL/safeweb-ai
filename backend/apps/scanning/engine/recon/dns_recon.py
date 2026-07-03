@@ -11,7 +11,6 @@ import re
 import socket
 import logging
 import time
-from urllib.parse import urlparse
 
 from ._base import (
     create_result,
@@ -19,7 +18,6 @@ from ._base import (
     finalize_result,
     extract_hostname,
     extract_root_domain,
-    load_data_lines,
 )
 try:
     from ..payloads.seclists_manager import SecListsManager as _SecListsManager

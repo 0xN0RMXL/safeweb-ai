@@ -4,8 +4,11 @@ import Container from '@components/ui/Container';
 import GlitchText from '@components/ui/GlitchText';
 import TypewriterText from '@components/ui/TypewriterText';
 import ScrollReveal from '@components/ui/ScrollReveal';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Hero() {
+    const { t } = useLanguage();
+
     return (
         <section className="relative py-20 md:py-32 overflow-hidden">
             <Container>
@@ -14,15 +17,15 @@ export default function Hero() {
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-green/10 border border-accent-green/20 mb-8">
                         <span className="w-2 h-2 bg-accent-green rounded-full animate-pulse"></span>
                         <span className="text-sm font-medium text-accent-green">
-                            AI-Powered Vulnerability Detection
+                            {t.home.badge}
                         </span>
                     </div>
 
                     {/* Main Heading */}
                     <h1 className="text-5xl md:text-6xl lg:text-7xl font-heading font-bold text-text-primary mb-6 leading-tight">
-                        <GlitchText as="span" interval={8000}>Secure Your Web</GlitchText>
+                        <GlitchText as="span" interval={8000}>{t.home.titlePart1}</GlitchText>
                         <br />
-                        <span className="text-gradient-green">Applications</span> with AI
+                        <span className="text-gradient-green">{t.home.titlePart2}</span> {t.home.titlePart3}
                     </h1>
 
                     {/* Typewriter Tagline */}
@@ -37,15 +40,14 @@ export default function Hero() {
 
                     {/* Description */}
                     <p className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
-                        Advanced vulnerability scanning and threat detection platform. Identify security risks,
-                        get actionable insights, and protect your digital assets with cutting-edge AI technology.
+                        {t.home.desc}
                     </p>
 
                     {/* CTA Buttons */}
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
                         <Link to="/register">
                             <Button variant="primary" size="lg" className="w-full sm:w-auto">
-                                Start Free Scan
+                                {t.home.startFreeScan}
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                 </svg>
@@ -53,7 +55,7 @@ export default function Hero() {
                         </Link>
                         <Link to="/docs">
                             <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                                View Documentation
+                                {t.home.exploreDocs}
                             </Button>
                         </Link>
                     </div>

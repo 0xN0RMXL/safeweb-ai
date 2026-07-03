@@ -3,12 +3,44 @@
 @tailwind utilities;
 
 @layer base {
+    :root, :root.dark {
+        --bg-primary: 5 6 7;
+        --bg-secondary: 10 12 14;
+        --bg-tertiary: 15 17 19;
+        --bg-card: 18 21 26;
+        --bg-hover: 26 29 35;
+        --accent-green: 0 255 136;
+        --accent-blue: 58 169 255;
+        --text-primary: 255 255 255;
+        --text-secondary: 176 184 193;
+        --text-tertiary: 139 148 158;
+        --text-muted: 75 85 99;
+        --border-primary: 31 41 55;
+        --border-secondary: 55 65 81;
+    }
+
+    :root.light {
+        --bg-primary: 241 245 249 !important;
+        --bg-secondary: 226 232 240 !important;
+        --bg-tertiary: 203 213 225 !important;
+        --bg-card: 255 255 255 !important;
+        --bg-hover: 226 232 240 !important;
+        --accent-green: 0 180 94 !important;
+        --accent-blue: 2 132 199 !important;
+        --text-primary: 9 13 22 !important;
+        --text-secondary: 51 65 85 !important;
+        --text-tertiary: 100 116 139 !important;
+        --text-muted: 148 163 184 !important;
+        --border-primary: 203 213 225 !important;
+        --border-secondary: 148 163 184 !important;
+    }
+
     * {
         @apply border-border-primary;
     }
 
     body {
-        @apply bg-bg-primary text-text-primary font-sans antialiased;
+        @apply bg-bg-primary text-text-primary font-sans antialiased transition-colors duration-300;
     }
 
     h1,

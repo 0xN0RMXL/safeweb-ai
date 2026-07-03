@@ -3,11 +3,8 @@
 Covers: TemplateParser, TemplateRunner, TemplateManager, variable substitution,
 matcher evaluation, extractor logic, and vulnerability conversion.
 """
-import os
-import tempfile
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 from apps.scanning.engine.nuclei.template_parser import (
     NucleiTemplate,

@@ -1,5 +1,7 @@
 """Targeted scan test — validates key pipeline components without full scan."""
-import os, sys, json, time
+import os
+import sys
+import json
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.development')
 os.environ['DJANGO_ALLOW_ASYNC_UNSAFE'] = 'true'

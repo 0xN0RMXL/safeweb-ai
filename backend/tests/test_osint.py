@@ -3,7 +3,6 @@ Tests for Phase 23 — OSINT & External Intelligence Integration.
 
 All external API calls are mocked.
 """
-import pytest
 from unittest.mock import patch, MagicMock
 
 

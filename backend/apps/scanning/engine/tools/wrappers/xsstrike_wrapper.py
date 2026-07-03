@@ -32,17 +32,17 @@ class XsStrikeTool(ExternalTool):
         if options.get('blind', False):
             args.append('--blind')
         raw = self._exec(args)
-        return self.parse_output(raw)
+        return self.parse_output(raw, target=target)
 
     # XSStrike doesn't always have clean JSON — parse both formats
-    def parse_output(self, raw: str) -> list[ToolResult]:
+    def parse_output(self, raw: str, target: str = '') -> list[ToolResult]:
         results = []
         # Try JSON first (--json flag)
         try:
             import json
             data = json.loads(raw)
             for item in data if isinstance(data, list) else [data]:
-                url = item.get('url', '')
+                url = item.get('url', target)
                 param = item.get('param', '')
                 payload = item.get('payload', '')
                 results.append(ToolResult(
@@ -64,7 +64,7 @@ class XsStrikeTool(ExternalTool):
                         tool_name=self.name,
                         category='xss',
                         title=f'Potential XSS in parameter "{param}"',
-                        host=target if 'target' in dir() else '',
+                        host=target,
                         severity=ToolSeverity.HIGH,
                         confidence=0.70,
                         metadata={'raw_line': line},

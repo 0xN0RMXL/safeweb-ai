@@ -13,7 +13,6 @@ import time
 import urllib.request
 import urllib.parse
 import json
-from collections import Counter
 
 from ._base import (
     create_result,
@@ -455,7 +454,7 @@ def run_email_enum(
             all_emails.extend(pgp_mit)
             result['stats']['successful_checks'] += 1
             logger.debug('Extracted %d emails from MIT PGP keyserver', len(pgp_mit))
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             result['stats']['failed_checks'] += 1
 
     # 6. Certificate Transparency email search (deep)

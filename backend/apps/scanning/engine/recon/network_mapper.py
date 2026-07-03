@@ -9,7 +9,6 @@ Pure aggregation — no network requests needed.
 Uses ``_base`` helpers for the standardised return format.
 """
 import logging
-import re
 import time
 from collections import defaultdict
 
@@ -329,7 +328,7 @@ def run_network_mapper(
 
     if cdn_ips and origin_ips:
         result['issues'].append(
-            f'Origin IP(s) detected alongside CDN — CDN bypass may be possible: '
+            'Origin IP(s) detected alongside CDN — CDN bypass may be possible: '
             + ', '.join(origin_ips[:5])
         )
     elif not cdn_ips and hosts_list:

@@ -8,7 +8,6 @@ Supports chain detection, blast-radius analysis, and Mermaid/DOT export.
 """
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

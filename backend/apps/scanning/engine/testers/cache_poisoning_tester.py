@@ -6,7 +6,6 @@ Tests for: unkeyed header injection, cache key manipulation,
 web cache deception, host header cache poisoning,
 and parameter cloaking.
 """
-import re
 import time
 import logging
 import hashlib
@@ -262,7 +261,7 @@ class CachePoisoningTester(BaseTester):
         """Test for parameter cloaking via query string separators."""
         from urllib.parse import urlparse
 
-        parsed = urlparse(page.url)
+        urlparse(page.url)
 
         # Try different parameter separators
         separators = [';', '&', '%26', '%3b']

@@ -5,10 +5,9 @@ Tests common parameter names to discover hidden functionality,
 debug modes, and injection points.
 """
 import logging
-import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urlencode, urlparse, urljoin
+from urllib.parse import urlencode
 
 from ._base import (
     create_result,

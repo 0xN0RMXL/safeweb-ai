@@ -169,7 +169,7 @@ class TypeJugglingTester(BaseTester):
                 try:
                     resp = self._make_request(method, action, data=data)
                     if resp and resp.status_code in (200, 302):
-                        resp_body = getattr(resp, 'text', '')
+                        getattr(resp, 'text', '')
                         location = resp.headers.get('Location', '')
                         # If we get redirected to a success page or see success indicators
                         if (resp.status_code == 302

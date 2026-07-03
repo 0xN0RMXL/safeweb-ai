@@ -1,5 +1,7 @@
 """Quick DB status check — run from backend/ directory."""
-import os, sys, json
+import os
+import sys
+import json
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.development')
 os.environ['DJANGO_ALLOW_ASYNC_UNSAFE'] = 'true'
 sys.path.insert(0, os.path.dirname(__file__))

@@ -5,7 +5,6 @@ Applies path manipulation, HTTP method bypass, header injection,
 and protocol manipulation to bypass access controls on forbidden URLs.
 """
 import logging
-import re
 from urllib.parse import urlparse, urlunparse, quote
 
 import requests

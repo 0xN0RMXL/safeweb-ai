@@ -8,12 +8,10 @@ Covers:
   - Integration: Import checks, vuln dict format, orchestrator wiring
 """
 
-import hashlib
 import re
 from dataclasses import dataclass, field
 from unittest.mock import MagicMock, patch, PropertyMock
 
-import pytest
 
 
 # ---------------------------------------------------------------------------

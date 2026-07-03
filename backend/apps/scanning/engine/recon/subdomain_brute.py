@@ -18,7 +18,6 @@ from ._base import (
     finalize_result,
     extract_hostname,
     extract_root_domain,
-    load_data_lines,
 )
 
 logger = logging.getLogger(__name__)

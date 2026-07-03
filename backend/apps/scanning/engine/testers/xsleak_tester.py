@@ -112,7 +112,7 @@ class XSLeakTester(BaseTester):
             if not resp:
                 return None
 
-            resp_headers = dict(getattr(resp, 'headers', {}))
+            dict(getattr(resp, 'headers', {}))
             resp_body = getattr(resp, 'text', '')
 
             # If error page includes detailed info (stack trace, db info)

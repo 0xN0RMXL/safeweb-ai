@@ -12,10 +12,8 @@ Covers:
   Rate limiting on AI endpoints
   Authentication/authorization on model endpoints
 """
-import json
 import logging
 import re
-import time
 
 from apps.scanning.engine.testers.base_tester import BaseTester
 

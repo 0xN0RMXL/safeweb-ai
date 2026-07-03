@@ -368,7 +368,7 @@ export const targetAPI = {
     createTarget: (data: { domain: string; display_name: string; tags?: string[] }) =>
         api.post('/scan/targets/', data),
     getTarget: (id: string) => api.get(`/scan/targets/${id}/`),
-    updateTarget: (id: string, data: any) => api.patch(`/scan/targets/${id}/`, data),
+    updateTarget: (id: string, data: Record<string, unknown>) => api.patch(`/scan/targets/${id}/`, data),
     deleteTarget: (id: string) => api.delete(`/scan/targets/${id}/`),
 };
 

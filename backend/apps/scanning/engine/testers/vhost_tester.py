@@ -50,7 +50,7 @@ class VHostTester(BaseTester):
         vulns = []
         url = getattr(page, 'url', '')
         body = getattr(page, 'body', '') or ''
-        headers = getattr(page, 'headers', {}) or {}
+        getattr(page, 'headers', {}) or {}
 
         from urllib.parse import urlparse
         parsed = urlparse(url)
