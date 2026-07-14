@@ -1,0 +1,39 @@
+name: SafeWeb AI CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Azure VM
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.AZURE_HOST }}
+          username: ${{ secrets.AZURE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            if [ ! -d "${{ secrets.PROJECT_PATH }}" ]; then
+              git clone https://github.com/0xN0RMXL/safeweb-ai.git ${{ secrets.PROJECT_PATH }}
+            fi
+
+            cd ${{ secrets.PROJECT_PATH }}
+
+            git fetch origin
+            git reset --hard origin/main
+
+            docker compose down || true
+
+            docker compose pull || true
+
+            docker compose build
+
+            docker compose up -d
+
+            docker image prune -f
