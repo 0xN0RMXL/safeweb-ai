@@ -108,3 +108,10 @@ redis_data/
 
 # Database dumps
 *.sql
+
+# SSL Certificates and Keys
+certs/
+*.cer
+*.key
+*.pem
+!safeweb-key.pem
