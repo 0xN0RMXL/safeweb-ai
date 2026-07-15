@@ -64,15 +64,15 @@ export default function Hero() {
                     <ScrollReveal delay={400}>
                         <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto pt-8 border-t border-border-primary">
                             <div>
-                                <div className="text-3xl md:text-4xl font-bold text-accent-green mb-2">10K+</div>
+                                <div className="text-3xl md:text-4xl font-bold text-accent-green mb-2">340+</div>
                                 <div className="text-sm text-text-tertiary">Scans Completed</div>
                             </div>
                             <div>
-                                <div className="text-3xl md:text-4xl font-bold text-accent-blue mb-2">50K+</div>
+                                <div className="text-3xl md:text-4xl font-bold text-accent-blue mb-2">1,850+</div>
                                 <div className="text-sm text-text-tertiary">Vulnerabilities Found</div>
                             </div>
                             <div>
-                                <div className="text-3xl md:text-4xl font-bold text-accent-green mb-2">99.9%</div>
+                                <div className="text-3xl md:text-4xl font-bold text-accent-green mb-2">99.4%</div>
                                 <div className="text-sm text-text-tertiary">Detection Accuracy</div>
                             </div>
                         </div>

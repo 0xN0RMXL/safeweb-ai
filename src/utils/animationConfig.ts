@@ -114,7 +114,7 @@ export const TERMINAL = {
         '$ safeweb-ai --deep-scan --target=*.com',
         '[*] Initializing AI threat engine...',
         '[*] Loading vulnerability signatures...',
-        '[+] Scan started at 2026-02-14T09:00:00Z',
+        '[+] Scan started at 2026-07-14T09:00:00Z',
     ],
 } as const;
 

@@ -1,21 +1,35 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
-# Install system dependencies (including standard tools required by external wrappers)
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install system dependencies (including standard tools required by external wrappers and PostgreSQL/Celery)
 RUN apt-get update && apt-get install -y \
-    wget \
+    build-essential \
+    gcc \
+    libpq-dev \
+    libmagic1 \
+    libmagic-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    libffi-dev \
+    libssl-dev \
     curl \
+    wget \
     git \
     nmap \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-
 # Copy and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
+# Copy source code and entrypoints
 COPY . .
+COPY entrypoint.worker.sh /entrypoint.worker.sh
+RUN chmod +x /entrypoint.worker.sh
 
 # Isolate Celery process and cap memory limits (200MB per child max)
-CMD ["celery", "-A", "config.celery_app", "worker", "-l", "info", "--concurrency=4", "--max-memory-per-child=200000"]
+CMD ["celery", "-A", "celery_app", "worker", "-l", "info", "--concurrency=4", "--max-memory-per-child=200000"]
