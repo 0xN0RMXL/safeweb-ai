@@ -105,3 +105,6 @@ postgres_data/
 grafana_data/
 redis_data/
 *.docker-volume/
+
+# Database dumps
+*.sql
